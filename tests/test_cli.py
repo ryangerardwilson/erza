@@ -13,7 +13,7 @@ class CliTests(unittest.TestCase):
 
         args = parser.parse_args(["run"])
 
-        self.assertEqual(args.source, Path("."))
+        self.assertEqual(args.source, ".")
 
     def test_directory_source_resolves_to_index_erza(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -21,14 +21,24 @@ class CliTests(unittest.TestCase):
             entry = root / "index.erza"
             entry.write_text("<Screen title='Test'></Screen>", encoding="utf-8")
 
-            resolved = _resolve_source_path(root)
+            resolved = _resolve_source_path(str(root))
 
             self.assertEqual(resolved, entry.resolve())
 
     def test_directory_without_index_erza_raises(self) -> None:
         with TemporaryDirectory() as tmp:
             with self.assertRaises(FileNotFoundError):
-                _resolve_source_path(Path(tmp))
+                _resolve_source_path(tmp)
+
+    def test_http_source_is_treated_as_remote(self) -> None:
+        resolved = _resolve_source_path("https://example.com")
+
+        self.assertEqual(resolved, "https://example.com")
+
+    def test_bare_domain_defaults_to_https(self) -> None:
+        resolved = _resolve_source_path("example.com/docs")
+
+        self.assertEqual(resolved, "https://example.com/docs")
 
 
 if __name__ == "__main__":

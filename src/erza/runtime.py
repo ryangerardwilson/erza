@@ -61,6 +61,15 @@ class ErzaApp:
         return compile_markup(markup)
 
 
+class StaticScreenApp:
+    def __init__(self, screen: Screen) -> None:
+        self.screen = screen
+        self.backend = BackendBridge.empty()
+
+    def build_screen(self) -> Screen:
+        return self.screen
+
+
 def run_curses_app(app: ErzaApp) -> None:
     session = _RuntimeSession(app)
     curses.wrapper(session.run)

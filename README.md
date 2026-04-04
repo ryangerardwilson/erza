@@ -31,6 +31,8 @@ See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 ```bash
 python -m erza run examples/tasks/app.erza
 python -m erza run examples/greetings
+python -m erza run https://erza.ryangerardwilson.com
+python -m erza run erza.ryangerardwilson.com
 ```
 
 If you prefer, `PYTHONPATH=src python -m erza ...` also works. An installed CLI
@@ -39,7 +41,9 @@ is available through `python -m pip install -e .` when `pip` is present.
 `erza` automatically loads `backend.py` from the same directory as the `.erza`
 entry file unless `--backend` is provided explicitly. If you pass a directory,
 `erza` looks for `index.erza` inside it. If you omit the source entirely,
-`erza run` defaults to the current directory.
+`erza run` defaults to the current directory. If you pass an `http(s)` URL or a
+bare domain, `erza` fetches the remote page and renders a read-only terminal
+view of the content.
 
 ## V0 Surface Area
 
