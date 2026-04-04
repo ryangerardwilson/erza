@@ -1,22 +1,30 @@
 <Screen title="Tasks">
   <? tasks = backend("tasks.list") ?>
 
-  <Column gap="1">
-    <Header>Open Tasks</Header>
+  <Section title="Open Tasks">
+    <Text>Ctrl+N/Ctrl+P choose a section. j/k move through actions in the active section.</Text>
 
     <? if tasks ?>
       <? for task in tasks ?>
-        <Row gap="2">
-          <Text><?= task.title ?></Text>
-          <Button on:press="tasks.complete" task:id="<?= task.id ?>">
-            Complete
-          </Button>
-        </Row>
+        <Text><?= task.title ?></Text>
+        <Action on:press="tasks.complete" task:id="<?= task.id ?>">
+          Complete task
+        </Action>
       <? endfor ?>
     <? else ?>
       <Text>All tasks complete.</Text>
     <? endif ?>
+  </Section>
 
-    <Text>Use hjkl to move. Press Enter to fire the focused button.</Text>
-  </Column>
+  <Section title="Documentation">
+    <Text>The hosted docs are also reachable through the remote viewer.</Text>
+    <Link href="https://erza.ryangerardwilson.com">Open erza docs</Link>
+    <Link href="https://erza.ryangerardwilson.com/protocol/">Open protocol notes</Link>
+  </Section>
+
+  <Section title="Controls">
+    <Text>Ctrl+N/Ctrl+P switch sections. j/k move inside the active section.</Text>
+    <Text>gg jumps to the first section. G jumps to the last.</Text>
+    <Text>h goes back one page. l opens the selected link or action.</Text>
+  </Section>
 </Screen>

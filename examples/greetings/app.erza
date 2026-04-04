@@ -2,17 +2,27 @@
   <? current = backend("greetings.current") ?>
   <? choices = backend("greetings.choices") ?>
 
-  <Column gap="1">
-    <Header>erza v0 Demo</Header>
+  <Section title="Current Greeting">
     <Text><?= current.message ?></Text>
-    <Text>Choose a greeting:</Text>
+    <Text>This screen is organized as sectional components instead of loose headings.</Text>
+  </Section>
 
+  <Section title="Choose Greeting">
     <? for choice in choices ?>
-      <Button on:press="greetings.select" greeting:key="<?= choice.key ?>">
+      <Action on:press="greetings.select" greeting:key="<?= choice.key ?>">
         <?= choice.label ?>
-      </Button>
+      </Action>
     <? endfor ?>
+  </Section>
 
-    <Text>Use hjkl to focus a button, then press Enter.</Text>
-  </Column>
+  <Section title="Explore">
+    <Link href="https://erza.ryangerardwilson.com">Open hosted docs</Link>
+    <Link href="https://erza.ryangerardwilson.com/protocol/">Open protocol notes</Link>
+  </Section>
+
+  <Section title="Controls">
+    <Text>Ctrl+N/Ctrl+P move between sections. j/k move inside the active section.</Text>
+    <Text>gg jumps to the first section. G jumps to the last.</Text>
+    <Text>h goes back. l opens the selected link or action.</Text>
+  </Section>
 </Screen>

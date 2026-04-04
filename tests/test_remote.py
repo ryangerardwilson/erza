@@ -23,14 +23,10 @@ class RemoteTests(unittest.TestCase):
             server.close()
 
         self.assertEqual(screen.title, "Remote Docs")
-        rendered_text = [
-            child.content
-            for block in screen.children
-            for child in getattr(block, "children", [])
-            if hasattr(child, "content")
-        ]
+        self.assertEqual(screen.children[0].title, "Overview")
+        self.assertEqual(screen.children[1].title, "Remote Docs")
         self.assertTrue(
-            any("https://example.com/spec" in item for item in rendered_text)
+            any(getattr(child, "href", "") == "https://example.com/spec" for child in screen.children[1].children)
         )
 
     def test_dns_resolution_fallback_follows_cname_chain(self) -> None:

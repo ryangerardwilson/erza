@@ -3,24 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html.parser import HTMLParser
 import json
-import re
 import socket
 import textwrap
 from contextlib import contextmanager
+import re
 from typing import Literal
 from urllib.error import URLError
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
-from erza.model import Column, Component, Header, Screen, Text
+from erza.model import Component, Link, Screen, Section, Text
 
 
 REMOTE_WRAP_WIDTH = 72
 REMOTE_USER_AGENT = "erza/0.0.1"
 REMOTE_SCHEME_RE = re.compile(r"^https?://", re.IGNORECASE)
-DOMAIN_RE = re.compile(
-    r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?:/[^\s]*)?$"
-)
+DOMAIN_RE = re.compile(r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?:/[^\s]*)?$")
 
 
 class RemoteError(RuntimeError):
@@ -32,6 +30,29 @@ class RemoteDocument:
     url: str
     content_type: str
     body: str
+
+
+@dataclass(slots=True)
+class _Block:
+    kind: Literal["header", "paragraph", "link", "code"]
+    text: str
+    href: str | None = None
+
+
+class RemoteApp:
+    def __init__(self, url: str) -> None:
+        self.current_url = normalize_remote_url(url)
+
+    @property
+    def backend(self):
+        return None
+
+    def build_screen(self) -> Screen:
+        document = fetch_remote_document(self.current_url)
+        return remote_document_to_screen(document)
+
+    def follow_link(self, href: str) -> "RemoteApp":
+        return RemoteApp(urljoin(self.current_url, href))
 
 
 def is_remote_source(value: str) -> bool:
@@ -81,18 +102,14 @@ def remote_document_to_screen(document: RemoteDocument) -> Screen:
 
 
 def _plain_text_to_screen(url: str, body: str) -> Screen:
-    title = _title_from_url(url)
-    children: list[Component] = [
-        Header(content=f"Remote {title}"),
-        Text(content=url),
-    ]
+    children: list[Component] = [Text(content=url)]
     for line in body.splitlines():
-        wrapped = _wrap_text(line)
-        if not wrapped:
-            continue
-        for item in wrapped:
-            children.append(Text(content=item))
-    return Screen(title=title, children=[Column(children=children, gap=1)])
+        for wrapped in _wrap_text(line):
+            children.append(Text(content=wrapped))
+    return Screen(
+        title=_title_from_url(url),
+        children=[Section(title="Overview", children=children)],
+    )
 
 
 def _title_from_url(url: str) -> str:
@@ -129,7 +146,6 @@ def _resolve_hostname_via_doh(hostname: str, visited: set[str] | None = None) ->
 
     addresses = _query_dns_records(hostname, "A") + _query_dns_records(hostname, "AAAA")
     if addresses:
-        # Preserve order while removing duplicates.
         return list(dict.fromkeys(addresses))
 
     for target in _query_dns_records(hostname, "CNAME"):
@@ -142,10 +158,7 @@ def _resolve_hostname_via_doh(hostname: str, visited: set[str] | None = None) ->
 def _query_dns_records(hostname: str, record_type: str) -> list[str]:
     query = Request(
         f"https://cloudflare-dns.com/dns-query?name={hostname}&type={record_type}",
-        headers={
-            "User-Agent": REMOTE_USER_AGENT,
-            "accept": "application/dns-json",
-        },
+        headers={"User-Agent": REMOTE_USER_AGENT, "accept": "application/dns-json"},
     )
     try:
         with urlopen(query, timeout=10.0) as response:
@@ -184,12 +197,6 @@ def _temporary_host_resolution(hostname: str, addresses: list[str]):
         socket.getaddrinfo = original_getaddrinfo
 
 
-@dataclass(slots=True)
-class _Block:
-    kind: Literal["title", "header", "paragraph", "code"]
-    text: str
-
-
 class _RemoteHtmlParser(HTMLParser):
     def __init__(self, url: str) -> None:
         super().__init__(convert_charrefs=True)
@@ -198,7 +205,9 @@ class _RemoteHtmlParser(HTMLParser):
         self.in_heading = False
         self.in_paragraph = False
         self.in_pre = False
+        self.in_anchor = False
         self.current_href: str | None = None
+        self.anchor_parts: list[str] = []
         self.title_parts: list[str] = []
         self.blocks: list[_Block] = []
         self.buffer: list[str] = []
@@ -225,7 +234,9 @@ class _RemoteHtmlParser(HTMLParser):
             self.buffer.append("\n" if self.in_pre else " ")
             return
         if tag == "a":
+            self.in_anchor = True
             self.current_href = attrs_dict.get("href") or None
+            self.anchor_parts = []
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "title":
@@ -245,16 +256,19 @@ class _RemoteHtmlParser(HTMLParser):
             self.in_pre = False
             return
         if tag == "a":
-            if self.current_href and self.buffer:
-                current = "".join(self.buffer).rstrip()
-                if current and self.current_href not in current:
-                    self.buffer.append(f" ({self.current_href})")
+            self.in_anchor = False
+            label = " ".join("".join(self.anchor_parts).split())
+            if self.current_href and label:
+                self.blocks.append(_Block(kind="link", text=label, href=self.current_href))
             self.current_href = None
+            self.anchor_parts = []
 
     def handle_data(self, data: str) -> None:
         if self.in_title:
             self.title_parts.append(data)
             return
+        if self.in_anchor:
+            self.anchor_parts.append(data)
         if self.in_pre:
             self.buffer.append(data)
             return
@@ -264,35 +278,32 @@ class _RemoteHtmlParser(HTMLParser):
     def to_screen(self) -> Screen:
         self._flush()
         title = " ".join(" ".join(self.title_parts).split()) or _title_from_url(self.url)
-        children: list[Component] = [
-            Header(content=title),
-            Text(content=self.url),
-        ]
+
+        sections: list[Section] = []
+        current_title = "Overview"
+        current_children: list[Component] = [Text(content=self.url)]
 
         for block in self.blocks:
             if block.kind == "header":
-                for line in _wrap_text(block.text):
-                    children.append(Header(content=line))
+                if current_children:
+                    sections.append(Section(title=current_title, children=current_children))
+                current_title = block.text
+                current_children = []
+                continue
+            if block.kind == "link":
+                current_children.append(Link(label=block.text, href=block.href or "#"))
                 continue
             if block.kind == "code":
                 for line in block.text.splitlines():
-                    content = line.rstrip()
-                    if not content:
-                        continue
-                    for wrapped in textwrap.wrap(
-                        content,
-                        width=REMOTE_WRAP_WIDTH,
-                        subsequent_indent="  ",
-                    ) or [content]:
-                        children.append(Text(content=wrapped))
+                    current_children.append(Text(content=line.rstrip()))
                 continue
             for line in _wrap_text(block.text):
-                children.append(Text(content=line))
+                current_children.append(Text(content=line))
 
-        if len(children) == 2:
-            children.append(Text(content="No readable content found in the remote page."))
+        if current_children or not sections:
+            sections.append(Section(title=current_title, children=current_children))
 
-        return Screen(title=title, children=[Column(children=children, gap=1)])
+        return Screen(title=title, children=sections)
 
     def _flush(self) -> None:
         raw = "".join(self.buffer)
@@ -303,7 +314,6 @@ class _RemoteHtmlParser(HTMLParser):
         if self.in_title:
             self.title_parts.append(raw)
             return
-
         if self.in_pre:
             text = raw.strip("\n")
             if text:

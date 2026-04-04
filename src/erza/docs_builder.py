@@ -68,58 +68,81 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             "build_stamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         },
         "nav": [
-            {"href": "#why", "label": "Why"},
+            {"href": "#model", "label": "Model"},
+            {"href": "#components", "label": "Components"},
             {"href": "#run", "label": "Run"},
             {"href": "#examples", "label": "Examples"},
             {"href": "/protocol/", "label": "Protocol"},
             {"href": repo_url, "label": "GitHub"},
         ],
         "commands": [
-            {"label": "Terminal app", "command": "python -m erza run examples/greetings"},
+            {"label": "Local example", "command": "python -m erza run examples/greetings"},
+            {"label": "Remote docs", "command": "python -m erza run erza.ryangerardwilson.com"},
             {"label": "Docs build", "command": "./update_docs.sh"},
-            {"label": "Future remote app", "command": "erza example.com"},
         ],
         "pillars": [
             {
-                "title": "`.erza` is the authoring surface",
-                "body": "The project stays centered on component files and readable templates instead of hand-rolled terminal paint loops.",
+                "title": "Section is the primary unit",
+                "body": "A screen should read as a stack of named regions, each with one job and a small number of active items.",
             },
             {
-                "title": "Terminal-native first",
-                "body": "The current runtime is for TUIs, with transparent defaults, keyboard-first focus movement, and `hjkl` as the primary navigation model.",
+                "title": "Navigation starts with regions",
+                "body": "Ctrl+N and Ctrl+P move between sections, gg and G jump to the ends, then j and k move inside the currently active section while h and l handle back and open.",
             },
             {
-                "title": "Remote transport can come later",
-                "body": "The website direction is best treated as domains serving terminal apps over HTTPS, not as a browser-compatibility project.",
+                "title": "Remote transport stays separate",
+                "body": "The future networked model should fetch terminal-native app state over HTTPS without inheriting browser compatibility scope.",
+            },
+        ],
+        "components": [
+            {
+                "tag": "<Screen>",
+                "summary": "Root shell for one terminal page.",
+            },
+            {
+                "tag": "<Section title=\"...\">",
+                "summary": "Primary navigable region and the main unit of composition.",
+            },
+            {
+                "tag": "<Text>",
+                "summary": "Plain copy, status, or values inside a section.",
+            },
+            {
+                "tag": "<Action on:press=\"...\">",
+                "summary": "A backend-triggering affordance selected with j/k and fired with l.",
+            },
+            {
+                "tag": "<Link href=\"...\">",
+                "summary": "A local or remote page hop that opens with l.",
             },
         ],
         "examples": [
             {
                 "name": "Tasks",
                 "path": "examples/tasks/app.erza",
-                "summary": "Backend-fed task list with focused buttons and stateful rerendering.",
+                "summary": "A section-first task board with backend actions, links, and page history.",
             },
             {
                 "name": "Greetings",
                 "path": "examples/greetings/index.erza",
-                "summary": "A directory-based entrypoint with `index.erza` and live backend state changes.",
+                "summary": "A directory-based entrypoint that shows how sections become the default screen rhythm.",
             },
         ],
         "protocol_steps": [
             {
                 "step": "1",
                 "title": "Resolve a domain",
-                "body": "`erza example.com` assumes HTTPS and asks the server for an erza app, not HTML.",
+                "body": "`erza example.com` assumes HTTPS and asks the server for an erza app, not a browser document.",
             },
             {
                 "step": "2",
                 "title": "Fetch a screen tree",
-                "body": "The server returns a safe terminal-focused document or compiled UI tree the client can render locally.",
+                "body": "The server returns a safe section-first screen tree the client can render locally.",
             },
             {
                 "step": "3",
                 "title": "Send actions back",
-                "body": "Button presses and navigation-triggered actions post structured events to the server.",
+                "body": "Links and actions post structured events back to the server while client-side history stays local.",
             },
             {
                 "step": "4",

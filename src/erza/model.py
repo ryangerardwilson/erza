@@ -14,6 +14,12 @@ class Header:
 
 
 @dataclass(slots=True)
+class Link:
+    label: str
+    href: str
+
+
+@dataclass(slots=True)
 class Button:
     label: str
     action: str
@@ -33,9 +39,16 @@ class Row:
 
 
 @dataclass(slots=True)
+class Section:
+    title: str
+    children: list["Component"]
+    tone: str = "default"
+
+
+@dataclass(slots=True)
 class Screen:
     title: str
     children: list["Component"]
 
 
-Component = Text | Header | Button | Column | Row
+Component = Text | Header | Link | Button | Column | Row | Section

@@ -1,28 +1,57 @@
 # erza
 
-`erza` is a language project focused only on building terminal user interfaces.
+`erza` is a terminal-native UI language project for building component-driven
+interfaces and exploring an in-terminal networked experience for software and
+documents.
 
-This repository now includes a runnable v0 Python prototype with:
+The basic bet is simple: a lot of browser experiences are bloated, fragile, and
+hostile to focused work. `erza` aims at a different path. Instead of opening a
+tab jungle just to read docs, inspect a tool, or work through a workflow, the
+same experience can be rendered as a terminal-native interface with predictable
+keyboard movement, restrained layout, and no browser chrome.
 
-- `.erza` component files as the primary authoring surface
-- HTML-like component tags
-- PHP-style template blocks and output tags
-- a small Python backend bridge
+That future direction is the `erzanet`: terminal-addressed apps and documents
+that can be opened without leaving the terminal.
+
+This repository includes a runnable Python prototype with:
+
+- `.erza` files as the primary authoring surface
+- HTML-like tags with PHP-style template blocks
+- component-oriented screen composition rendered as bordered terminal panels
 - terminal-native rendering through `curses`
-- `hjkl`-first focus movement with arrow-key compatibility
+- keyboard-first navigation with `Ctrl+N`, `Ctrl+P`, `j`, `k`, `h`, and `l`
 - transparent/default terminal backgrounds and host terminal typography
 
 ## Direction
 
-- `.erza` files define TUI components with HTML-like structure
-- PHP-style template blocks and output tags drive dynamic UI composition
-- Components render terminal-native layouts, widgets, and interactions
-- `hjkl`-first navigation is the default interaction model
-- Transparent or no-color backgrounds are the default visual baseline
-- Typography inherits the user's existing terminal font
-- Backend logic is optional and language-agnostic by design
-- Python is the first prototype backend for examples and initial tooling
-- A small, inspectable toolchain
+The language is moving toward a component-first model, even though the current
+prototype still renders many screens as sectional panels.
+
+- A screen is composed from terminal components rather than browser pages.
+- The current runtime uses titled panels as a neat default presentation.
+- `Ctrl+N` and `Ctrl+P` move between top-level components.
+- `gg` jumps to the first component and `G` jumps to the last.
+- `j` and `k` move through the active component's items.
+- `h` goes back one page.
+- `l` opens the selected link or fires the selected action.
+
+This keeps the runtime closer to navigating a clean terminal workspace than to
+steering through arbitrary browser chrome or a floating cursor over random
+widgets.
+
+## Why This Exists
+
+`erza` is for situations where the browser is the wrong container.
+
+- docs that should be readable without tabs, popovers, and cookie banners
+- tools that should feel local and keyboard-native
+- workflows that should survive slow networks, large monitors, and minimal
+  environments
+- remote experiences that should be reachable as `erza example.com` instead of
+  “open another browser tab”
+
+If the browser made the experience worse, `erza` is the attempt to move that
+experience back into a terminal-shaped environment.
 
 See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 
@@ -47,14 +76,25 @@ view of the content.
 
 ## V0 Surface Area
 
-Supported components:
+Primary components:
 
 - `<Screen title="...">`
+- `<Section title="...">`
+- `<Text>`
+- `<Link href="...">`
+- `<Action on:press="handler.name">`
+
+Support layout components:
+
 - `<Column gap="...">`
 - `<Row gap="...">`
-- `<Header>`
-- `<Text>`
+
+Compatibility component:
+
 - `<Button on:press="handler.name">`
+
+`<Button>` still works, but the intended public vocabulary is `<Action>` inside
+sections.
 
 Supported template features:
 
@@ -68,34 +108,43 @@ The v0 expression engine is intentionally constrained. It supports plain values,
 dot access such as `task.title`, simple comparisons, boolean logic, list/dict
 literals, and `backend(...)` calls.
 
-## Example
+## Authoring Shape
 
 ```erza
 <Screen title="Tasks">
   <? tasks = backend("tasks.list") ?>
 
-  <Column gap="1">
-    <Header>Open Tasks</Header>
+  <Section title="Open Tasks">
+    <Text>Ctrl+N/Ctrl+P switch sections. j/k move inside the active section.</Text>
 
-    <? for task in tasks ?>
-      <Row gap="2">
+    <? if tasks ?>
+      <? for task in tasks ?>
         <Text><?= task.title ?></Text>
-        <Button on:press="tasks.complete" task:id="<?= task.id ?>">
-          Complete
-        </Button>
-      </Row>
-    <? endfor ?>
-  </Column>
+        <Action on:press="tasks.complete" task:id="<?= task.id ?>">
+          Complete task
+        </Action>
+      <? endfor ?>
+    <? else ?>
+      <Text>All tasks complete.</Text>
+    <? endif ?>
+  </Section>
+
+  <Section title="Explore">
+    <Link href="https://erza.ryangerardwilson.com">Open hosted docs</Link>
+  </Section>
 </Screen>
 ```
 
-The bundled example in [`examples/tasks/app.erza`](examples/tasks/app.erza)
-demonstrates the full v0 loop:
+The bundled examples in [`examples/tasks/app.erza`](examples/tasks/app.erza)
+and [`examples/greetings/index.erza`](examples/greetings/index.erza) demonstrate
+the full loop:
 
-- query backend data during template expansion
-- render terminal-native rows and buttons
-- move focus with `hjkl`
-- dispatch a button press to Python and re-render from backend state
+- load backend data during template expansion
+- render named sections as the primary screen structure
+- move across top-level components with `Ctrl+N` and `Ctrl+P`
+- jump directly to the bounds with `gg` and `G`
+- move through the active component's actions with `j` and `k`
+- use `h` for page history and `l` for opening links or dispatching actions
 
 ## Docs Site
 
@@ -104,7 +153,7 @@ built for GitHub Pages.
 
 ```bash
 ./update_docs.sh
-python -m erza run examples/greetings
+python -m erza run erza.ryangerardwilson.com
 ```
 
 Relevant paths:
@@ -118,13 +167,17 @@ Relevant paths:
 
 - `src/erza/template.py`: constrained `.erza` template engine
 - `src/erza/parser.py`: rendered-markup to component-tree compiler
-- `src/erza/runtime.py`: terminal renderer, focus model, and event loop
+- `src/erza/runtime.py`: terminal renderer, section navigation, and event loop
 - `src/erza/backend.py`: Python backend bridge
-- `examples/tasks/`: runnable end-to-end example
-- `tests/`: unit coverage for template expansion and runtime focus behavior
+- `src/erza/remote.py`: remote fetch and read-only remote viewer
+- `examples/`: runnable section-first examples
+- `tests/`: unit coverage for templates, parsing, runtime behavior, and docs build
 
 ## Status
 
-This is still intentionally small. v0 proves the core language/runtime loop
-without widening the project into web UI, generic CLI tooling, or a large
-framework.
+This is still intentionally small. The current prototype proves:
+
+- `.erza` can serve as a readable TUI authoring language
+- a neat boxed terminal layout can be enforced consistently in the runtime
+- backend actions and local/remote links can share one navigation model
+- a future `erzanet` can be explored without turning the project into a browser

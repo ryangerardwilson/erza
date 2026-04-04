@@ -24,53 +24,40 @@
       <main>
         <section class="hero">
           <p class="eyebrow">terminal ui language</p>
-          <h1>.erza for terminal apps now, domains later</h1>
+          <h1>Section-first terminal components</h1>
           <p class="lede">
             This documentation site is authored in <code>.erza</code> and
             compiled into static HTML for GitHub Pages. It doubles as a small
-            testbed for the idea that websites could be authored with erza
-            files instead of raw HTML.
+            testbed for the idea that erza screens should be built from named
+            sections, sparse actions, and predictable keyboard movement.
           </p>
 
           <div class="hero-grid">
             <div class="panel">
-              <h2>Current reality</h2>
+              <h2>Screen shape</h2>
               <p>
-                The repo ships a Python v0 runtime that renders terminal-native
-                screens, supports backend calls, and moves focus with
-                <code>hjkl</code>.
+                A screen is a stack of components. Each section should do one
+                job instead of scattering headings, buttons, and loose focus
+                targets across the page.
               </p>
             </div>
             <div class="panel">
-              <h2>Future direction</h2>
+              <h2>Navigation contract</h2>
               <p>
-                A remote mode like <code>erza example.com</code> can treat
-                domains as transport endpoints for terminal apps over HTTPS
-                without inheriting browser scope.
+                <code>Ctrl+N</code> and <code>Ctrl+P</code> switch sections.
+                <code>gg</code> jumps to the first section and <code>G</code>
+                jumps to the last. <code>j</code> and <code>k</code> move
+                within the active section. <code>h</code> goes back.
+                <code>l</code> opens the selected link or action.
               </p>
             </div>
           </div>
         </section>
 
-        <section id="run" class="section">
+        <section id="model" class="section">
           <div class="section-heading">
-            <p class="eyebrow">run</p>
-            <h2>Start here</h2>
-          </div>
-          <div class="command-list">
-            <? for command in commands ?>
-              <div class="command-card">
-                <p class="command-label"><?= command.label ?></p>
-                <pre><code><?= command.command ?></code></pre>
-              </div>
-            <? endfor ?>
-          </div>
-        </section>
-
-        <section id="why" class="section">
-          <div class="section-heading">
-            <p class="eyebrow">principles</p>
-            <h2>Why erza is shaped this way</h2>
+            <p class="eyebrow">model</p>
+            <h2>Why the language is being reshaped</h2>
           </div>
           <div class="card-grid">
             <? for pillar in pillars ?>
@@ -78,6 +65,36 @@
                 <h3><?= pillar.title ?></h3>
                 <p><?= pillar.body ?></p>
               </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section id="components" class="section">
+          <div class="section-heading">
+            <p class="eyebrow">components</p>
+            <h2>The new public vocabulary</h2>
+          </div>
+          <div class="card-grid">
+            <? for component in components ?>
+              <article class="card">
+                <h3><code><?= component.tag ?></code></h3>
+                <p><?= component.summary ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section id="run" class="section">
+          <div class="section-heading">
+            <p class="eyebrow">run</p>
+            <h2>Try the current prototype</h2>
+          </div>
+          <div class="command-list">
+            <? for command in commands ?>
+              <div class="command-card">
+                <p class="command-label"><?= command.label ?></p>
+                <pre><code><?= command.command ?></code></pre>
+              </div>
             <? endfor ?>
           </div>
         </section>

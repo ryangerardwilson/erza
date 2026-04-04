@@ -5,14 +5,9 @@ from pathlib import Path
 from typing import TypeAlias
 
 from erza.backend import BackendBridge
-from erza.remote import (
-    RemoteError,
-    fetch_remote_document,
-    is_remote_source,
-    normalize_remote_url,
-    remote_document_to_screen,
-)
+from erza.remote import RemoteApp, RemoteError, is_remote_source, normalize_remote_url
 from erza.runtime import ErzaApp, StaticScreenApp, run_curses_app
+from erza.source import SourceResolutionError, resolve_local_source_path
 
 
 AppSource: TypeAlias = Path | str
@@ -25,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run":
         try:
             source = _resolve_source_path(args.source)
-        except (FileNotFoundError, IsADirectoryError, RemoteError) as exc:
+        except (SourceResolutionError, RemoteError) as exc:
             parser.error(str(exc))
         if isinstance(source, str) and args.backend is not None:
             parser.error("--backend is only supported for local .erza sources")
@@ -68,35 +63,20 @@ def _resolve_source_path(source: str) -> AppSource:
 
     path_source = Path(source)
     if path_source.exists() or source in {".", ".."}:
-        return _resolve_local_source_path(path_source)
+        return resolve_local_source_path(path_source)
 
     if is_remote_source(source):
         return normalize_remote_url(source)
 
-    return _resolve_local_source_path(path_source)
+    return resolve_local_source_path(path_source)
 
 
-def _resolve_local_source_path(source: Path) -> Path:
-    candidate = source.resolve()
-    if not candidate.exists():
-        raise FileNotFoundError(f"source path does not exist: {source}")
-    if candidate.is_dir():
-        candidate = candidate / "index.erza"
-        if not candidate.exists():
-            raise FileNotFoundError(f"directory does not contain index.erza: {source}")
-    if candidate.is_dir():
-        raise IsADirectoryError(f"source path is a directory, not a file: {candidate}")
-    return candidate
-
-
-def _build_app(source: AppSource, backend: Path | None) -> ErzaApp | StaticScreenApp:
+def _build_app(source: AppSource, backend: Path | None) -> ErzaApp | RemoteApp | StaticScreenApp:
     if isinstance(source, Path):
         loaded_backend = _load_backend(source, backend)
-        return ErzaApp(source, backend=loaded_backend)
+        return ErzaApp(source, backend=loaded_backend, backend_path=backend)
 
-    document = fetch_remote_document(source)
-    screen = remote_document_to_screen(document)
-    return StaticScreenApp(screen)
+    return RemoteApp(source)
 
 
 def _load_backend(source: Path, backend: Path | None) -> BackendBridge:

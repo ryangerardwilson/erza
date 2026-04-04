@@ -3,15 +3,21 @@ from __future__ import annotations
 import curses
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+import textwrap
 
 from erza.backend import BackendBridge
-from erza.model import Button, Column, Component, Header, Row, Screen, Text
+from erza.model import Button, Column, Component, Header, Link, Row, Screen, Section, Text
 from erza.parser import compile_markup
+from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
+from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
 from erza.template import render_template
 
 
-Direction = Literal["left", "right", "up", "down"]
+CTRL_N = 14
+CTRL_P = 16
+DISPLAY_WIDTH = 79
+TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
+NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
 
 
 @dataclass(slots=True)
@@ -22,17 +28,23 @@ class Segment:
 
 
 @dataclass(slots=True)
-class FocusTarget:
+class ActionableTarget:
+    x: int
+    y: int
+    width: int
+    label_text: str
+    actionable: Button | Link
+
+
+@dataclass(slots=True)
+class SectionTarget:
+    title: str
     x: int
     y: int
     width: int
     height: int
-    label_text: str
-    button: Button
-
-    @property
-    def center(self) -> tuple[float, float]:
-        return (self.x + self.width / 2, self.y + self.height / 2)
+    title_text: str
+    actionables: list[ActionableTarget]
 
 
 @dataclass(slots=True)
@@ -40,25 +52,56 @@ class Block:
     width: int
     height: int
     lines: list[list[Segment]] = field(default_factory=list)
-    focusables: list[FocusTarget] = field(default_factory=list)
+    actionables: list[ActionableTarget] = field(default_factory=list)
 
 
 @dataclass(slots=True)
 class RenderPlan:
     title: str
     lines: list[list[Segment]]
-    focusables: list[FocusTarget]
+    sections: list[SectionTarget]
 
 
 class ErzaApp:
-    def __init__(self, source_path: str | Path, backend: BackendBridge | None = None) -> None:
-        self.source_path = Path(source_path).resolve()
-        self.source = self.source_path.read_text(encoding="utf-8")
-        self.backend = backend or BackendBridge.empty()
+    def __init__(
+        self,
+        source_path: str | Path,
+        backend: BackendBridge | None = None,
+        backend_path: Path | None = None,
+    ) -> None:
+        self.current_source_path = resolve_local_source_path(Path(source_path))
+        self.explicit_backend_path = backend_path.resolve() if backend_path else None
+        self.backend_path = self.explicit_backend_path or _infer_backend_path(self.current_source_path)
+        if backend is not None:
+            self.backend = backend
+        elif self.backend_path is not None:
+            self.backend = BackendBridge.from_module_path(self.backend_path)
+        else:
+            self.backend = BackendBridge.empty()
 
     def build_screen(self) -> Screen:
-        markup = render_template(self.source, backend=self.backend)
+        source = self.current_source_path.read_text(encoding="utf-8")
+        markup = render_template(source, backend=self.backend)
         return compile_markup(markup)
+
+    def follow_link(self, href: str) -> "ErzaApp | RemoteApp":
+        if is_remote_source(href) or href.startswith(("http://", "https://")):
+            return RemoteApp(normalize_remote_url(href))
+
+        try:
+            target = resolve_relative_source(self.current_source_path, href)
+        except SourceResolutionError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        target_backend_path = self.explicit_backend_path or _infer_backend_path(target)
+        if target_backend_path is not None and self.backend_path == target_backend_path:
+            backend = self.backend
+        elif target_backend_path is not None:
+            backend = BackendBridge.from_module_path(target_backend_path)
+        else:
+            backend = BackendBridge.empty()
+
+        return ErzaApp(target, backend=backend, backend_path=self.explicit_backend_path)
 
 
 class StaticScreenApp:
@@ -69,120 +112,149 @@ class StaticScreenApp:
     def build_screen(self) -> Screen:
         return self.screen
 
+    def follow_link(self, href: str) -> "ErzaApp | RemoteApp":
+        raise RuntimeError(f"static screen cannot follow link: {href}")
 
-def run_curses_app(app: ErzaApp) -> None:
+
+def run_curses_app(app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
     session = _RuntimeSession(app)
     curses.wrapper(session.run)
 
 
 def build_render_plan(screen: Screen) -> RenderPlan:
-    body = _build_column_like(screen.children, gap=0)
+    sections = _normalize_sections(screen.children)
     lines = [
         [Segment(x=0, text=screen.title, style="title")],
         [],
     ]
+    section_targets: list[SectionTarget] = []
+    cursor_y = 2
 
-    focusables = []
-    for focusable in body.focusables:
-        focusables.append(
-            FocusTarget(
-                x=focusable.x,
-                y=focusable.y + 2,
-                width=focusable.width,
-                height=focusable.height,
-                label_text=focusable.label_text,
-                button=focusable.button,
+    for index, section in enumerate(sections):
+        block = _build_section_block(section)
+        while len(lines) < cursor_y + block.height:
+            lines.append([])
+
+        for line_index, segments in enumerate(block.lines):
+            destination = lines[cursor_y + line_index]
+            destination.extend(segments)
+
+        section_targets.append(
+            SectionTarget(
+                title=section.title,
+                x=0,
+                y=cursor_y,
+                width=block.width,
+                height=block.height,
+                title_text=block.lines[0][0].text if block.lines and block.lines[0] else "",
+                actionables=[
+                    ActionableTarget(
+                        x=item.x,
+                        y=item.y + cursor_y,
+                        width=item.width,
+                        label_text=item.label_text,
+                        actionable=item.actionable,
+                    )
+                    for item in block.actionables
+                ],
             )
         )
+        cursor_y += block.height
+        if index != len(sections) - 1:
+            lines.append([])
+            cursor_y += 1
 
-    lines.extend(body.lines)
     lines.append([])
     lines.append(
-        [Segment(x=0, text="hjkl move  enter press  arrows supported  q quit", style="help")]
+        [Segment(x=0, text="ctrl-n/p sections  gg top  G end  j/k within  h back  l open  q quit", style="help")]
     )
-    return RenderPlan(title=screen.title, lines=lines, focusables=focusables)
+    return RenderPlan(title=screen.title, lines=lines, sections=section_targets)
 
 
-def move_focus(plan: RenderPlan, current_index: int, direction: Direction) -> int:
-    if not plan.focusables:
+def next_section_index(plan: RenderPlan, current_index: int, delta: int) -> int:
+    if not plan.sections:
         return 0
+    return (current_index + delta) % len(plan.sections)
 
-    current = plan.focusables[current_index]
-    current_x, current_y = current.center
-    candidates: list[tuple[float, float, int]] = []
 
-    for index, candidate in enumerate(plan.focusables):
-        if index == current_index:
-            continue
-        candidate_x, candidate_y = candidate.center
-        delta_x = candidate_x - current_x
-        delta_y = candidate_y - current_y
-
-        if direction == "left" and delta_x < 0:
-            candidates.append((abs(delta_x), abs(delta_y), index))
-        elif direction == "right" and delta_x > 0:
-            candidates.append((abs(delta_x), abs(delta_y), index))
-        elif direction == "up" and delta_y < 0:
-            candidates.append((abs(delta_y), abs(delta_x), index))
-        elif direction == "down" and delta_y > 0:
-            candidates.append((abs(delta_y), abs(delta_x), index))
-
-    if not candidates:
-        return current_index
-
-    candidates.sort()
-    return candidates[0][2]
+def next_item_index(plan: RenderPlan, section_index: int, current_index: int, delta: int) -> int:
+    if not plan.sections:
+        return 0
+    actionables = plan.sections[section_index].actionables
+    if not actionables:
+        return 0
+    return (current_index + delta) % len(actionables)
 
 
 def draw_plan(
     stdscr: curses.window,
     plan: RenderPlan,
-    focus_index: int | None,
+    section_index: int | None,
+    item_indices: list[int],
+    scroll_offset: int,
     status: str = "",
 ) -> None:
     stdscr.erase()
-    height, width = stdscr.getmaxyx()
+    height, terminal_width = stdscr.getmaxyx()
+    visible_height = _viewport_height(height)
+    display_width = _display_width(terminal_width)
+    origin_x = _display_origin_x(terminal_width)
     styles = _styles()
 
-    for y, line in enumerate(plan.lines):
-        if y >= height:
+    for source_y, line in enumerate(plan.lines):
+        if source_y < scroll_offset:
+            continue
+        y = source_y - scroll_offset
+        if y >= visible_height:
             break
         for segment in line:
-            if segment.x >= width:
+            if segment.x >= display_width:
                 continue
-            available = max(width - segment.x, 0)
+            available = max(display_width - segment.x, 0)
             if available == 0:
                 continue
             _safe_addnstr(
                 stdscr,
                 y,
-                segment.x,
+                origin_x + segment.x,
                 segment.text,
                 available,
                 styles[segment.style],
             )
 
-    if focus_index is not None and plan.focusables:
-        focus = plan.focusables[focus_index]
-        if 0 <= focus.y < height and focus.x < width:
-            available = max(width - focus.x, 0)
-            if available > 0:
+    if section_index is not None and plan.sections:
+        active_section = plan.sections[section_index]
+        active_section_y = active_section.y - scroll_offset
+        if 0 <= active_section_y < visible_height:
+            _safe_addnstr(
+                stdscr,
+                active_section_y,
+                origin_x + active_section.x,
+                active_section.title_text,
+                max(display_width - active_section.x, 0),
+                styles["section_title_active"],
+            )
+
+        if active_section.actionables:
+            active_item = active_section.actionables[item_indices[section_index]]
+            active_item_y = active_item.y - scroll_offset
+            if 0 <= active_item_y < visible_height:
                 _safe_addnstr(
                     stdscr,
-                    focus.y,
-                    focus.x,
-                    focus.label_text,
-                    available,
-                    styles["button_focus"],
+                    active_item_y,
+                    origin_x + active_item.x,
+                    active_item.label_text,
+                    max(display_width - active_item.x, 0),
+                    styles["action_active"],
                 )
 
     if status and height > 0:
         _safe_addnstr(
             stdscr,
             height - 1,
-            0,
+            origin_x,
             status,
-            width,
+            display_width,
             styles["status"],
         )
 
@@ -190,9 +262,14 @@ def draw_plan(
 
 
 class _RuntimeSession:
-    def __init__(self, app: ErzaApp) -> None:
+    def __init__(self, app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
         self.app = app
-        self.focus_index = 0
+        self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
+        self.section_index = 0
+        self.item_indices: list[int] = []
+        self.scroll_offset = 0
+        self.snap_section_to_top = False
+        self.pending_g = False
         self.status = ""
 
     def run(self, stdscr: curses.window) -> None:
@@ -209,73 +286,344 @@ class _RuntimeSession:
         while True:
             screen = self.app.build_screen()
             plan = build_render_plan(screen)
-            if plan.focusables:
-                self.focus_index = min(self.focus_index, len(plan.focusables) - 1)
-            else:
-                self.focus_index = 0
+            self._sync_state(plan)
+            self._sync_scroll(plan, stdscr.getmaxyx()[0])
             draw_plan(
                 stdscr,
                 plan,
-                self.focus_index if plan.focusables else None,
+                self.section_index if plan.sections else None,
+                self.item_indices,
+                self.scroll_offset,
                 self.status,
             )
 
             key = stdscr.getch()
             if key in {ord("q"), 27}:
                 return
-            if key in {ord("h"), curses.KEY_LEFT}:
-                self.focus_index = move_focus(plan, self.focus_index, "left")
+            if key == ord("g"):
+                if self.pending_g:
+                    self._jump_to_first_section(plan)
+                else:
+                    self.pending_g = True
                 continue
-            if key in {ord("l"), curses.KEY_RIGHT}:
-                self.focus_index = move_focus(plan, self.focus_index, "right")
+            if key == ord("G"):
+                self.pending_g = False
+                self._jump_to_last_section(plan)
                 continue
-            if key in {ord("k"), curses.KEY_UP}:
-                self.focus_index = move_focus(plan, self.focus_index, "up")
+
+            self.pending_g = False
+            if key in {CTRL_N, CTRL_P}:
+                delta = -1 if key == CTRL_P else 1
+                self.section_index = next_section_index(plan, self.section_index, delta)
+                self.snap_section_to_top = True
                 continue
             if key in {ord("j"), curses.KEY_DOWN}:
-                self.focus_index = move_focus(plan, self.focus_index, "down")
+                self._move_item(plan, 1)
                 continue
-            if key in {ord("\n"), ord(" ")} and plan.focusables:
-                target = plan.focusables[self.focus_index]
-                self.app.backend.call(target.button.action, **target.button.params)
-                self.status = f"ran {target.button.action}"
+            if key in {ord("k"), curses.KEY_UP}:
+                self._move_item(plan, -1)
+                continue
+            if key in {ord("h"), curses.KEY_LEFT}:
+                self._go_back()
+                continue
+            if key in {ord("l"), curses.KEY_RIGHT, curses.KEY_ENTER, ord("\n"), ord(" ")}:
+                self._activate(plan)
+                continue
+
+    def _sync_state(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            self.section_index = 0
+            self.item_indices = []
+            self.scroll_offset = 0
+            return
+
+        self.section_index = min(self.section_index, len(plan.sections) - 1)
+        while len(self.item_indices) < len(plan.sections):
+            self.item_indices.append(0)
+        if len(self.item_indices) > len(plan.sections):
+            self.item_indices = self.item_indices[: len(plan.sections)]
+
+        for index, section in enumerate(plan.sections):
+            if not section.actionables:
+                self.item_indices[index] = 0
+                continue
+            self.item_indices[index] = min(self.item_indices[index], len(section.actionables) - 1)
+
+    def _sync_scroll(self, plan: RenderPlan, screen_height: int) -> None:
+        if self.snap_section_to_top:
+            self.scroll_offset = align_section_top_offset(plan, self.section_index, screen_height)
+            self.snap_section_to_top = False
+            return
+        self.scroll_offset = compute_scroll_offset(
+            plan,
+            self.section_index,
+            self.item_indices,
+            screen_height,
+            self.scroll_offset,
+        )
+
+    def _move_item(self, plan: RenderPlan, delta: int) -> None:
+        if not plan.sections:
+            return
+        section = plan.sections[self.section_index]
+        if not section.actionables:
+            self.status = f"section '{section.title}' has no actions"
+            return
+        self.item_indices[self.section_index] = next_item_index(
+            plan,
+            self.section_index,
+            self.item_indices[self.section_index],
+            delta,
+        )
+
+    def _jump_to_first_section(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            return
+        self.section_index = 0
+        self.snap_section_to_top = True
+
+    def _jump_to_last_section(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            return
+        self.section_index = len(plan.sections) - 1
+        self.snap_section_to_top = True
+
+    def _go_back(self) -> None:
+        if not self.history:
+            self.status = "no previous page"
+            return
+        self.app = self.history.pop()
+        self.section_index = 0
+        self.item_indices = []
+        self.scroll_offset = 0
+        self.snap_section_to_top = False
+        self.pending_g = False
+        self.status = "went back"
+
+    def _activate(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            return
+        section = plan.sections[self.section_index]
+        if not section.actionables:
+            self.status = f"section '{section.title}' has nothing to open"
+            return
+
+        target = section.actionables[self.item_indices[self.section_index]].actionable
+        if isinstance(target, Button):
+            self.app.backend.call(target.action, **target.params)
+            self.status = f"ran {target.action}"
+            return
+
+        try:
+            next_app = self.app.follow_link(target.href)
+        except RuntimeError as exc:
+            self.status = str(exc)
+            return
+
+        self.history.append(self.app)
+        self.app = next_app
+        self.section_index = 0
+        self.item_indices = []
+        self.scroll_offset = 0
+        self.snap_section_to_top = False
+        self.pending_g = False
+        self.status = f"opened {target.href}"
+
+
+def compute_scroll_offset(
+    plan: RenderPlan,
+    section_index: int,
+    item_indices: list[int],
+    screen_height: int,
+    current_offset: int = 0,
+) -> int:
+    viewport_height = _viewport_height(screen_height)
+    max_offset = max(len(plan.lines) - 1, 0)
+    if viewport_height <= 0 or not plan.sections:
+        return 0
+
+    offset = min(max(current_offset, 0), max_offset)
+    section = plan.sections[min(section_index, len(plan.sections) - 1)]
+
+    offset = _ensure_line_visible(section.y, offset, viewport_height)
+
+    if section.actionables:
+        item_index = min(item_indices[section_index], len(section.actionables) - 1)
+        item_y = section.actionables[item_index].y
+        offset = _ensure_line_visible(item_y, offset, viewport_height)
+
+    return min(max(offset, 0), max_offset)
+
+
+def align_section_top_offset(plan: RenderPlan, section_index: int, screen_height: int) -> int:
+    viewport_height = _viewport_height(screen_height)
+    max_offset = max(len(plan.lines) - 1, 0)
+    if viewport_height <= 0 or not plan.sections:
+        return 0
+
+    section = plan.sections[min(section_index, len(plan.sections) - 1)]
+    return min(max(section.y, 0), max_offset)
+
+
+def _ensure_line_visible(line_y: int, offset: int, viewport_height: int) -> int:
+    if line_y < offset:
+        return line_y
+    if line_y >= offset + viewport_height:
+        return line_y - viewport_height + 1
+    return offset
+
+
+def _viewport_height(screen_height: int) -> int:
+    return max(screen_height - 1, 1)
+
+
+def _display_width(terminal_width: int) -> int:
+    return min(DISPLAY_WIDTH, terminal_width)
+
+
+def _display_origin_x(terminal_width: int) -> int:
+    return max((terminal_width - _display_width(terminal_width)) // 2, 0)
+
+
+def _normalize_sections(children: list[Component]) -> list[Section]:
+    sections: list[Section] = []
+    loose: list[Component] = []
+
+    for child in children:
+        if isinstance(child, Section):
+            if loose:
+                sections.append(Section(title="Main", children=loose))
+                loose = []
+            sections.append(child)
+        else:
+            loose.append(child)
+
+    if loose:
+        sections.append(Section(title="Main", children=loose))
+    return sections
 
 
 def _build_block(component: Component) -> Block:
+    if isinstance(component, Section):
+        return _build_embedded_section_block(component)
     if isinstance(component, Column):
         return _build_column_like(component.children, gap=component.gap)
     if isinstance(component, Row):
         return _build_row(component)
     if isinstance(component, Header):
-        return _leaf_block(component.content, style="header")
+        return _wrapped_text_block(component.content, style="header", max_width=TOP_LEVEL_SECTION_INNER_WIDTH)
     if isinstance(component, Text):
-        return _leaf_block(component.content, style="text")
-    if isinstance(component, Button):
-        label = f"[ {component.label} ]"
-        block = _leaf_block(label, style="button")
-        block.focusables.append(
-            FocusTarget(
+        return _wrapped_text_block(component.content, style="text", max_width=TOP_LEVEL_SECTION_INNER_WIDTH)
+    if isinstance(component, Link):
+        label = _truncate_text(f"-> {component.label}", TOP_LEVEL_SECTION_INNER_WIDTH)
+        block = _leaf_block(label, style="action")
+        block.actionables.append(
+            ActionableTarget(
                 x=0,
                 y=0,
                 width=len(label),
-                height=1,
                 label_text=label,
-                button=component,
+                actionable=component,
+            )
+        )
+        return block
+    if isinstance(component, Button):
+        label = _truncate_text(f"[ {component.label} ]", TOP_LEVEL_SECTION_INNER_WIDTH)
+        block = _leaf_block(label, style="action")
+        block.actionables.append(
+            ActionableTarget(
+                x=0,
+                y=0,
+                width=len(label),
+                label_text=label,
+                actionable=component,
             )
         )
         return block
     raise TypeError(f"unsupported component for layout: {type(component).__name__}")
 
 
+def _build_section_block(section: Section) -> Block:
+    return _build_bordered_section_block(section, fixed_inner_width=TOP_LEVEL_SECTION_INNER_WIDTH)
+
+
+def _build_embedded_section_block(section: Section) -> Block:
+    body = _build_column_like(section.children, gap=1)
+    if not body.lines:
+        return _build_bordered_section_block(section, fixed_inner_width=NESTED_SECTION_INNER_WIDTH)
+
+    return _build_bordered_section_block(section, body=body, fixed_inner_width=NESTED_SECTION_INNER_WIDTH)
+
+
+def _build_bordered_section_block(
+    section: Section,
+    body: Block | None = None,
+    *,
+    fixed_inner_width: int | None = None,
+) -> Block:
+    body = body or _build_column_like(section.children, gap=1)
+    max_inner_width = fixed_inner_width or TOP_LEVEL_SECTION_INNER_WIDTH
+    title_text = _truncate_text(f"[ {section.title} ]", max_inner_width)
+    if fixed_inner_width is None:
+        inner_width = min(max(body.width, len(title_text)), max_inner_width)
+    else:
+        inner_width = fixed_inner_width
+    width = inner_width + 4
+    top_border = "+-" + title_text + "-" * max(inner_width + 1 - len(title_text), 0) + "+"
+    bottom_border = "+" + "-" * (width - 2) + "+"
+    lines: list[list[Segment]] = [[Segment(x=0, text=top_border, style="section_title")]]
+    actionables: list[ActionableTarget] = []
+
+    if body.lines:
+        for segments in body.lines:
+            line = [
+                Segment(x=0, text="| ", style="section_border"),
+                Segment(x=2, text=" " * inner_width, style="section_fill"),
+                Segment(x=inner_width + 2, text=" |", style="section_border"),
+            ]
+            for segment in segments:
+                line.append(
+                    Segment(
+                        x=segment.x + 2,
+                        text=segment.text,
+                        style=segment.style,
+                    )
+                )
+            lines.append(line)
+    else:
+        lines.append(
+            [
+                Segment(x=0, text="| ", style="section_border"),
+                Segment(x=2, text=" " * inner_width, style="section_fill"),
+                Segment(x=inner_width + 2, text=" |", style="section_border"),
+            ]
+        )
+
+    lines.append([Segment(x=0, text=bottom_border, style="section_border")])
+
+    for item in body.actionables:
+        actionables.append(
+            ActionableTarget(
+                x=item.x + 2,
+                y=item.y + 1,
+                width=item.width,
+                label_text=item.label_text,
+                actionable=item.actionable,
+            )
+        )
+
+    return Block(width=width, height=len(lines), lines=lines, actionables=actionables)
+
+
 def _build_column_like(children: list[Component], gap: int) -> Block:
     lines: list[list[Segment]] = []
-    focusables: list[FocusTarget] = []
+    actionables: list[ActionableTarget] = []
     width = 0
     cursor_y = 0
 
     for index, child in enumerate(children):
         block = _build_block(child)
-        _merge_block(lines, focusables, block, x=0, y=cursor_y)
+        _merge_block(lines, actionables, block, x=0, y=cursor_y)
         width = max(width, block.width)
         cursor_y += block.height
         if index != len(children) - 1:
@@ -283,7 +631,7 @@ def _build_column_like(children: list[Component], gap: int) -> Block:
             for _ in range(gap):
                 lines.append([])
 
-    return Block(width=width, height=len(lines), lines=lines, focusables=focusables)
+    return Block(width=width, height=len(lines), lines=lines, actionables=actionables)
 
 
 def _build_row(row: Row) -> Block:
@@ -291,27 +639,44 @@ def _build_row(row: Row) -> Block:
     width = 0
     height = max((block.height for block in child_blocks), default=0)
     lines = [[] for _ in range(height)]
-    focusables: list[FocusTarget] = []
+    actionables: list[ActionableTarget] = []
     cursor_x = 0
 
     for index, block in enumerate(child_blocks):
-        _merge_block(lines, focusables, block, x=cursor_x, y=0)
+        _merge_block(lines, actionables, block, x=cursor_x, y=0)
         cursor_x += block.width
         width = max(width, cursor_x)
         if index != len(child_blocks) - 1:
             cursor_x += row.gap
             width = max(width, cursor_x)
 
-    return Block(width=width, height=height, lines=lines, focusables=focusables)
+    return Block(width=width, height=height, lines=lines, actionables=actionables)
 
 
 def _leaf_block(text: str, *, style: str) -> Block:
     return Block(width=len(text), height=1, lines=[[Segment(x=0, text=text, style=style)]])
 
 
+def _wrapped_text_block(text: str, *, style: str, max_width: int) -> Block:
+    lines = textwrap.wrap(text, width=max_width) or [""]
+    return Block(
+        width=max((len(line) for line in lines), default=0),
+        height=len(lines),
+        lines=[[Segment(x=0, text=line, style=style)] for line in lines],
+    )
+
+
+def _truncate_text(text: str, max_width: int) -> str:
+    if len(text) <= max_width:
+        return text
+    if max_width <= 3:
+        return text[:max_width]
+    return text[: max_width - 3] + "..."
+
+
 def _merge_block(
     lines: list[list[Segment]],
-    focusables: list[FocusTarget],
+    actionables: list[ActionableTarget],
     block: Block,
     *,
     x: int,
@@ -331,15 +696,14 @@ def _merge_block(
                 )
             )
 
-    for focusable in block.focusables:
-        focusables.append(
-            FocusTarget(
-                x=focusable.x + x,
-                y=focusable.y + y,
-                width=focusable.width,
-                height=focusable.height,
-                label_text=focusable.label_text,
-                button=focusable.button,
+    for item in block.actionables:
+        actionables.append(
+            ActionableTarget(
+                x=item.x + x,
+                y=item.y + y,
+                width=item.width,
+                label_text=item.label_text,
+                actionable=item.actionable,
             )
         )
 
@@ -361,10 +725,21 @@ def _safe_addnstr(
 def _styles() -> dict[str, int]:
     return {
         "title": curses.A_BOLD,
+        "section_title": curses.A_BOLD,
+        "section_title_active": curses.A_REVERSE | curses.A_BOLD,
+        "section_border": curses.A_DIM,
+        "section_fill": curses.A_NORMAL,
         "header": curses.A_BOLD,
         "text": curses.A_NORMAL,
-        "button": curses.A_NORMAL,
-        "button_focus": curses.A_REVERSE,
+        "action": curses.A_NORMAL,
+        "action_active": curses.A_REVERSE,
         "help": curses.A_DIM,
         "status": curses.A_DIM,
     }
+
+
+def _infer_backend_path(source: Path) -> Path | None:
+    inferred = source.resolve().with_name("backend.py")
+    if inferred.exists():
+        return inferred
+    return None

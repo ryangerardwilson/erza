@@ -5,7 +5,7 @@ from html.parser import HTMLParser
 import re
 from typing import Any
 
-from erza.model import Button, Column, Component, Header, Row, Screen, Text
+from erza.model import Button, Column, Component, Header, Link, Row, Screen, Section, Text
 
 
 class ParseError(RuntimeError):
@@ -87,6 +87,12 @@ def _convert_children(element: Element) -> list[Component]:
 
 def _convert_element(element: Element) -> Component:
     tag = element.tag
+    if tag == "section":
+        title = element.attrs.get("title", "").strip()
+        if not title:
+            raise ParseError("<Section> requires a title")
+        tone = element.attrs.get("tone", "default").strip() or "default"
+        return Section(title=title, tone=tone, children=_convert_children(element))
     if tag == "column":
         return Column(children=_convert_children(element), gap=_parse_gap(element, default=0))
     if tag == "row":
@@ -95,10 +101,15 @@ def _convert_element(element: Element) -> Component:
         return Text(content=_collect_text(element))
     if tag == "header":
         return Header(content=_collect_text(element))
-    if tag == "button":
+    if tag == "link":
+        href = element.attrs.get("href", "").strip()
+        if not href:
+            raise ParseError("<Link> requires an href")
+        return Link(label=_collect_text(element), href=href)
+    if tag in {"button", "action"}:
         action = element.attrs.get("on:press", "").strip()
         if not action:
-            raise ParseError("<Button> requires an on:press handler")
+            raise ParseError(f"<{element.tag}> requires an on:press handler")
         params = {
             _normalize_param_name(name): _coerce_scalar(value)
             for name, value in element.attrs.items()

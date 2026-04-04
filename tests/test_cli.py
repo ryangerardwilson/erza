@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from erza.cli import _build_parser, _resolve_source_path
+from erza.source import SourceResolutionError
 
 
 class CliTests(unittest.TestCase):
@@ -27,7 +28,7 @@ class CliTests(unittest.TestCase):
 
     def test_directory_without_index_erza_raises(self) -> None:
         with TemporaryDirectory() as tmp:
-            with self.assertRaises(FileNotFoundError):
+            with self.assertRaises(SourceResolutionError):
                 _resolve_source_path(tmp)
 
     def test_http_source_is_treated_as_remote(self) -> None:
