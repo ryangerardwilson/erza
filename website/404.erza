@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>erza | not found</title>
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <div class="shell shell-narrow">
+      <main>
+        <section class="hero hero-small">
+          <p class="eyebrow">404</p>
+          <h1>Nothing mapped here</h1>
+          <p class="lede">
+            The docs page you asked for does not exist. Head back to the root
+            and keep the terminal-first thread intact.
+          </p>
+          <p class="protocol-link"><a href="/">Return to erza docs</a></p>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

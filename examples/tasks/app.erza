@@ -1,0 +1,22 @@
+<Screen title="Tasks">
+  <? tasks = backend("tasks.list") ?>
+
+  <Column gap="1">
+    <Header>Open Tasks</Header>
+
+    <? if tasks ?>
+      <? for task in tasks ?>
+        <Row gap="2">
+          <Text><?= task.title ?></Text>
+          <Button on:press="tasks.complete" task:id="<?= task.id ?>">
+            Complete
+          </Button>
+        </Row>
+      <? endfor ?>
+    <? else ?>
+      <Text>All tasks complete.</Text>
+    <? endif ?>
+
+    <Text>Use hjkl to move. Press Enter to fire the focused button.</Text>
+  </Column>
+</Screen>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>erza remote mode</title>
+    <meta
+      name="description"
+      content="Remote-mode notes for a future erza transport over HTTPS."
+    />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <div class="shell shell-narrow">
+      <header class="topbar">
+        <a class="brand" href="/">erza</a>
+        <nav class="nav">
+          <a href="/">Overview</a>
+          <a href="<?= site.repo_url ?>">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero hero-small">
+          <p class="eyebrow">protocol sketch</p>
+          <h1><code>erza example.com</code></h1>
+          <p class="lede">
+            The client should assume HTTPS, fetch an erza app from a domain,
+            and render the result as a terminal session. The transport is the
+            new piece. The authoring model remains <code>.erza</code>.
+          </p>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">flow</p>
+            <h2>Minimal request model</h2>
+          </div>
+          <div class="flow-grid">
+            <? for item in protocol_steps ?>
+              <article class="step-card">
+                <p class="step-number"><?= item.step ?></p>
+                <h3><?= item.title ?></h3>
+                <p><?= item.body ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">guardrails</p>
+            <h2>Keep the product boundary intact</h2>
+          </div>
+          <div class="card-grid">
+            <? for point in safety_points ?>
+              <article class="card">
+                <p><?= point ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section section-accent">
+          <div class="section-heading">
+            <p class="eyebrow">rough shape</p>
+            <h2>Potential wire-format outline</h2>
+          </div>
+          <pre class="code-block"><code>GET  /app
+Accept: application/erza+json
+
+200 OK
+Content-Type: application/erza+json
+
+{
+  "session": "abc123",
+  "screen": { "title": "Inbox", "children": [...] },
+  "actions": { "open_message": { "method": "POST", "href": "/actions/open" } }
+}
+
+POST /actions/open
+Content-Type: application/json
+
+{ "session": "abc123", "message_id": 42 }</code></pre>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p><a href="/">Back to overview</a></p>
+        <p>Built <?= site.build_stamp ?></p>
+      </footer>
+    </div>
+  </body>
+</html>

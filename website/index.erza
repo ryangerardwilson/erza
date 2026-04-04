@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>erza</title>
+    <meta
+      name="description"
+      content="erza is a terminal-first language project for building TUIs and exploring network-addressed terminal apps."
+    />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">erza</a>
+        <nav class="nav">
+          <? for item in nav ?>
+            <a href="<?= item.href ?>"><?= item.label ?></a>
+          <? endfor ?>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <p class="eyebrow">terminal ui language</p>
+          <h1>.erza for terminal apps now, domains later</h1>
+          <p class="lede">
+            This documentation site is authored in <code>.erza</code> and
+            compiled into static HTML for GitHub Pages. It doubles as a small
+            testbed for the idea that websites could be authored with erza
+            files instead of raw HTML.
+          </p>
+
+          <div class="hero-grid">
+            <div class="panel">
+              <h2>Current reality</h2>
+              <p>
+                The repo ships a Python v0 runtime that renders terminal-native
+                screens, supports backend calls, and moves focus with
+                <code>hjkl</code>.
+              </p>
+            </div>
+            <div class="panel">
+              <h2>Future direction</h2>
+              <p>
+                A remote mode like <code>erza example.com</code> can treat
+                domains as transport endpoints for terminal apps over HTTPS
+                without inheriting browser scope.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="run" class="section">
+          <div class="section-heading">
+            <p class="eyebrow">run</p>
+            <h2>Start here</h2>
+          </div>
+          <div class="command-list">
+            <? for command in commands ?>
+              <div class="command-card">
+                <p class="command-label"><?= command.label ?></p>
+                <pre><code><?= command.command ?></code></pre>
+              </div>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section id="why" class="section">
+          <div class="section-heading">
+            <p class="eyebrow">principles</p>
+            <h2>Why erza is shaped this way</h2>
+          </div>
+          <div class="card-grid">
+            <? for pillar in pillars ?>
+              <article class="card">
+                <h3><?= pillar.title ?></h3>
+                <p><?= pillar.body ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section id="examples" class="section">
+          <div class="section-heading">
+            <p class="eyebrow">examples</p>
+            <h2>What is already running</h2>
+          </div>
+          <div class="card-grid">
+            <? for example in examples ?>
+              <article class="card">
+                <h3><?= example.name ?></h3>
+                <p><?= example.summary ?></p>
+                <p><code><?= example.path ?></code></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section section-accent">
+          <div class="section-heading">
+            <p class="eyebrow">next hop</p>
+            <h2>Remote apps over HTTPS</h2>
+          </div>
+          <div class="flow-grid">
+            <? for item in protocol_steps ?>
+              <article class="step-card">
+                <p class="step-number"><?= item.step ?></p>
+                <h3><?= item.title ?></h3>
+                <p><?= item.body ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+          <p class="protocol-link">
+            <a href="/protocol/">Read the remote-mode notes</a>
+          </p>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div>
+          <p>Docs URL: <a href="<?= site.url ?>"><?= site.domain ?></a></p>
+          <p>Source: <a href="<?= site.repo_url ?>"><?= site.repo_url ?></a></p>
+        </div>
+        <p>Built <?= site.build_stamp ?></p>
+      </footer>
+    </div>
+  </body>
+</html>

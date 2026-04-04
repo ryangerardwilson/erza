@@ -1,0 +1,18 @@
+<Screen title="Greetings">
+  <? current = backend("greetings.current") ?>
+  <? choices = backend("greetings.choices") ?>
+
+  <Column gap="1">
+    <Header>erza v0 Demo</Header>
+    <Text><?= current.message ?></Text>
+    <Text>Choose a greeting:</Text>
+
+    <? for choice in choices ?>
+      <Button on:press="greetings.select" greeting:key="<?= choice.key ?>">
+        <?= choice.label ?>
+      </Button>
+    <? endfor ?>
+
+    <Text>Use hjkl to focus a button, then press Enter.</Text>
+  </Column>
+</Screen>
