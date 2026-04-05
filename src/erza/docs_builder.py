@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import inspect
+import json
 from pathlib import Path
 import shutil
-import textwrap
 
 from erza.template import render_template
 
@@ -88,29 +89,36 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             "What if websites could open and be navigated directly from the terminal?",
             "What if frontend was redesigned to be CLI and TUI first?",
         ],
+        "story_phrases_json": json.dumps(
+            [
+                "the internet did not need a web browser or Android/iOS gatekeepers?",
+                "websites could open and be navigated directly from the terminal?",
+                "frontend was redesigned to be CLI and TUI first?",
+            ]
+        ),
         "landing_command": "python -m erza run examples/landing",
         "landing_video": "/assets/landing-demo.mp4",
         "landing_markup": _block(
             """
-            <Screen title="Erzanet">
-              <Section title="What If">
-                <Text>What if websites opened directly in the terminal?</Text>
-                <Text>What if the network felt calmer than the browser?</Text>
-              </Section>
+<Screen title="Erzanet">
+  <Section title="What If">
+    <Text>What if websites opened directly in the terminal?</Text>
+    <Text>What if the network felt calmer than the browser?</Text>
+  </Section>
 
-              <Section title="Navigate">
-                <Link href="/components/">Inspect components</Link>
-                <Link href="/labs/">Inspect the capability matrix</Link>
-              </Section>
+  <Section title="Navigate">
+    <Link href="/components/">Inspect components</Link>
+    <Link href="/labs/">Inspect the capability matrix</Link>
+  </Section>
 
-              <Section title="Signal">
-                <AsciiAnimation label="Pulse" fps="6">
-                  <Frame>+---+\n|*  |\n+---+</Frame>
-                  <Frame>+---+\n| * |\n+---+</Frame>
-                  <Frame>+---+\n|  *|\n+---+</Frame>
-                </AsciiAnimation>
-              </Section>
-            </Screen>
+  <Section title="Signal">
+    <AsciiAnimation label="Pulse" fps="6">
+      <Frame>+---+\n|*  |\n+---+</Frame>
+      <Frame>+---+\n| * |\n+---+</Frame>
+      <Frame>+---+\n|  *|\n+---+</Frame>
+    </AsciiAnimation>
+  </Section>
+</Screen>
             """
         ),
         "pillars": [
@@ -382,4 +390,4 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
 
 
 def _block(text: str) -> str:
-    return textwrap.dedent(text).strip("\n")
+    return inspect.cleandoc(text).strip()

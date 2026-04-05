@@ -26,10 +26,13 @@
         <section class="hero hero-story">
           <p class="eyebrow">terminal-first internet</p>
           <div class="story-stack">
-            <h1>What if <span class="typewriter-target">the internet did not need a web browser?</span></h1>
-            <? for item in story_questions ?>
-              <p class="story-line"><?= item ?></p>
-            <? endfor ?>
+            <p class="story-prefix">What if</p>
+            <h1 class="story-rotator">
+              <span
+                class="typewriter-target"
+                data-phrases='<?= story_phrases_json ?>'
+              >the internet did not need a web browser or Android/iOS gatekeepers?</span>
+            </h1>
           </div>
           <p class="lede story-lede">
             <code>erza</code> is the wager that websites, product surfaces,

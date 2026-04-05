@@ -4,13 +4,12 @@
     return;
   }
 
-  const lines = Array.from(document.querySelectorAll(".story-line"))
-    .map((node) => node.textContent.trim())
-    .filter(Boolean);
-
-  const phrases = lines
-    .map((line) => line.replace(/^What if\s+/i, ""))
-    .filter(Boolean);
+  let phrases = [];
+  try {
+    phrases = JSON.parse(target.dataset.phrases || "[]");
+  } catch {
+    phrases = [];
+  }
 
   if (phrases.length === 0) {
     return;
