@@ -24,7 +24,7 @@
       <main>
         <section class="hero hero-small">
           <p class="eyebrow">labs</p>
-          <h1>Use the hosted site as a capability checklist</h1>
+          <h1>Use the hosted site as a capability checklist.</h1>
           <p class="lede">
             This page is where the browser build, the local runtime, the remote
             HTML viewer, and the future erzanet transport stop pretending to be

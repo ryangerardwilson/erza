@@ -24,11 +24,11 @@
       <main>
         <section class="hero hero-small">
           <p class="eyebrow">component gallery</p>
-          <h1>Primitive pieces and the rules that keep them usable</h1>
+          <h1>A small component set with hard boundaries.</h1>
           <p class="lede">
-            The immediate goal is not endless widget inventory. It is a compact
-            component set with clear nesting rules, reliable motion, and enough
-            structure to make remote terminal documents feel intentional.
+            The goal is not widget sprawl. It is a compact set of primitives
+            with clear nesting rules, reliable motion, and enough structure to
+            make remote terminal documents feel deliberate.
           </p>
         </section>
 

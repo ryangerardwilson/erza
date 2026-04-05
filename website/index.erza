@@ -25,12 +25,11 @@
         <section class="hero hero-grid-shell">
           <div class="hero-copy">
             <p class="eyebrow">terminal-native interface language</p>
-            <h1>erzanet starts by making the docs site worth opening in-terminal</h1>
+            <h1>Open richer software without opening a browser.</h1>
             <p class="lede">
-              This site is no longer just a brochure. It is a capability lab
-              for what an <code>erza</code> experience should feel like when
-              it is opened directly from the terminal instead of through a
-              browser tab stack.
+              <code>erza</code> is a component language for terminal-native
+              interfaces. This docs site is the proving ground: build locally,
+              publish over HTTPS, and open the result from the terminal.
             </p>
             <div class="command-list command-list-tight">
               <? for command in commands ?>
@@ -62,7 +61,7 @@
         <section class="section">
           <div class="section-heading">
             <p class="eyebrow">thesis</p>
-            <h2>Why the site needs to get more complex</h2>
+            <h2>Why this site exists</h2>
           </div>
           <div class="card-grid">
             <? for pillar in pillars ?>
@@ -77,7 +76,7 @@
         <section class="section">
           <div class="section-heading">
             <p class="eyebrow">component map</p>
-            <h2>The current families in play</h2>
+            <h2>What exists today</h2>
           </div>
           <div class="card-grid">
             <? for family in component_families ?>
@@ -98,7 +97,7 @@
         <section class="section">
           <div class="section-heading">
             <p class="eyebrow">patterns</p>
-            <h2>Layouts worth testing against the runtime</h2>
+            <h2>Reference surfaces</h2>
           </div>
           <div class="card-grid">
             <? for pattern in patterns ?>
@@ -115,7 +114,7 @@
         <section class="section section-accent">
           <div class="section-heading">
             <p class="eyebrow">labs</p>
-            <h2>Capability matrix for the current stack</h2>
+            <h2>What works where</h2>
           </div>
           <div class="matrix-grid">
             <? for item in capability_matrix ?>
@@ -150,7 +149,7 @@
         <section class="section">
           <div class="section-heading">
             <p class="eyebrow">next hop</p>
-            <h2>Remote apps over HTTPS</h2>
+            <h2>Remote mode over HTTPS</h2>
           </div>
           <div class="flow-grid">
             <? for item in protocol_steps ?>

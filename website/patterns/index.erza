@@ -24,11 +24,11 @@
       <main>
         <section class="hero hero-small">
           <p class="eyebrow">pattern library</p>
-          <h1>Reference surfaces the runtime should eventually handle cleanly</h1>
+          <h1>Reference surfaces the runtime should handle cleanly.</h1>
           <p class="lede">
             These are not all first-class components yet. They are durable
-            screen shapes that the hosted docs and the terminal runtime can use
-            as pressure tests for layout, density, hierarchy, and navigation.
+            screen shapes to pressure-test layout, density, hierarchy, and
+            navigation.
           </p>
         </section>
 
