@@ -15,8 +15,9 @@
       <header class="topbar">
         <a class="brand" href="/">erza</a>
         <nav class="nav">
-          <a href="/">Overview</a>
-          <a href="<?= site.repo_url ?>">GitHub</a>
+          <? for item in nav ?>
+            <a href="<?= item.href ?>"><?= item.label ?></a>
+          <? endfor ?>
         </nav>
       </header>
 
@@ -25,10 +26,11 @@
           <p class="eyebrow">protocol sketch</p>
           <h1><code>erza example.com</code></h1>
           <p class="lede">
-            The client should assume HTTPS, fetch a section-first erza app from
-            a domain, and render the result as a terminal session. The
+            The client should assume HTTPS, fetch a terminal-native erza app
+            from a domain, and render the result as a terminal session. The
             transport is the new piece. The authoring model remains
-            <code>.erza</code>.
+            <code>.erza</code>, but the wire format should eventually speak in
+            safe component state, not browser documents.
           </p>
         </section>
 

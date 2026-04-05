@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>erza components</title>
+    <meta
+      name="description"
+      content="Component gallery and nesting rules for erza."
+    />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">erza</a>
+        <nav class="nav">
+          <? for item in nav ?>
+            <a href="<?= item.href ?>"><?= item.label ?></a>
+          <? endfor ?>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero hero-small">
+          <p class="eyebrow">component gallery</p>
+          <h1>Primitive pieces and the rules that keep them usable</h1>
+          <p class="lede">
+            The immediate goal is not endless widget inventory. It is a compact
+            component set with clear nesting rules, reliable motion, and enough
+            structure to make remote terminal documents feel intentional.
+          </p>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">families</p>
+            <h2>Current component groups</h2>
+          </div>
+          <div class="card-grid">
+            <? for family in component_families ?>
+              <article class="card">
+                <h3><?= family.name ?></h3>
+                <p><?= family.summary ?></p>
+                <ul class="bullet-list">
+                  <? for item in family.items ?>
+                    <li><code><?= item ?></code></li>
+                  <? endfor ?>
+                </ul>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">nesting</p>
+            <h2>Rules worth enforcing in the language</h2>
+          </div>
+          <div class="card-grid">
+            <? for rule in nesting_rules ?>
+              <article class="card">
+                <h3><code><?= rule.parent ?></code></h3>
+                <p><strong>Allows:</strong> <?= rule.allows ?></p>
+                <p><?= rule.body ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section section-accent">
+          <div class="section-heading">
+            <p class="eyebrow">motion</p>
+            <h2>The new AsciiAnimation component</h2>
+          </div>
+          <div class="page-grid">
+            <div>
+              <p>
+                The runtime component is declarative: a label, an FPS value,
+                and a sequence of raw ASCII frames. The docs site cannot play
+                it natively, so this page shows the poster and the source shape
+                instead.
+              </p>
+              <pre class="code-block"><code><?= animation_markup ?></code></pre>
+            </div>
+            <div>
+              <div class="ascii-gallery">
+                <? for frame in animation_frames ?>
+                  <article class="ascii-frame-card">
+                    <p class="command-label"><?= frame.title ?></p>
+                    <pre class="ascii-stage"><code><?= frame.art ?></code></pre>
+                  </article>
+                <? endfor ?>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p><a href="/">Back to overview</a></p>
+        <p>Built <?= site.build_stamp ?></p>
+      </footer>
+    </div>
+  </body>
+</html>

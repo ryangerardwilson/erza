@@ -6,7 +6,7 @@
     <title>erza</title>
     <meta
       name="description"
-      content="erza is a terminal-first language project for building TUIs and exploring network-addressed terminal apps."
+      content="erza is a terminal-native language project for component-driven interfaces and the future erzanet."
     />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
@@ -22,42 +22,47 @@
       </header>
 
       <main>
-        <section class="hero">
-          <p class="eyebrow">terminal ui language</p>
-          <h1>Section-first terminal components</h1>
-          <p class="lede">
-            This documentation site is authored in <code>.erza</code> and
-            compiled into static HTML for GitHub Pages. It doubles as a small
-            testbed for the idea that erza screens should be built from named
-            sections, sparse actions, and predictable keyboard movement.
-          </p>
+        <section class="hero hero-grid-shell">
+          <div class="hero-copy">
+            <p class="eyebrow">terminal-native interface language</p>
+            <h1>erzanet starts by making the docs site worth opening in-terminal</h1>
+            <p class="lede">
+              This site is no longer just a brochure. It is a capability lab
+              for what an <code>erza</code> experience should feel like when
+              it is opened directly from the terminal instead of through a
+              browser tab stack.
+            </p>
+            <div class="command-list command-list-tight">
+              <? for command in commands ?>
+                <div class="command-card">
+                  <p class="command-label"><?= command.label ?></p>
+                  <pre><code><?= command.command ?></code></pre>
+                </div>
+              <? endfor ?>
+            </div>
+          </div>
 
-          <div class="hero-grid">
-            <div class="panel">
-              <h2>Screen shape</h2>
-              <p>
-                A screen is a stack of components. Each section should do one
-                job instead of scattering headings, buttons, and loose focus
-                targets across the page.
-              </p>
+          <div class="terminal-window">
+            <div class="terminal-window-bar">
+              <span>erza.ryangerardwilson.com</span>
+              <span>79 cols</span>
             </div>
-            <div class="panel">
-              <h2>Navigation contract</h2>
-              <p>
-                <code>Ctrl+N</code> and <code>Ctrl+P</code> switch sections.
-                <code>gg</code> jumps to the first section and <code>G</code>
-                jumps to the last. <code>j</code> and <code>k</code> move
-                within the active section. <code>h</code> goes back.
-                <code>l</code> opens the selected link or action.
-              </p>
-            </div>
+            <pre><code>erza
+
++-[ Component Lab ]------------------------------------------------------------+
+| Component-first, boxed, keyboard-native, and remote-testable.               |
+|                                                                             |
+| ctrl-n/p regions   gg top   G end   j/k within   h back   l open           |
+|                                                                             |
+| open /components/ to inspect nesting rules and /labs/ to audit gaps.       |
++-----------------------------------------------------------------------------+</code></pre>
           </div>
         </section>
 
-        <section id="model" class="section">
+        <section class="section">
           <div class="section-heading">
-            <p class="eyebrow">model</p>
-            <h2>Why the language is being reshaped</h2>
+            <p class="eyebrow">thesis</p>
+            <h2>Why the site needs to get more complex</h2>
           </div>
           <div class="card-grid">
             <? for pillar in pillars ?>
@@ -69,40 +74,67 @@
           </div>
         </section>
 
-        <section id="components" class="section">
+        <section class="section">
           <div class="section-heading">
-            <p class="eyebrow">components</p>
-            <h2>The new public vocabulary</h2>
+            <p class="eyebrow">component map</p>
+            <h2>The current families in play</h2>
           </div>
           <div class="card-grid">
-            <? for component in components ?>
+            <? for family in component_families ?>
               <article class="card">
-                <h3><code><?= component.tag ?></code></h3>
-                <p><?= component.summary ?></p>
+                <h3><?= family.name ?></h3>
+                <p><?= family.summary ?></p>
+                <ul class="bullet-list">
+                  <? for item in family.items ?>
+                    <li><code><?= item ?></code></li>
+                  <? endfor ?>
+                </ul>
               </article>
             <? endfor ?>
           </div>
+          <p class="protocol-link"><a href="/components/">Open the component gallery</a></p>
         </section>
 
-        <section id="run" class="section">
+        <section class="section">
           <div class="section-heading">
-            <p class="eyebrow">run</p>
-            <h2>Try the current prototype</h2>
+            <p class="eyebrow">patterns</p>
+            <h2>Layouts worth testing against the runtime</h2>
           </div>
-          <div class="command-list">
-            <? for command in commands ?>
-              <div class="command-card">
-                <p class="command-label"><?= command.label ?></p>
-                <pre><code><?= command.command ?></code></pre>
-              </div>
+          <div class="card-grid">
+            <? for pattern in patterns ?>
+              <article class="card">
+                <h3><?= pattern.name ?></h3>
+                <p><?= pattern.summary ?></p>
+                <p><strong>Regions:</strong> <?= pattern.regions ?></p>
+              </article>
             <? endfor ?>
           </div>
+          <p class="protocol-link"><a href="/patterns/">Open the pattern library</a></p>
         </section>
 
-        <section id="examples" class="section">
+        <section class="section section-accent">
+          <div class="section-heading">
+            <p class="eyebrow">labs</p>
+            <h2>Capability matrix for the current stack</h2>
+          </div>
+          <div class="matrix-grid">
+            <? for item in capability_matrix ?>
+              <article class="step-card">
+                <h3><?= item.feature ?></h3>
+                <p><strong>Runtime:</strong> <?= item.runtime ?></p>
+                <p><strong>Docs HTML:</strong> <?= item.docs ?></p>
+                <p><strong>Remote Viewer:</strong> <?= item.remote ?></p>
+                <p><strong>Erzanet:</strong> <?= item.erzanet ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+          <p class="protocol-link"><a href="/labs/">Open the labs page</a></p>
+        </section>
+
+        <section class="section">
           <div class="section-heading">
             <p class="eyebrow">examples</p>
-            <h2>What is already running</h2>
+            <h2>Runnable local surfaces</h2>
           </div>
           <div class="card-grid">
             <? for example in examples ?>
@@ -115,7 +147,7 @@
           </div>
         </section>
 
-        <section class="section section-accent">
+        <section class="section">
           <div class="section-heading">
             <p class="eyebrow">next hop</p>
             <h2>Remote apps over HTTPS</h2>

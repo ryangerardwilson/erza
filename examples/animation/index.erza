@@ -1,0 +1,39 @@
+<Screen title="Ascii Animation Lab">
+  <Section title="Signal">
+    <Text>The new AsciiAnimation component plays natively in the curses runtime.</Text>
+    <Text>Use this screen to judge frame cadence, box layout, clipping, and whether motion still feels calm inside a 79-column canvas.</Text>
+
+    <AsciiAnimation label="Signal" fps="6">
+      <Frame>
+      +---------+
+      |*        |
+      |  erza   |
+      +---------+
+      </Frame>
+      <Frame>
+      +---------+
+      |   *     |
+      |  erza   |
+      +---------+
+      </Frame>
+      <Frame>
+      +---------+
+      |      *  |
+      |  erza   |
+      +---------+
+      </Frame>
+    </AsciiAnimation>
+  </Section>
+
+  <Section title="Checklist">
+    <Text>Check whether the animation block stays visually stable while frames change.</Text>
+    <Text>Check whether Ctrl+N/Ctrl+P, gg, and G still move between panels cleanly while the animation is ticking.</Text>
+    <Link href="https://erza.ryangerardwilson.com/labs/">Open the hosted labs page</Link>
+  </Section>
+
+  <Section title="Controls">
+    <Text>Ctrl+N/Ctrl+P move between sections. j/k move inside the active section.</Text>
+    <Text>gg jumps to the first section. G jumps to the last.</Text>
+    <Text>h goes back. l opens the selected link or action. q exits cleanly.</Text>
+  </Section>
+</Screen>

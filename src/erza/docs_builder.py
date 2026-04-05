@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 import shutil
+import textwrap
 
 from erza.template import render_template
 
@@ -68,64 +69,190 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             "build_stamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         },
         "nav": [
-            {"href": "#model", "label": "Model"},
-            {"href": "#components", "label": "Components"},
-            {"href": "#run", "label": "Run"},
-            {"href": "#examples", "label": "Examples"},
+            {"href": "/", "label": "Overview"},
+            {"href": "/components/", "label": "Components"},
+            {"href": "/patterns/", "label": "Patterns"},
+            {"href": "/labs/", "label": "Labs"},
             {"href": "/protocol/", "label": "Protocol"},
             {"href": repo_url, "label": "GitHub"},
         ],
         "commands": [
             {"label": "Local example", "command": "python -m erza run examples/greetings"},
+            {"label": "Animation lab", "command": "python -m erza run examples/animation"},
             {"label": "Remote docs", "command": "python -m erza run erza.ryangerardwilson.com"},
             {"label": "Docs build", "command": "./update_docs.sh"},
         ],
         "pillars": [
             {
-                "title": "Section is the primary unit",
-                "body": "A screen should read as a stack of named regions, each with one job and a small number of active items.",
+                "title": "Component-first, not browser-first",
+                "body": "The long-term shape is a component system for terminal interfaces, with titled panels as the current house style rather than browser pages re-skinned in a shell.",
             },
             {
-                "title": "Navigation starts with regions",
-                "body": "Ctrl+N and Ctrl+P move between sections, gg and G jump to the ends, then j and k move inside the currently active section while h and l handle back and open.",
+                "title": "The terminal stays in charge",
+                "body": "The runtime owns layout, focus, history, and motion so the user stays in one keyboard-native environment instead of bouncing through browser chrome.",
             },
             {
-                "title": "Remote transport stays separate",
-                "body": "The future networked model should fetch terminal-native app state over HTTPS without inheriting browser compatibility scope.",
+                "title": "Erzanet is the next container",
+                "body": "The hosted docs site is a proving ground for a future where remote apps and documents can be opened as `erza example.com` without leaving the terminal.",
             },
         ],
-        "components": [
+        "component_families": [
             {
-                "tag": "<Screen>",
-                "summary": "Root shell for one terminal page.",
+                "name": "Shell",
+                "summary": "Top-level structure and page rhythm.",
+                "items": [
+                    "<Screen title=\"...\">",
+                    "<Section title=\"...\">",
+                    "<Column gap=\"...\">",
+                    "<Row gap=\"...\">",
+                ],
             },
             {
-                "tag": "<Section title=\"...\">",
-                "summary": "Primary navigable region and the main unit of composition.",
+                "name": "Content",
+                "summary": "Readable surfaces and document structure.",
+                "items": [
+                    "<Header>",
+                    "<Text>",
+                    "<Link href=\"...\">",
+                ],
             },
             {
-                "tag": "<Text>",
-                "summary": "Plain copy, status, or values inside a section.",
+                "name": "Action",
+                "summary": "Intentional affordances instead of browser chrome.",
+                "items": [
+                    "<Action on:press=\"...\">",
+                    "<Button on:press=\"...\">",
+                ],
             },
             {
-                "tag": "<Action on:press=\"...\">",
-                "summary": "A backend-triggering affordance selected with j/k and fired with l.",
+                "name": "Motion",
+                "summary": "Terminal-safe movement without video or canvas baggage.",
+                "items": [
+                    "<AsciiAnimation fps=\"...\">",
+                    "<Frame>...</Frame>",
+                ],
+            },
+        ],
+        "nesting_rules": [
+            {
+                "parent": "<Screen>",
+                "allows": "top-level panels, layout containers, and other shell-level components",
+                "body": "Screens should read like a small number of strong regions rather than a pile of loose widgets.",
             },
             {
-                "tag": "<Link href=\"...\">",
-                "summary": "A local or remote page hop that opens with l.",
+                "parent": "<Section>",
+                "allows": "text, links, actions, animations, and nested layout",
+                "body": "A section should hold one idea or one workflow step and expose only the items needed inside that region.",
+            },
+            {
+                "parent": "<AsciiAnimation>",
+                "allows": "only <Frame> children",
+                "body": "Animation stays declarative and transport-safe by carrying frame data and playback metadata instead of executable logic.",
+            },
+            {
+                "parent": "<Row>",
+                "allows": "small leaf components or compact nested panels",
+                "body": "Rows are for tightly coupled items. Wide prose and large boxes should usually stay in columns.",
             },
         ],
         "examples": [
             {
                 "name": "Tasks",
                 "path": "examples/tasks/app.erza",
-                "summary": "A section-first task board with backend actions, links, and page history.",
+                "summary": "Backend-fed task workflow with page history and remote docs links.",
             },
             {
                 "name": "Greetings",
                 "path": "examples/greetings/index.erza",
-                "summary": "A directory-based entrypoint that shows how sections become the default screen rhythm.",
+                "summary": "A small directory entrypoint with stateful backend changes.",
+            },
+            {
+                "name": "Animation",
+                "path": "examples/animation/index.erza",
+                "summary": "A local lab for the new AsciiAnimation component and runtime tick loop.",
+            },
+        ],
+        "patterns": [
+            {
+                "name": "Operator Dashboard",
+                "summary": "A boxed overview with status strips, urgent queues, and a detail rail.",
+                "regions": "Hero metrics, active queue, alerts, audit trail",
+            },
+            {
+                "name": "Docs Reader",
+                "summary": "Dense reference content with navigation, code samples, and capability notes.",
+                "regions": "Overview, topic panels, code windows, appendix",
+            },
+            {
+                "name": "Inbox + Inspector",
+                "summary": "A list-first workflow with one active document and a side channel for metadata.",
+                "regions": "Folder rail, message list, reading pane, inspector",
+            },
+            {
+                "name": "Settings Surface",
+                "summary": "Low-drama forms, toggles, and state explanations without browser settings sludge.",
+                "regions": "Category nav, fields, confirmation area, recent changes",
+            },
+            {
+                "name": "Launch Pad",
+                "summary": "Command surfaces, recent destinations, and quick open flows for remote apps.",
+                "regions": "Primary actions, saved endpoints, help, session status",
+            },
+            {
+                "name": "Animation Lab",
+                "summary": "A place for motion components, playback controls, and frame fallbacks.",
+                "regions": "Poster frame, live runtime note, frame strip, open questions",
+            },
+        ],
+        "capability_matrix": [
+            {
+                "feature": "Boxed panel layout",
+                "runtime": "works",
+                "docs": "works",
+                "remote": "works",
+                "erzanet": "ready",
+            },
+            {
+                "feature": "Multi-page information architecture",
+                "runtime": "works",
+                "docs": "works",
+                "remote": "works",
+                "erzanet": "ready",
+            },
+            {
+                "feature": "AsciiAnimation playback",
+                "runtime": "works",
+                "docs": "poster fallback",
+                "remote": "poster fallback",
+                "erzanet": "needs transport shape",
+            },
+            {
+                "feature": "Complex nested composition",
+                "runtime": "partial",
+                "docs": "works",
+                "remote": "partial",
+                "erzanet": "needs component schema",
+            },
+            {
+                "feature": "Stateful remote interaction",
+                "runtime": "local only",
+                "docs": "n/a",
+                "remote": "read only",
+                "erzanet": "core future work",
+            },
+        ],
+        "lab_tracks": [
+            {
+                "title": "Remote Viewer Gaps",
+                "body": "Use the hosted site as a checklist for what the HTML scraper still flattens, loses, or over-groups.",
+            },
+            {
+                "title": "Component System Pressure",
+                "body": "Use the richer pages to discover which panels should become first-class components instead of staying ad hoc markup patterns.",
+            },
+            {
+                "title": "Motion Without Browser Baggage",
+                "body": "Use AsciiAnimation to define how much motion can live in a TUI without turning into terminal abuse.",
             },
         ],
         "protocol_steps": [
@@ -156,4 +283,67 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             "Preserve normal backend integration over HTTPS.",
             "Avoid inheriting browser compatibility scope by accident.",
         ],
+        "animation_frames": [
+            {
+                "title": "Frame 1",
+                "art": _block(
+                    """
+                    +---------+
+                    |*        |
+                    |  erza   |
+                    +---------+
+                    """
+                ),
+            },
+            {
+                "title": "Frame 2",
+                "art": _block(
+                    """
+                    +---------+
+                    |   *     |
+                    |  erza   |
+                    +---------+
+                    """
+                ),
+            },
+            {
+                "title": "Frame 3",
+                "art": _block(
+                    """
+                    +---------+
+                    |      *  |
+                    |  erza   |
+                    +---------+
+                    """
+                ),
+            },
+        ],
+        "animation_markup": _block(
+            """
+            <AsciiAnimation label="Signal" fps="6">
+              <Frame>
+              +---------+
+              |*        |
+              |  erza   |
+              +---------+
+              </Frame>
+              <Frame>
+              +---------+
+              |   *     |
+              |  erza   |
+              +---------+
+              </Frame>
+              <Frame>
+              +---------+
+              |      *  |
+              |  erza   |
+              +---------+
+              </Frame>
+            </AsciiAnimation>
+            """
+        ),
     }
+
+
+def _block(text: str) -> str:
+    return textwrap.dedent(text).strip("\n")

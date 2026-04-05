@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from erza.model import Button, Link, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Link, Screen, Section, Text
 from erza.runtime import (
     StaticScreenApp,
     _RuntimeSession,
@@ -149,6 +149,32 @@ class RuntimeTests(unittest.TestCase):
     def test_display_origin_centers_79_column_canvas(self) -> None:
         self.assertEqual(_display_origin_x(79), 0)
         self.assertEqual(_display_origin_x(101), 11)
+
+    def test_ascii_animation_selects_frame_and_sets_interval(self) -> None:
+        screen = Screen(
+            title="Motion",
+            children=[
+                Section(
+                    title="Lab",
+                    children=[
+                        AsciiAnimation(
+                            label="Pulse",
+                            fps=5,
+                            loop=True,
+                            frames=["o", "oo"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        first = build_render_plan(screen, animation_time=0.0)
+        second = build_render_plan(screen, animation_time=0.25)
+        frame_y = first.sections[0].y + 3
+
+        self.assertEqual(first.animation_interval_ms, 200)
+        self.assertIn("o", " ".join(segment.text for segment in first.lines[frame_y]))
+        self.assertIn("oo", " ".join(segment.text for segment in second.lines[frame_y]))
 
 
 if __name__ == "__main__":

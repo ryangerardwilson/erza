@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 import re
+import textwrap
 from typing import Any
 
-from erza.model import Button, Column, Component, Header, Link, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Column, Component, Header, Link, Row, Screen, Section, Text
 
 
 class ParseError(RuntimeError):
@@ -106,6 +107,13 @@ def _convert_element(element: Element) -> Component:
         if not href:
             raise ParseError("<Link> requires an href")
         return Link(label=_collect_text(element), href=href)
+    if tag == "asciianimation":
+        return AsciiAnimation(
+            frames=_collect_animation_frames(element),
+            fps=_parse_positive_int(element, "fps", default=4),
+            loop=_parse_bool(element, "loop", default=True),
+            label=element.attrs.get("label", "").strip() or "Animation",
+        )
     if tag in {"button", "action"}:
         action = element.attrs.get("on:press", "").strip()
         if not action:
@@ -132,6 +140,35 @@ def _collect_text(element: Element) -> str:
     return text
 
 
+def _collect_animation_frames(element: Element) -> list[str]:
+    frames: list[str] = []
+    for child in element.children:
+        if isinstance(child, str):
+            if child.strip():
+                raise ParseError("<AsciiAnimation> only supports <Frame> children")
+            continue
+        if child.tag != "frame":
+            raise ParseError("<AsciiAnimation> only supports <Frame> children")
+        frames.append(_collect_frame_text(child))
+
+    if not frames:
+        raise ParseError("<AsciiAnimation> requires at least one <Frame>")
+    return frames
+
+
+def _collect_frame_text(element: Element) -> str:
+    parts: list[str] = []
+    for child in element.children:
+        if not isinstance(child, str):
+            raise ParseError("<Frame> only supports raw text")
+        parts.append(child)
+
+    raw = textwrap.dedent("".join(parts)).strip("\n")
+    if not raw:
+        raise ParseError("<Frame> cannot be empty")
+    return raw
+
+
 def _normalize_text(value: str) -> str:
     return WHITESPACE_RE.sub(" ", value).strip()
 
@@ -147,6 +184,31 @@ def _parse_gap(element: Element, *, default: int) -> int:
     if gap < 0:
         raise ParseError(f"gap cannot be negative on <{element.tag}>")
     return gap
+
+
+def _parse_positive_int(element: Element, name: str, *, default: int) -> int:
+    raw = element.attrs.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ParseError(f"{name} must be an integer on <{element.tag}>") from exc
+    if value <= 0:
+        raise ParseError(f"{name} must be positive on <{element.tag}>")
+    return value
+
+
+def _parse_bool(element: Element, name: str, *, default: bool) -> bool:
+    raw = element.attrs.get(name)
+    if raw is None or raw == "":
+        return default
+    normalized = raw.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise ParseError(f"{name} must be true or false on <{element.tag}>")
 
 
 def _normalize_param_name(name: str) -> str:

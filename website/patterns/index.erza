@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>erza patterns</title>
+    <meta
+      name="description"
+      content="Pattern library for terminal-native erza layouts."
+    />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">erza</a>
+        <nav class="nav">
+          <? for item in nav ?>
+            <a href="<?= item.href ?>"><?= item.label ?></a>
+          <? endfor ?>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero hero-small">
+          <p class="eyebrow">pattern library</p>
+          <h1>Reference surfaces the runtime should eventually handle cleanly</h1>
+          <p class="lede">
+            These are not all first-class components yet. They are durable
+            screen shapes that the hosted docs and the terminal runtime can use
+            as pressure tests for layout, density, hierarchy, and navigation.
+          </p>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">patterns</p>
+            <h2>Six shapes worth building against</h2>
+          </div>
+          <div class="card-grid">
+            <? for pattern in patterns ?>
+              <article class="card">
+                <h3><?= pattern.name ?></h3>
+                <p><?= pattern.summary ?></p>
+                <p><strong>Regions:</strong> <?= pattern.regions ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section section-accent">
+          <div class="section-heading">
+            <p class="eyebrow">checks</p>
+            <h2>Questions each pattern should answer</h2>
+          </div>
+          <div class="card-grid">
+            <? for item in lab_tracks ?>
+              <article class="step-card">
+                <h3><?= item.title ?></h3>
+                <p><?= item.body ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p><a href="/">Back to overview</a></p>
+        <p>Built <?= site.build_stamp ?></p>
+      </footer>
+    </div>
+  </body>
+</html>

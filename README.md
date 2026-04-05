@@ -60,6 +60,7 @@ See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 ```bash
 python -m erza run examples/tasks/app.erza
 python -m erza run examples/greetings
+python -m erza run examples/animation
 python -m erza run https://erza.ryangerardwilson.com
 python -m erza run erza.ryangerardwilson.com
 ```
@@ -83,6 +84,7 @@ Primary components:
 - `<Text>`
 - `<Link href="...">`
 - `<Action on:press="handler.name">`
+- `<AsciiAnimation fps="...">`
 
 Support layout components:
 
@@ -136,7 +138,8 @@ literals, and `backend(...)` calls.
 ```
 
 The bundled examples in [`examples/tasks/app.erza`](examples/tasks/app.erza)
-and [`examples/greetings/index.erza`](examples/greetings/index.erza) demonstrate
+[`examples/greetings/index.erza`](examples/greetings/index.erza), and
+[`examples/animation/index.erza`](examples/animation/index.erza) demonstrate
 the full loop:
 
 - load backend data during template expansion
@@ -144,12 +147,13 @@ the full loop:
 - move across top-level components with `Ctrl+N` and `Ctrl+P`
 - jump directly to the bounds with `gg` and `G`
 - move through the active component's actions with `j` and `k`
+- play declarative ASCII frame animations inside the runtime
 - use `h` for page history and `l` for opening links or dispatching actions
 
 ## Docs Site
 
-The repo also includes a static documentation site authored in `.erza` and
-built for GitHub Pages.
+The repo also includes a multi-page capability-lab documentation site authored
+in `.erza` and built for GitHub Pages.
 
 ```bash
 ./update_docs.sh
@@ -170,7 +174,8 @@ Relevant paths:
 - `src/erza/runtime.py`: terminal renderer, section navigation, and event loop
 - `src/erza/backend.py`: Python backend bridge
 - `src/erza/remote.py`: remote fetch and read-only remote viewer
-- `examples/`: runnable section-first examples
+- `examples/animation/`: local AsciiAnimation lab
+- `examples/`: runnable terminal examples
 - `tests/`: unit coverage for templates, parsing, runtime behavior, and docs build
 
 ## Status
@@ -179,5 +184,6 @@ This is still intentionally small. The current prototype proves:
 
 - `.erza` can serve as a readable TUI authoring language
 - a neat boxed terminal layout can be enforced consistently in the runtime
+- motion can be added as a declarative terminal component instead of browser media
 - backend actions and local/remote links can share one navigation model
-- a future `erzanet` can be explored without turning the project into a browser
+- the hosted docs site can act as a capability lab for a future `erzanet`

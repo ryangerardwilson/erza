@@ -10,21 +10,21 @@ The primary authoring unit is a `.erza` file. The language uses:
 
 - HTML-like tags for structure
 - PHP-style template delimiters for dynamic regions
-- section-first components as the main screen-building model
+- component-first building blocks with boxed terminal panels as the current house style
 
 The result should feel like designing a structured terminal surface, not like
 manually scripting a paint loop.
 
 ## Core Thesis
 
-The language should be organized around sectional components instead of loose
-headings and ad hoc focusable widgets.
+The language should be organized around explicit terminal components instead of
+loose headings and ad hoc focusable widgets.
 
-Each screen should be readable as a stack of named regions:
+Each screen should be readable as a small set of named regions and components:
 
 - one screen
-- several sections
-- a small number of links or actions inside each section
+- several strong panels or flows
+- a small number of links, actions, or motion surfaces inside each region
 
 That shape lets the runtime provide a simple navigation contract:
 
@@ -60,16 +60,17 @@ This is the default interaction identity for `erza`.
 
 `.erza` combines declarative structure with inline dynamic regions.
 
-The root is always a screen, but the primary authoring unit inside a screen is a
-section.
+The root is always a screen. Inside the screen, the language should prefer
+explicit components over raw layout soup.
 
 Current component direction:
 
 - `<Screen>` defines the page shell
-- `<Section>` defines a named navigable region
+- `<Section>` defines the current boxed region primitive
 - `<Text>` renders copy or values
 - `<Action>` dispatches a backend event
 - `<Link>` opens another page
+- `<AsciiAnimation>` renders declarative terminal motion from raw ASCII frames
 - `<Column>` and `<Row>` remain as support layout for nested composition
 
 Example shape:
@@ -114,6 +115,7 @@ The runtime owns:
 - page history
 - input handling
 - repainting
+- animation playback
 - event dispatch
 
 Even when the syntax borrows from HTML and PHP templates, the rendered result
@@ -196,7 +198,8 @@ The current prototype proves the model with:
 - a constrained parser/compiler
 - a `curses` runtime
 - a small Python backend bridge
+- declarative ASCII animation playback in the local runtime
 - local examples plus a read-only remote viewer
 
 The prototype should stay easy to inspect and easy to revise while the
-section-first language shape settles.
+component model and erzanet transport shape settle.

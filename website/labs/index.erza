@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>erza labs</title>
+    <meta
+      name="description"
+      content="Capability lab for the current erza runtime, docs output, and remote viewer."
+    />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">erza</a>
+        <nav class="nav">
+          <? for item in nav ?>
+            <a href="<?= item.href ?>"><?= item.label ?></a>
+          <? endfor ?>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero hero-small">
+          <p class="eyebrow">labs</p>
+          <h1>Use the hosted site as a capability checklist</h1>
+          <p class="lede">
+            This page is where the browser build, the local runtime, the remote
+            HTML viewer, and the future erzanet transport stop pretending to be
+            the same thing. Each row below is a prompt for what to add next.
+          </p>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">matrix</p>
+            <h2>What works where</h2>
+          </div>
+          <div class="matrix-grid">
+            <? for item in capability_matrix ?>
+              <article class="card">
+                <h3><?= item.feature ?></h3>
+                <p><strong>Runtime:</strong> <?= item.runtime ?></p>
+                <p><strong>Docs HTML:</strong> <?= item.docs ?></p>
+                <p><strong>Remote Viewer:</strong> <?= item.remote ?></p>
+                <p><strong>Erzanet:</strong> <?= item.erzanet ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section section-accent">
+          <div class="section-heading">
+            <p class="eyebrow">animation</p>
+            <h2>Poster fallback for AsciiAnimation</h2>
+          </div>
+          <div class="ascii-gallery">
+            <? for frame in animation_frames ?>
+              <article class="ascii-frame-card">
+                <p class="command-label"><?= frame.title ?></p>
+                <pre class="ascii-stage"><code><?= frame.art ?></code></pre>
+              </article>
+            <? endfor ?>
+          </div>
+          <p class="protocol-link">
+            Run <code>python -m erza run examples/animation</code> locally for
+            the live runtime version.
+          </p>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">next steps</p>
+            <h2>Pressure points worth chasing next</h2>
+          </div>
+          <div class="card-grid">
+            <? for item in lab_tracks ?>
+              <article class="step-card">
+                <h3><?= item.title ?></h3>
+                <p><?= item.body ?></p>
+              </article>
+            <? endfor ?>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p><a href="/">Back to overview</a></p>
+        <p>Built <?= site.build_stamp ?></p>
+      </footer>
+    </div>
+  </body>
+</html>

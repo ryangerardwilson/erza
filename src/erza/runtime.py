@@ -4,9 +4,10 @@ import curses
 from dataclasses import dataclass, field
 from pathlib import Path
 import textwrap
+import time
 
 from erza.backend import BackendBridge
-from erza.model import Button, Column, Component, Header, Link, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Column, Component, Header, Link, Row, Screen, Section, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -18,6 +19,7 @@ CTRL_P = 16
 DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
+MIN_ANIMATION_INTERVAL_MS = 50
 
 
 @dataclass(slots=True)
@@ -53,6 +55,7 @@ class Block:
     height: int
     lines: list[list[Segment]] = field(default_factory=list)
     actionables: list[ActionableTarget] = field(default_factory=list)
+    animation_interval_ms: int | None = None
 
 
 @dataclass(slots=True)
@@ -60,6 +63,7 @@ class RenderPlan:
     title: str
     lines: list[list[Segment]]
     sections: list[SectionTarget]
+    animation_interval_ms: int | None = None
 
 
 class ErzaApp:
@@ -121,7 +125,7 @@ def run_curses_app(app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
     curses.wrapper(session.run)
 
 
-def build_render_plan(screen: Screen) -> RenderPlan:
+def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderPlan:
     sections = _normalize_sections(screen.children)
     lines = [
         [Segment(x=0, text=screen.title, style="title")],
@@ -129,9 +133,10 @@ def build_render_plan(screen: Screen) -> RenderPlan:
     ]
     section_targets: list[SectionTarget] = []
     cursor_y = 2
+    animation_interval_ms: int | None = None
 
     for index, section in enumerate(sections):
-        block = _build_section_block(section)
+        block = _build_section_block(section, animation_time=animation_time)
         while len(lines) < cursor_y + block.height:
             lines.append([])
 
@@ -159,6 +164,10 @@ def build_render_plan(screen: Screen) -> RenderPlan:
                 ],
             )
         )
+        animation_interval_ms = _merge_animation_interval(
+            animation_interval_ms,
+            block.animation_interval_ms,
+        )
         cursor_y += block.height
         if index != len(sections) - 1:
             lines.append([])
@@ -168,7 +177,12 @@ def build_render_plan(screen: Screen) -> RenderPlan:
     lines.append(
         [Segment(x=0, text="ctrl-n/p sections  gg top  G end  j/k within  h back  l open  q quit", style="help")]
     )
-    return RenderPlan(title=screen.title, lines=lines, sections=section_targets)
+    return RenderPlan(
+        title=screen.title,
+        lines=lines,
+        sections=section_targets,
+        animation_interval_ms=animation_interval_ms,
+    )
 
 
 def next_section_index(plan: RenderPlan, current_index: int, delta: int) -> int:
@@ -270,6 +284,7 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.snap_section_to_top = False
         self.pending_g = False
+        self.animation_epoch = time.monotonic()
         self.status = ""
 
     def run(self, stdscr: curses.window) -> None:
@@ -285,7 +300,8 @@ class _RuntimeSession:
 
         while True:
             screen = self.app.build_screen()
-            plan = build_render_plan(screen)
+            animation_time = time.monotonic() - self.animation_epoch
+            plan = build_render_plan(screen, animation_time=animation_time)
             self._sync_state(plan)
             self._sync_scroll(plan, stdscr.getmaxyx()[0])
             draw_plan(
@@ -297,9 +313,12 @@ class _RuntimeSession:
                 self.status,
             )
 
+            stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
             key = stdscr.getch()
             if key in {ord("q"), 27}:
                 return
+            if key == -1:
+                continue
             if key == ord("g"):
                 if self.pending_g:
                     self._jump_to_first_section(plan)
@@ -503,19 +522,24 @@ def _normalize_sections(children: list[Component]) -> list[Section]:
     return sections
 
 
-def _build_block(component: Component) -> Block:
+def _build_block(component: Component, *, animation_time: float, max_width: int) -> Block:
     if isinstance(component, Section):
-        return _build_embedded_section_block(component)
+        return _build_embedded_section_block(component, animation_time=animation_time, max_width=max_width)
     if isinstance(component, Column):
-        return _build_column_like(component.children, gap=component.gap)
+        return _build_column_like(
+            component.children,
+            gap=component.gap,
+            animation_time=animation_time,
+            max_width=max_width,
+        )
     if isinstance(component, Row):
-        return _build_row(component)
+        return _build_row(component, animation_time=animation_time, max_width=max_width)
     if isinstance(component, Header):
-        return _wrapped_text_block(component.content, style="header", max_width=TOP_LEVEL_SECTION_INNER_WIDTH)
+        return _wrapped_text_block(component.content, style="header", max_width=max_width)
     if isinstance(component, Text):
-        return _wrapped_text_block(component.content, style="text", max_width=TOP_LEVEL_SECTION_INNER_WIDTH)
+        return _wrapped_text_block(component.content, style="text", max_width=max_width)
     if isinstance(component, Link):
-        label = _truncate_text(f"-> {component.label}", TOP_LEVEL_SECTION_INNER_WIDTH)
+        label = _truncate_text(f"-> {component.label}", max_width)
         block = _leaf_block(label, style="action")
         block.actionables.append(
             ActionableTarget(
@@ -528,7 +552,7 @@ def _build_block(component: Component) -> Block:
         )
         return block
     if isinstance(component, Button):
-        label = _truncate_text(f"[ {component.label} ]", TOP_LEVEL_SECTION_INNER_WIDTH)
+        label = _truncate_text(f"[ {component.label} ]", max_width)
         block = _leaf_block(label, style="action")
         block.actionables.append(
             ActionableTarget(
@@ -540,19 +564,37 @@ def _build_block(component: Component) -> Block:
             )
         )
         return block
+    if isinstance(component, AsciiAnimation):
+        return _build_animation_block(component, animation_time=animation_time, max_width=max_width)
     raise TypeError(f"unsupported component for layout: {type(component).__name__}")
 
 
-def _build_section_block(section: Section) -> Block:
-    return _build_bordered_section_block(section, fixed_inner_width=TOP_LEVEL_SECTION_INNER_WIDTH)
+def _build_section_block(section: Section, *, animation_time: float) -> Block:
+    body = _build_column_like(
+        section.children,
+        gap=1,
+        animation_time=animation_time,
+        max_width=TOP_LEVEL_SECTION_INNER_WIDTH,
+    )
+    return _build_bordered_section_block(
+        section,
+        body=body,
+        fixed_inner_width=TOP_LEVEL_SECTION_INNER_WIDTH,
+    )
 
 
-def _build_embedded_section_block(section: Section) -> Block:
-    body = _build_column_like(section.children, gap=1)
+def _build_embedded_section_block(section: Section, *, animation_time: float, max_width: int) -> Block:
+    nested_inner_width = max(max_width - 4, 1)
+    body = _build_column_like(
+        section.children,
+        gap=1,
+        animation_time=animation_time,
+        max_width=nested_inner_width,
+    )
     if not body.lines:
-        return _build_bordered_section_block(section, fixed_inner_width=NESTED_SECTION_INNER_WIDTH)
+        return _build_bordered_section_block(section, fixed_inner_width=nested_inner_width)
 
-    return _build_bordered_section_block(section, body=body, fixed_inner_width=NESTED_SECTION_INNER_WIDTH)
+    return _build_bordered_section_block(section, body=body, fixed_inner_width=nested_inner_width)
 
 
 def _build_bordered_section_block(
@@ -561,7 +603,7 @@ def _build_bordered_section_block(
     *,
     fixed_inner_width: int | None = None,
 ) -> Block:
-    body = body or _build_column_like(section.children, gap=1)
+    body = body or Block(width=0, height=0)
     max_inner_width = fixed_inner_width or TOP_LEVEL_SECTION_INNER_WIDTH
     title_text = _truncate_text(f"[ {section.title} ]", max_inner_width)
     if fixed_inner_width is None:
@@ -612,45 +654,99 @@ def _build_bordered_section_block(
             )
         )
 
-    return Block(width=width, height=len(lines), lines=lines, actionables=actionables)
+    return Block(
+        width=width,
+        height=len(lines),
+        lines=lines,
+        actionables=actionables,
+        animation_interval_ms=body.animation_interval_ms,
+    )
 
 
-def _build_column_like(children: list[Component], gap: int) -> Block:
+def _build_animation_block(animation: AsciiAnimation, *, animation_time: float, max_width: int) -> Block:
+    block_width = min(max_width, TOP_LEVEL_SECTION_INNER_WIDTH)
+    inner_width = max(block_width - 4, 1)
+    title = _truncate_text(f"~ {animation.label} ~", inner_width)
+    top_border = "+-" + title + "-" * max(inner_width + 1 - len(title), 0) + "+"
+    bottom_border = "+" + "-" * (block_width - 2) + "+"
+
+    frame = _select_animation_frame(animation, animation_time)
+    frame_lines = frame.splitlines() or [""]
+    clamped_lines = [_truncate_text(line, inner_width) for line in frame_lines]
+    frame_width = max((len(line) for line in clamped_lines), default=0)
+    frame_offset = max((inner_width - frame_width) // 2, 0)
+
+    lines: list[list[Segment]] = [[Segment(x=0, text=top_border, style="animation_title")]]
+    lines.append(_boxed_content_line(inner_width))
+
+    for frame_line in clamped_lines:
+        line = _boxed_content_line(inner_width)
+        line.append(Segment(x=2 + frame_offset, text=frame_line, style="animation"))
+        lines.append(line)
+
+    lines.append(_boxed_content_line(inner_width))
+    lines.append([Segment(x=0, text=bottom_border, style="section_border")])
+
+    return Block(
+        width=block_width,
+        height=len(lines),
+        lines=lines,
+        animation_interval_ms=_animation_interval_for_fps(animation.fps),
+    )
+
+
+def _build_column_like(children: list[Component], gap: int, *, animation_time: float, max_width: int) -> Block:
     lines: list[list[Segment]] = []
     actionables: list[ActionableTarget] = []
     width = 0
     cursor_y = 0
+    animation_interval_ms: int | None = None
 
     for index, child in enumerate(children):
-        block = _build_block(child)
+        block = _build_block(child, animation_time=animation_time, max_width=max_width)
         _merge_block(lines, actionables, block, x=0, y=cursor_y)
         width = max(width, block.width)
+        animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
         cursor_y += block.height
         if index != len(children) - 1:
             cursor_y += gap
             for _ in range(gap):
                 lines.append([])
 
-    return Block(width=width, height=len(lines), lines=lines, actionables=actionables)
+    return Block(
+        width=width,
+        height=len(lines),
+        lines=lines,
+        actionables=actionables,
+        animation_interval_ms=animation_interval_ms,
+    )
 
 
-def _build_row(row: Row) -> Block:
-    child_blocks = [_build_block(child) for child in row.children]
+def _build_row(row: Row, *, animation_time: float, max_width: int) -> Block:
+    child_blocks = [_build_block(child, animation_time=animation_time, max_width=max_width) for child in row.children]
     width = 0
     height = max((block.height for block in child_blocks), default=0)
     lines = [[] for _ in range(height)]
     actionables: list[ActionableTarget] = []
     cursor_x = 0
+    animation_interval_ms: int | None = None
 
     for index, block in enumerate(child_blocks):
         _merge_block(lines, actionables, block, x=cursor_x, y=0)
         cursor_x += block.width
         width = max(width, cursor_x)
+        animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
         if index != len(child_blocks) - 1:
             cursor_x += row.gap
             width = max(width, cursor_x)
 
-    return Block(width=width, height=height, lines=lines, actionables=actionables)
+    return Block(
+        width=width,
+        height=height,
+        lines=lines,
+        actionables=actionables,
+        animation_interval_ms=animation_interval_ms,
+    )
 
 
 def _leaf_block(text: str, *, style: str) -> Block:
@@ -672,6 +768,38 @@ def _truncate_text(text: str, max_width: int) -> str:
     if max_width <= 3:
         return text[:max_width]
     return text[: max_width - 3] + "..."
+
+
+def _boxed_content_line(inner_width: int) -> list[Segment]:
+    return [
+        Segment(x=0, text="| ", style="section_border"),
+        Segment(x=2, text=" " * inner_width, style="section_fill"),
+        Segment(x=inner_width + 2, text=" |", style="section_border"),
+    ]
+
+
+def _select_animation_frame(animation: AsciiAnimation, animation_time: float) -> str:
+    if len(animation.frames) == 1:
+        return animation.frames[0]
+
+    frame_index = int(animation_time * animation.fps)
+    if animation.loop:
+        frame_index %= len(animation.frames)
+    else:
+        frame_index = min(frame_index, len(animation.frames) - 1)
+    return animation.frames[frame_index]
+
+
+def _animation_interval_for_fps(fps: int) -> int:
+    return max(int(1000 / fps), MIN_ANIMATION_INTERVAL_MS)
+
+
+def _merge_animation_interval(current: int | None, candidate: int | None) -> int | None:
+    if current is None:
+        return candidate
+    if candidate is None:
+        return current
+    return min(current, candidate)
 
 
 def _merge_block(
@@ -727,6 +855,8 @@ def _styles() -> dict[str, int]:
         "title": curses.A_BOLD,
         "section_title": curses.A_BOLD,
         "section_title_active": curses.A_REVERSE | curses.A_BOLD,
+        "animation_title": curses.A_BOLD,
+        "animation": curses.A_NORMAL,
         "section_border": curses.A_DIM,
         "section_fill": curses.A_NORMAL,
         "header": curses.A_BOLD,

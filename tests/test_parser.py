@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from erza.model import Button, Link, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Link, Screen, Section, Text
 from erza.parser import ParseError, compile_markup
 
 
@@ -44,6 +44,31 @@ class ParserTests(unittest.TestCase):
 
         with self.assertRaises(ParseError):
             compile_markup(markup)
+
+    def test_compiles_ascii_animation_frames(self) -> None:
+        markup = """
+<Screen title="Lab">
+  <Section title="Motion">
+    <AsciiAnimation fps="5" loop="false" label="Pulse">
+      <Frame>
+o
+      </Frame>
+      <Frame>
+oo
+      </Frame>
+    </AsciiAnimation>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        animation = screen.children[0].children[0]
+        self.assertIsInstance(animation, AsciiAnimation)
+        self.assertEqual(animation.fps, 5)
+        self.assertFalse(animation.loop)
+        self.assertEqual(animation.label, "Pulse")
+        self.assertEqual(animation.frames, ["o", "oo"])
 
 
 if __name__ == "__main__":

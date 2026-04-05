@@ -27,6 +27,14 @@ class Button:
 
 
 @dataclass(slots=True)
+class AsciiAnimation:
+    frames: list[str]
+    fps: int = 4
+    loop: bool = True
+    label: str = "Animation"
+
+
+@dataclass(slots=True)
 class Column:
     children: list["Component"]
     gap: int = 0
@@ -51,4 +59,4 @@ class Screen:
     children: list["Component"]
 
 
-Component = Text | Header | Link | Button | Column | Row | Section
+Component = Text | Header | Link | Button | AsciiAnimation | Column | Row | Section
