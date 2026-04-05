@@ -89,6 +89,7 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             "What if frontend was redesigned to be CLI and TUI first?",
         ],
         "landing_command": "python -m erza run examples/landing",
+        "landing_video": "/assets/landing-demo.mp4",
         "landing_markup": _block(
             """
             <Screen title="Erzanet">
@@ -110,21 +111,6 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
                 </AsciiAnimation>
               </Section>
             </Screen>
-            """
-        ),
-        "landing_poster": _block(
-            """
-            erzanet
-
-            +- [ What If ] ---------------------------------------------------------+
-            | What if websites opened directly in the terminal?                    |
-            | What if the network felt calmer than the browser?                    |
-            +------------------------------------------------------------------------+
-
-            +- [ Navigate ] --------------------------------------------------------+
-            | > Inspect components                                                  |
-            |   Inspect the capability matrix                                       |
-            +------------------------------------------------------------------------+
             """
         ),
         "pillars": [
