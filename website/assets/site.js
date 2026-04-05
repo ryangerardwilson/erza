@@ -22,8 +22,7 @@
 
   const holdFullMs = 2100;
   const holdEmptyMs = 320;
-  const typingMs = 68;
-  const deletingMs = 34;
+  const typingMs = 86;
 
   const reserveHeight = () => {
     if (!rotator) {
@@ -57,15 +56,11 @@
       return;
     }
 
-    charIndex = Math.max(charIndex - 1, 0);
-    target.textContent = phrase.slice(0, charIndex);
-    if (charIndex === 0) {
-      deleting = false;
-      phraseIndex = (phraseIndex + 1) % phrases.length;
-      window.setTimeout(tick, holdEmptyMs);
-      return;
-    }
-    window.setTimeout(tick, deletingMs);
+    charIndex = 0;
+    target.textContent = "";
+    deleting = false;
+    phraseIndex = (phraseIndex + 1) % phrases.length;
+    window.setTimeout(tick, holdEmptyMs);
   };
 
   reserveHeight();

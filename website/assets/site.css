@@ -374,6 +374,14 @@ h3 {
   gap: 0.55rem;
 }
 
+.hero-code .code-block {
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 .matrix-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
