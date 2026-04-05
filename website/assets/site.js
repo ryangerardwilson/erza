@@ -3,6 +3,7 @@
   if (!target) {
     return;
   }
+  const rotator = target.closest(".story-rotator");
 
   let phrases = [];
   try {
@@ -19,10 +20,27 @@
   let charIndex = 0;
   let deleting = false;
 
-  const holdFullMs = 1600;
-  const holdEmptyMs = 220;
-  const typingMs = 42;
-  const deletingMs = 24;
+  const holdFullMs = 2100;
+  const holdEmptyMs = 320;
+  const typingMs = 68;
+  const deletingMs = 34;
+
+  const reserveHeight = () => {
+    if (!rotator) {
+      return;
+    }
+
+    const current = target.textContent;
+    let maxHeight = 0;
+
+    for (const phrase of phrases) {
+      target.textContent = phrase;
+      maxHeight = Math.max(maxHeight, rotator.getBoundingClientRect().height);
+    }
+
+    target.textContent = current;
+    rotator.style.minHeight = `${Math.ceil(maxHeight)}px`;
+  };
 
   const tick = () => {
     const phrase = phrases[phraseIndex];
@@ -50,6 +68,8 @@
     window.setTimeout(tick, deletingMs);
   };
 
+  reserveHeight();
+  window.addEventListener("resize", reserveHeight);
   target.textContent = "";
-  window.setTimeout(tick, 240);
+  window.setTimeout(tick, 360);
 })();

@@ -24,7 +24,6 @@
 
       <main>
         <section class="hero hero-story">
-          <p class="eyebrow">terminal-first internet</p>
           <div class="story-stack">
             <p class="story-prefix">What if</p>
             <h1 class="story-rotator">
@@ -57,10 +56,6 @@
               <div class="section-heading section-heading-compact">
                 <p class="eyebrow">output</p>
                 <h2>Latest terminal capture</h2>
-              </div>
-              <div class="command-card command-card-feature">
-                <p class="command-label">run from repo root</p>
-                <pre><code><?= landing_command ?></code></pre>
               </div>
               <div class="terminal-window video-placeholder">
                 <div class="terminal-window-bar">
