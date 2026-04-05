@@ -1,0 +1,42 @@
+<Screen title="Erzanet Landing">
+  <Section title="What If">
+    <Header>What if the internet did not need a browser?</Header>
+    <Text>What if websites could open directly in the terminal without platform gatekeepers in the way?</Text>
+    <Text>What if frontend was redesigned for calm keyboard-native surfaces instead of tab bars, ads, and app-store sludge?</Text>
+  </Section>
+
+  <Section title="Signal">
+    <Text>This screen is meant to be recorded as a short terminal demo for the docs homepage.</Text>
+    <AsciiAnimation label="Erzanet pulse" fps="6">
+      <Frame>
+      +-------------+
+      |*            |
+      |   erzanet   |
+      +-------------+
+      </Frame>
+      <Frame>
+      +-------------+
+      |     *       |
+      |   erzanet   |
+      +-------------+
+      </Frame>
+      <Frame>
+      +-------------+
+      |          *  |
+      |   erzanet   |
+      +-------------+
+      </Frame>
+    </AsciiAnimation>
+  </Section>
+
+  <Section title="Open">
+    <Link href="https://erza.ryangerardwilson.com/components/">Inspect components</Link>
+    <Link href="https://erza.ryangerardwilson.com/patterns/">Inspect patterns</Link>
+    <Link href="https://erza.ryangerardwilson.com/labs/">Inspect labs</Link>
+  </Section>
+
+  <Section title="Controls">
+    <Text>Ctrl+N and Ctrl+P move between panels. j and k move inside the active panel.</Text>
+    <Text>gg jumps to the first panel. G jumps to the last. h goes back. l opens the focused link. q exits cleanly.</Text>
+  </Section>
+</Screen>

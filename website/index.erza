@@ -24,37 +24,44 @@
       <main>
         <section class="hero hero-grid-shell">
           <div class="hero-copy">
-            <p class="eyebrow">terminal-native interface language</p>
-            <h1>Open richer software without opening a browser.</h1>
-            <p class="lede">
-              <code>erza</code> is a component language for terminal-native
-              interfaces. This docs site is the proving ground: build locally,
-              publish over HTTPS, and open the result from the terminal.
-            </p>
-            <div class="command-list command-list-tight">
-              <? for command in commands ?>
-                <div class="command-card">
-                  <p class="command-label"><?= command.label ?></p>
-                  <pre><code><?= command.command ?></code></pre>
-                </div>
+            <p class="eyebrow">terminal-first internet</p>
+            <h1>What if the internet did not need a web browser?</h1>
+            <div class="story-questions">
+              <? for item in story_questions ?>
+                <p><?= item ?></p>
               <? endfor ?>
+            </div>
+            <p class="lede">
+              <code>erza</code> is the wager that websites, product surfaces,
+              and documentation can be designed CLI and TUI first, then opened
+              over HTTPS without leaving the terminal.
+            </p>
+            <div class="hero-code">
+              <p class="command-label">landing page in .erza</p>
+              <pre class="code-block"><code><?= landing_markup ?></code></pre>
             </div>
           </div>
 
-          <div class="terminal-window">
-            <div class="terminal-window-bar">
-              <span>erza.ryangerardwilson.com</span>
-              <span>79 cols</span>
+          <div class="hero-demo">
+            <div class="section-heading">
+              <p class="eyebrow">record this</p>
+              <h2>Capture the terminal output and place the video here.</h2>
             </div>
-            <pre><code>erza
-
-+-[ Component Lab ]------------------------------------------------------------+
-| Component-first, boxed, keyboard-native, and remote-testable.               |
-|                                                                             |
-| ctrl-n/p regions   gg top   G end   j/k within   h back   l open           |
-|                                                                             |
-| open /components/ to inspect nesting rules and /labs/ to audit gaps.       |
-+-----------------------------------------------------------------------------+</code></pre>
+            <div class="command-card command-card-feature">
+              <p class="command-label">run from repo root</p>
+              <pre><code><?= landing_command ?></code></pre>
+            </div>
+            <div class="terminal-window video-placeholder">
+              <div class="terminal-window-bar">
+                <span>hero demo slot</span>
+                <span>replace with captured terminal video</span>
+              </div>
+              <pre><code><?= landing_poster ?></code></pre>
+            </div>
+            <p class="protocol-link">
+              Record a short pass with the centered 79-column runtime and swap
+              this placeholder for the capture.
+            </p>
           </div>
         </section>
 
@@ -142,6 +149,21 @@
                 <p><?= example.summary ?></p>
                 <p><code><?= example.path ?></code></p>
               </article>
+            <? endfor ?>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-heading">
+            <p class="eyebrow">commands</p>
+            <h2>Open the current surfaces</h2>
+          </div>
+          <div class="command-list command-list-tight">
+            <? for command in commands ?>
+              <div class="command-card">
+                <p class="command-label"><?= command.label ?></p>
+                <pre><code><?= command.command ?></code></pre>
+              </div>
             <? endfor ?>
           </div>
         </section>

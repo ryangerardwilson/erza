@@ -77,11 +77,56 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             {"href": repo_url, "label": "GitHub"},
         ],
         "commands": [
+            {"label": "Landing demo", "command": "python -m erza run examples/landing"},
             {"label": "Local example", "command": "python -m erza run examples/greetings"},
             {"label": "Animation lab", "command": "python -m erza run examples/animation"},
             {"label": "Remote docs", "command": "python -m erza run erza.ryangerardwilson.com"},
             {"label": "Docs build", "command": "./update_docs.sh"},
         ],
+        "story_questions": [
+            "What if the internet did not need a web browser or Android/iOS gatekeepers?",
+            "What if websites could open and be navigated directly from the terminal?",
+            "What if frontend was redesigned to be CLI and TUI first?",
+        ],
+        "landing_command": "python -m erza run examples/landing",
+        "landing_markup": _block(
+            """
+            <Screen title="Erzanet">
+              <Section title="What If">
+                <Text>What if websites opened directly in the terminal?</Text>
+                <Text>What if the network felt calmer than the browser?</Text>
+              </Section>
+
+              <Section title="Navigate">
+                <Link href="/components/">Inspect components</Link>
+                <Link href="/labs/">Inspect the capability matrix</Link>
+              </Section>
+
+              <Section title="Signal">
+                <AsciiAnimation label="Pulse" fps="6">
+                  <Frame>+---+\n|*  |\n+---+</Frame>
+                  <Frame>+---+\n| * |\n+---+</Frame>
+                  <Frame>+---+\n|  *|\n+---+</Frame>
+                </AsciiAnimation>
+              </Section>
+            </Screen>
+            """
+        ),
+        "landing_poster": _block(
+            """
+            erzanet
+
+            +- [ What If ] ---------------------------------------------------------+
+            | What if websites opened directly in the terminal?                    |
+            | What if the network felt calmer than the browser?                    |
+            +------------------------------------------------------------------------+
+
+            +- [ Navigate ] --------------------------------------------------------+
+            | > Inspect components                                                  |
+            |   Inspect the capability matrix                                       |
+            +------------------------------------------------------------------------+
+            """
+        ),
         "pillars": [
             {
                 "title": "Component-first, not browser-first",
@@ -156,6 +201,11 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             },
         ],
         "examples": [
+            {
+                "name": "Landing",
+                "path": "examples/landing/index.erza",
+                "summary": "A terminal-native splash surface meant for recording and homepage storytelling.",
+            },
             {
                 "name": "Tasks",
                 "path": "examples/tasks/app.erza",

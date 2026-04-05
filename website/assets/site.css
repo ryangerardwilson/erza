@@ -187,6 +187,12 @@ h3 code {
   max-width: 37rem;
 }
 
+.hero-demo {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
 .eyebrow {
   margin: 0 0 0.45rem;
   color: var(--muted-soft);
@@ -239,6 +245,19 @@ h3 {
 .hero .lede {
   max-width: 40rem;
   font-size: 1rem;
+}
+
+.story-questions {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.story-questions p {
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(1rem, 1.7vw, 1.16rem);
+  line-height: 1.45;
 }
 
 .hero-grid,
@@ -303,6 +322,11 @@ h3 {
 
 .command-list-tight {
   margin-top: 0.25rem;
+}
+
+.hero-code {
+  display: grid;
+  gap: 0.55rem;
 }
 
 .matrix-grid {
@@ -383,6 +407,10 @@ pre,
   flex: 1;
   padding: 0.95rem 1.05rem 1.15rem;
   color: rgba(255, 255, 255, 0.9);
+}
+
+.video-placeholder pre {
+  min-height: 22rem;
 }
 
 .ascii-frame-card {
