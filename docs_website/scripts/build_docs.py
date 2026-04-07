@@ -6,7 +6,7 @@ import sys
 
 DOCS_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = DOCS_ROOT.parent
-SRC = REPO_ROOT / "src"
+SRC = REPO_ROOT / "app" / "src"
 
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))

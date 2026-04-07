@@ -5,8 +5,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent
-APP_ROOT = ROOT / "app"
-SRC = APP_ROOT / "src"
+SRC = ROOT / "src"
 PACKAGE_ROOT = SRC / "erza"
 
 if str(SRC) not in sys.path:

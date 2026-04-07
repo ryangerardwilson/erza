@@ -57,7 +57,7 @@ export default function HomePage() {
             <div className="terminal-window video-placeholder">
               <div className="terminal-window-bar">
                 <span>captured hero demo</span>
-                <span>examples/landing</span>
+                <span>app/examples/landing</span>
               </div>
               <video className="hero-video" autoPlay controls loop muted playsInline src={landingVideo} />
             </div>

@@ -61,7 +61,7 @@ export default function LabsPage() {
           ))}
         </div>
         <p className="protocol-link">
-          Run <code>python -m erza run examples/animation</code> locally for the live runtime
+          Run <code>python -m erza run app/examples/animation</code> locally for the live runtime
           version.
         </p>
       </section>

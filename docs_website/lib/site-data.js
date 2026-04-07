@@ -17,9 +17,9 @@ export const nav = [
 ];
 
 export const commands = [
-  { label: "Landing demo", command: "python -m erza run examples/landing" },
-  { label: "Local example", command: "python -m erza run examples/greetings" },
-  { label: "Animation lab", command: "python -m erza run examples/animation" },
+  { label: "Landing demo", command: "python -m erza run app/examples/landing" },
+  { label: "Local example", command: "python -m erza run app/examples/greetings" },
+  { label: "Animation lab", command: "python -m erza run app/examples/animation" },
   { label: "Remote docs", command: "python -m erza run erza.ryangerardwilson.com" },
   { label: "Legacy docs build", command: "./docs_website/update_docs.sh" }
 ];
@@ -30,9 +30,9 @@ export const storyPhrases = [
   "frontend was designed for keyboards first?"
 ];
 
-export const landingCommand = "python -m erza run examples/landing";
+export const landingCommand = "python -m erza run app/examples/landing";
 export const landingVideo = "/assets/landing-demo.mp4";
-const landingMarkupPath = join(process.cwd(), "..", "examples/landing/index.erza");
+const landingMarkupPath = join(process.cwd(), "..", "app", "examples", "landing", "index.erza");
 export const landingMarkup = readFileSync(landingMarkupPath, "utf8");
 
 export const pillars = [
@@ -105,22 +105,22 @@ export const nestingRules = [
 export const examples = [
   {
     name: "Landing",
-    path: "examples/landing/index.erza",
+    path: "app/examples/landing/index.erza",
     summary: "A terminal-native splash surface meant for recording and homepage storytelling."
   },
   {
     name: "Tasks",
-    path: "examples/tasks/app.erza",
+    path: "app/examples/tasks/app.erza",
     summary: "Backend-fed task workflow with page history and remote docs links."
   },
   {
     name: "Greetings",
-    path: "examples/greetings/index.erza",
+    path: "app/examples/greetings/index.erza",
     summary: "A small directory entrypoint with stateful backend changes."
   },
   {
     name: "Animation",
-    path: "examples/animation/index.erza",
+    path: "app/examples/animation/index.erza",
     summary: "A local lab for the new AsciiAnimation component and runtime tick loop."
   }
 ];

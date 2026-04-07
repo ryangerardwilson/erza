@@ -78,11 +78,11 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             {"href": repo_url, "label": "GitHub"},
         ],
         "commands": [
-            {"label": "Landing demo", "command": "python -m erza run examples/landing"},
-            {"label": "Local example", "command": "python -m erza run examples/greetings"},
-            {"label": "Animation lab", "command": "python -m erza run examples/animation"},
+            {"label": "Landing demo", "command": "python -m erza run app/examples/landing"},
+            {"label": "Local example", "command": "python -m erza run app/examples/greetings"},
+            {"label": "Animation lab", "command": "python -m erza run app/examples/animation"},
             {"label": "Remote docs", "command": "python -m erza run erza.ryangerardwilson.com"},
-            {"label": "Docs build", "command": "./update_docs.sh"},
+            {"label": "Docs build", "command": "./docs_website/update_docs.sh"},
         ],
         "story_questions": [
             "What if the internet did not need a web browser or Android/iOS gatekeepers?",
@@ -96,7 +96,7 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
                 "frontend was redesigned to be CLI and TUI first?",
             ]
         ),
-        "landing_command": "python -m erza run examples/landing",
+        "landing_command": "python -m erza run app/examples/landing",
         "landing_video": "/assets/landing-demo.mp4",
         "landing_markup": _block(
             """
@@ -197,22 +197,22 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
         "examples": [
             {
                 "name": "Landing",
-                "path": "examples/landing/index.erza",
+                "path": "app/examples/landing/index.erza",
                 "summary": "A terminal-native splash surface meant for recording and homepage storytelling.",
             },
             {
                 "name": "Tasks",
-                "path": "examples/tasks/app.erza",
+                "path": "app/examples/tasks/app.erza",
                 "summary": "Backend-fed task workflow with page history and remote docs links.",
             },
             {
                 "name": "Greetings",
-                "path": "examples/greetings/index.erza",
+                "path": "app/examples/greetings/index.erza",
                 "summary": "A small directory entrypoint with stateful backend changes.",
             },
             {
                 "name": "Animation",
-                "path": "examples/animation/index.erza",
+                "path": "app/examples/animation/index.erza",
                 "summary": "A local lab for the new AsciiAnimation component and runtime tick loop.",
             },
         ],

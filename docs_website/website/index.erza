@@ -60,7 +60,7 @@
               <div class="terminal-window video-placeholder">
                 <div class="terminal-window-bar">
                   <span>captured hero demo</span>
-                  <span>examples/landing</span>
+                  <span>app/examples/landing</span>
                 </div>
                 <video
                   class="hero-video"

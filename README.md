@@ -58,15 +58,16 @@ See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 ## Quick Start
 
 ```bash
-python -m erza run examples/tasks/app.erza
-python -m erza run examples/greetings
-python -m erza run examples/animation
+python -m erza run app/examples/tasks/app.erza
+python -m erza run app/examples/greetings
+python -m erza run app/examples/animation
 python -m erza run https://erza.ryangerardwilson.com
 python -m erza run erza.ryangerardwilson.com
 ```
 
-If you prefer, `PYTHONPATH=src python -m erza ...` also works. An installed CLI
-is available through `python -m pip install -e .` when `pip` is present.
+If you prefer, `PYTHONPATH=app/src python -m erza ...` also works. An installed
+CLI is available through `cd app && python -m pip install -e .` when `pip` is
+present.
 
 `erza` automatically loads `backend.py` from the same directory as the `.erza`
 entry file unless `--backend` is provided explicitly. If you pass a directory,
@@ -137,9 +138,9 @@ literals, and `backend(...)` calls.
 </Screen>
 ```
 
-The bundled examples in [`examples/tasks/app.erza`](examples/tasks/app.erza)
-[`examples/greetings/index.erza`](examples/greetings/index.erza), and
-[`examples/animation/index.erza`](examples/animation/index.erza) demonstrate
+The bundled examples in [`app/examples/tasks/app.erza`](app/examples/tasks/app.erza)
+[`app/examples/greetings/index.erza`](app/examples/greetings/index.erza), and
+[`app/examples/animation/index.erza`](app/examples/animation/index.erza) demonstrate
 the full loop:
 
 - load backend data during template expansion
@@ -174,6 +175,7 @@ npm run build
 
 Relevant paths:
 
+- `app/`: runtime package, examples, tests, and packaging metadata
 - `docs_website/app/`: Next.js routes
 - `docs_website/ui/`: shared React UI pieces for the docs site
 - `docs_website/lib/site-data.js`: docs content data
@@ -184,14 +186,14 @@ Relevant paths:
 
 ## Repo Layout
 
-- `src/erza/template.py`: constrained `.erza` template engine
-- `src/erza/parser.py`: rendered-markup to component-tree compiler
-- `src/erza/runtime.py`: terminal renderer, section navigation, and event loop
-- `src/erza/backend.py`: Python backend bridge
-- `src/erza/remote.py`: remote fetch and read-only remote viewer
-- `examples/animation/`: local AsciiAnimation lab
-- `examples/`: runnable terminal examples
-- `tests/`: unit coverage for templates, parsing, runtime behavior, and docs build
+- `app/src/erza/template.py`: constrained `.erza` template engine
+- `app/src/erza/parser.py`: rendered-markup to component-tree compiler
+- `app/src/erza/runtime.py`: terminal renderer, section navigation, and event loop
+- `app/src/erza/backend.py`: Python backend bridge
+- `app/src/erza/remote.py`: remote fetch and read-only remote viewer
+- `app/examples/animation/`: local AsciiAnimation lab
+- `app/examples/`: runnable terminal examples
+- `app/tests/`: unit coverage for templates, parsing, runtime behavior, and docs build
 
 ## Status
 
