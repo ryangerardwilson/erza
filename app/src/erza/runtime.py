@@ -275,6 +275,7 @@ class _RuntimeSession:
     def __init__(self, app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
         self.app = app
         self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
+        self._screen: Screen | None = None
         self.section_index = 0
         self.item_indices: list[int] = []
         self.scroll_offset = 0
@@ -295,7 +296,7 @@ class _RuntimeSession:
         stdscr.keypad(True)
 
         while True:
-            screen = self.app.build_screen()
+            screen = self._current_screen()
             animation_time = time.monotonic() - self.animation_epoch
             plan = build_render_plan(screen, animation_time=animation_time)
             self._sync_state(plan)
@@ -344,6 +345,16 @@ class _RuntimeSession:
             if key in {ord("l"), curses.KEY_RIGHT, curses.KEY_ENTER, ord("\n"), ord(" ")}:
                 self._activate(plan)
                 continue
+
+    def _current_screen(self) -> Screen:
+        if self._screen is None:
+            self._screen = self.app.build_screen()
+        return self._screen
+
+    def _invalidate_screen(self, *, reset_animation: bool = False) -> None:
+        self._screen = None
+        if reset_animation:
+            self.animation_epoch = time.monotonic()
 
     def _sync_state(self, plan: RenderPlan) -> None:
         if not plan.sections:
@@ -408,6 +419,7 @@ class _RuntimeSession:
             self.status = "no previous page"
             return
         self.app = self.history.pop()
+        self._invalidate_screen(reset_animation=True)
         self.section_index = 0
         self.item_indices = []
         self.scroll_offset = 0
@@ -426,6 +438,7 @@ class _RuntimeSession:
         target = section.actionables[self.item_indices[self.section_index]].actionable
         if isinstance(target, Button):
             self.app.backend.call(target.action, **target.params)
+            self._invalidate_screen(reset_animation=True)
             self.status = f"ran {target.action}"
             return
 
@@ -437,6 +450,7 @@ class _RuntimeSession:
 
         self.history.append(self.app)
         self.app = next_app
+        self._invalidate_screen(reset_animation=True)
         self.section_index = 0
         self.item_indices = []
         self.scroll_offset = 0
