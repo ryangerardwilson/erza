@@ -21,7 +21,7 @@ export const commands = [
   { label: "Local example", command: "python -m erza run examples/greetings" },
   { label: "Animation lab", command: "python -m erza run examples/animation" },
   { label: "Remote docs", command: "python -m erza run erza.ryangerardwilson.com" },
-  { label: "Legacy docs build", command: "./update_docs.sh" }
+  { label: "Legacy docs build", command: "./docs_website/update_docs.sh" }
 ];
 
 export const storyPhrases = [
@@ -32,7 +32,7 @@ export const storyPhrases = [
 
 export const landingCommand = "python -m erza run examples/landing";
 export const landingVideo = "/assets/landing-demo.mp4";
-const landingMarkupPath = join(process.cwd(), "examples/landing/index.erza");
+const landingMarkupPath = join(process.cwd(), "..", "examples/landing/index.erza");
 export const landingMarkup = readFileSync(landingMarkupPath, "utf8");
 
 export const pillars = [

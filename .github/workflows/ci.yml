@@ -23,6 +23,9 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs_website
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,6 +35,7 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
+          cache-dependency-path: docs_website/package-lock.json
 
       - name: Install web dependencies
         run: npm ci

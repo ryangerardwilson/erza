@@ -152,12 +152,13 @@ the full loop:
 
 ## Docs Site
 
-The public docs site now runs as a root-level Next.js app and is intended to be
+The public docs site now lives in `docs_website/` and is intended to be
 iterated on like a normal web app while the terminal runtime evolves beside it.
 
 Local docs workflow:
 
 ```bash
+cd docs_website
 npm install
 npm run dev
 ```
@@ -167,19 +168,19 @@ Then open `http://localhost:3000`.
 Production build:
 
 ```bash
+cd docs_website
 npm run build
 ```
 
 Relevant paths:
 
-- `app/`: Next.js routes
-- `ui/`: shared React UI pieces for the docs site
-- `lib/site-data.js`: docs content data
-- `public/assets/landing-demo.mp4`: homepage demo capture
+- `docs_website/app/`: Next.js routes
+- `docs_website/ui/`: shared React UI pieces for the docs site
+- `docs_website/lib/site-data.js`: docs content data
+- `docs_website/public/assets/landing-demo.mp4`: homepage demo capture
+- `docs_website/website/`: archived static `.erza` docs source
+- `docs_website/update_docs.sh`: archived legacy docs builder entrypoint
 - `.github/workflows/ci.yml`: Python + Next build verification
-
-Legacy static docs source remains in `website/` for now as an archived reference
-to the earlier builder-driven version.
 
 ## Repo Layout
 
