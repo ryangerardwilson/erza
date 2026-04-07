@@ -16,15 +16,24 @@ import {
 export default function HomePage() {
   return (
     <SiteFrame footer="home">
-      <section className="hero hero-story">
-        <TypewriterHero phrases={storyPhrases} />
+      <section className="hero hero-home">
+        <div className="hero-poster">
+          <div className="brand-lockup" aria-label="ERZA">
+            <div className="brand-mark" aria-hidden="true">
+              <span className="brand-mark-left" />
+              <span className="brand-mark-right" />
+            </div>
+            <h1 className="brand-word">ERZA</h1>
+          </div>
+          <TypewriterHero phrases={storyPhrases} />
+        </div>
         <p className="lede story-lede">
           <code>erza</code> is the wager that websites, product surfaces, and documentation can be
           designed CLI and TUI first, then opened over HTTPS without leaving the terminal.
         </p>
       </section>
 
-      <section className="section section-first">
+      <section className="section section-first home-proof">
         <div className="page-grid demo-grid">
           <div className="demo-column">
             <div className="section-heading section-heading-compact">

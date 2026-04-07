@@ -6,9 +6,6 @@ export default function SiteFrame({ children, narrow = false, footer = "home" })
   return (
     <div className={narrow ? "shell shell-narrow" : "shell"}>
       <header className="topbar">
-        <Link className="brand" href="/">
-          erza
-        </Link>
         <nav className="nav">
           {nav.map((item) =>
             item.external ? (

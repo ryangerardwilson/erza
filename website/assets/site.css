@@ -120,7 +120,7 @@ h3 code {
   z-index: 1;
   max-width: 1040px;
   margin: 0 auto;
-  padding: 1.5rem 1.35rem 4.5rem;
+  padding: 1.35rem 1.35rem 4.5rem;
 }
 
 .shell-narrow {
@@ -129,36 +129,25 @@ h3 code {
 
 .topbar {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  justify-content: flex-end;
+  align-items: center;
   gap: 1rem;
-  margin-bottom: 3.6rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--line);
-}
-
-.brand {
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-decoration: none;
-  text-transform: lowercase;
+  margin-bottom: 1.8rem;
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.65rem 1rem;
+  gap: 0.65rem 1.35rem;
 }
 
 .nav a {
-  color: var(--muted-soft);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-decoration: none;
-  text-transform: uppercase;
 }
 
 .nav a:hover {
@@ -169,39 +158,72 @@ h3 code {
   padding: 0 0 2.2rem;
 }
 
-.hero-story {
-  max-width: 68rem;
-  margin: 0 auto;
+.hero-home {
+  display: grid;
+  justify-items: center;
+  min-height: min(74svh, 760px);
+  padding-top: clamp(2rem, 5vw, 4rem);
   text-align: center;
 }
 
 .hero-small {
   max-width: 54rem;
+  margin: 0 auto;
 }
 
-.hero-grid-shell {
+.hero-poster {
   display: grid;
-  gap: clamp(1.6rem, 4vw, 3rem);
-  align-items: start;
-  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  justify-items: center;
+  align-content: center;
+  gap: clamp(1.1rem, 2.6vw, 1.8rem);
+  width: 100%;
+  flex: 1;
 }
 
-.hero-copy {
+.brand-lockup {
   display: grid;
-  gap: 0.95rem;
-  align-content: start;
-  max-width: 37rem;
+  justify-items: center;
+  gap: clamp(0.85rem, 2vw, 1.35rem);
 }
 
-.hero-demo {
-  display: grid;
-  gap: 1rem;
-  align-content: start;
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.7rem, 1.8vw, 1rem);
+}
+
+.brand-mark-left,
+.brand-mark-right {
+  display: block;
+  height: clamp(2.7rem, 5vw, 4rem);
+  border-radius: 0.2rem;
+}
+
+.brand-mark-left {
+  width: clamp(4.4rem, 8vw, 6.2rem);
+  background: rgba(255, 255, 255, 0.9);
+  clip-path: polygon(0 50%, 22% 0, 100% 0, 78% 100%, 22% 100%);
+}
+
+.brand-mark-right {
+  width: clamp(2.6rem, 4.6vw, 3.5rem);
+  background: rgba(255, 255, 255, 0.38);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.brand-word {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(4.8rem, 14vw, 10.5rem);
+  font-weight: 700;
+  letter-spacing: -0.11em;
+  line-height: 0.9;
+  text-transform: uppercase;
 }
 
 .story-stack {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.35rem;
   justify-items: center;
   max-width: 40rem;
   margin: 0 auto;
@@ -209,11 +231,12 @@ h3 code {
 
 .story-prefix {
   margin-bottom: 0;
-  color: #fff;
-  font-size: clamp(1.48rem, 3.8vw, 2.28rem);
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: -0.05em;
+  color: var(--muted-soft);
+  font-size: clamp(0.92rem, 1.6vw, 1.08rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .story-rotator {
@@ -254,7 +277,7 @@ h3 code {
 
 .story-lede {
   max-width: 40rem;
-  margin: 1rem auto 0;
+  margin: 1.5rem auto 0;
   text-align: center;
 }
 
@@ -346,6 +369,10 @@ h3 {
 
 .section-first {
   margin-top: 1.8rem;
+}
+
+.home-proof {
+  margin-top: clamp(4.5rem, 10vw, 8rem);
 }
 
 .section-accent {
@@ -575,7 +602,6 @@ pre,
     padding: 1rem 1rem 3rem;
   }
 
-  .topbar,
   .footer {
     flex-direction: column;
     align-items: flex-start;
@@ -583,6 +609,7 @@ pre,
 
   .topbar {
     margin-bottom: 2.4rem;
+    justify-content: flex-start;
   }
 
   .section {
