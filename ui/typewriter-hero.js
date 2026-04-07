@@ -23,12 +23,16 @@ export default function TypewriterHero({ phrases }) {
     rotator.appendChild(measure);
 
     const reserveHeight = () => {
+      const computed = window.getComputedStyle(measure);
+      const lineHeight =
+        Number.parseFloat(computed.lineHeight) || Number.parseFloat(computed.fontSize) * 1.05 || 0;
+      const minimumHeight = lineHeight * 2;
       let maxHeight = 0;
       for (const phrase of phrases) {
         measure.textContent = phrase;
         maxHeight = Math.max(maxHeight, measure.getBoundingClientRect().height);
       }
-      rotator.style.minHeight = `${Math.ceil(maxHeight)}px`;
+      rotator.style.minHeight = `${Math.ceil(Math.max(maxHeight, minimumHeight))}px`;
     };
 
     reserveHeight();

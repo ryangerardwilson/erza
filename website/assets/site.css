@@ -220,6 +220,7 @@ h3 code {
   width: 100%;
   max-width: 40rem;
   margin-bottom: 0;
+  min-height: 2.1em;
 }
 
 .typewriter-target {
