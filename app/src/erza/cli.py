@@ -30,7 +30,10 @@ def main(argv: list[str] | None = None) -> int:
             app = _build_app(source, args.backend)
         except RemoteError as exc:
             parser.error(str(exc))
-        run_curses_app(app)
+        try:
+            run_curses_app(app)
+        except RemoteError as exc:
+            parser.error(str(exc))
         return 0
 
     parser.print_help()

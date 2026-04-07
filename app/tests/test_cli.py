@@ -3,12 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 from _test_bootstrap import ensure_test_paths
 
 ensure_test_paths()
 
-from erza.cli import _build_parser, _resolve_source_path
+from erza.cli import _build_parser, _resolve_source_path, main
+from erza.remote import RemoteError
 from erza.source import SourceResolutionError
 
 
@@ -44,6 +46,16 @@ class CliTests(unittest.TestCase):
         resolved = _resolve_source_path("example.com/docs")
 
         self.assertEqual(resolved, "https://example.com/docs")
+
+    def test_remote_runtime_error_is_reported_as_cli_error(self) -> None:
+        with patch("erza.cli._build_app", return_value=object()), patch(
+            "erza.cli.run_curses_app",
+            side_effect=RemoteError("failed to fetch remote source: https://example.com"),
+        ):
+            with self.assertRaises(SystemExit) as exc:
+                main(["run", "example.com"])
+
+        self.assertEqual(exc.exception.code, 2)
 
 
 if __name__ == "__main__":
