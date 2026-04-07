@@ -2,8 +2,8 @@
 
 Primary project documentation lives in the repo-root `README.md`.
 
-This directory contains the installable Python package, runnable examples, and
-test suite.
+This directory contains the launcher, runtime source, runnable examples, test
+suite, and install metadata for the app workspace.
 
 Canonical app entrypoints in this workspace:
 

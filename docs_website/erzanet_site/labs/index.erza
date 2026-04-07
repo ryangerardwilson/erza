@@ -64,7 +64,7 @@
             <? endfor ?>
           </div>
           <p class="protocol-link">
-            Run <code>python main.py run app/examples/animation</code> locally for
+            Run <code>python app/main.py run app/examples/animation</code> locally for
             the live runtime version.
           </p>
         </section>

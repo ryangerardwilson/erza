@@ -58,18 +58,18 @@ See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 ## Quick Start
 
 ```bash
-python main.py run app/examples/docs
-python main.py run app/examples/tasks/app.erza
-python main.py run app/examples/greetings
-python main.py run app/examples/animation
-python main.py run https://erza.ryangerardwilson.com
-python main.py run erza.ryangerardwilson.com
+python app/main.py run app/examples/docs
+python app/main.py run app/examples/tasks/app.erza
+python app/main.py run app/examples/greetings
+python app/main.py run app/examples/animation
+erza run https://erza.ryangerardwilson.com
+erza run erza.ryangerardwilson.com
 ```
 
 If you prefer working inside the app workspace, `cd app && python main.py ...`
-also works. An installed CLI is available through `cd app && python -m pip
-install -e .` when `pip` is present, after which `erza run ...` works as the
-packaged command.
+also works. The install surface follows the same pattern as your other apps:
+`cd app && ./install.sh -u` installs or upgrades the CLI, after which
+`erza run ...` works as the installed command.
 
 Canonical launcher and installer surface from the app workspace:
 
@@ -190,9 +190,10 @@ npm run build
 
 Relevant paths:
 
-- `app/`: runtime package, examples, tests, and packaging metadata
+- `app/`: runtime code, examples, tests, and installer metadata
 - `app/main.py`: canonical launcher entrypoint for the app workspace
 - `app/install.sh`: installer and upgrade path for the app workspace
+- `app/requirements.txt`: Python dependency manifest for the app workspace
 - `app/_version.py`: single runtime version source
 - `docs_website/app/`: Next.js routes
 - `docs_website/ui/`: shared React UI pieces for the docs site

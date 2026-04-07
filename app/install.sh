@@ -204,6 +204,10 @@ install_ref() {
   fi
 
   "$python_bin" -m venv "$VENV_DIR"
+  "$VENV_DIR/bin/pip" install --disable-pip-version-check -U pip >/dev/null
+  if [[ -f "${APP_DIR}/requirements.txt" ]]; then
+    "$VENV_DIR/bin/pip" install --disable-pip-version-check -r "${APP_DIR}/requirements.txt" >/dev/null
+  fi
   write_internal_launcher
   write_public_launcher
   trap - RETURN

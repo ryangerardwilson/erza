@@ -1,0 +1,1 @@
+# erza currently has no external Python dependencies.
