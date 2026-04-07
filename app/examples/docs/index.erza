@@ -1,19 +1,27 @@
-<Screen title="ERZA Docs">
+<Screen title="ERZA Start">
   <Section title="ERZA">
-    <Header>Same host, two renderers.</Header>
-    <Text>The browser gets the Next.js docs. erza gets simple .erza pages from the same domain.</Text>
-    <Text>Open pages with l. Go back with h. Quit with q.</Text>
+    <Header>Start here.</Header>
+    <Text>erza opens local .erza files and hosted terminal pages from the terminal.</Text>
+    <Text>Use it when docs, tools, or product surfaces feel worse inside a browser tab.</Text>
   </Section>
 
-  <Section title="Pages">
+  <Section title="Get Started">
+    <Text>Read these pages in order if you are new.</Text>
+    <Link href="install">Install</Link>
+    <Link href="first-run">First Run</Link>
+    <Link href="first-file">First File</Link>
+  </Section>
+
+  <Section title="Build">
+    <Text>Then move into the language, backend, remote model, and examples.</Text>
     <Link href="components">Components</Link>
-    <Link href="patterns">Patterns</Link>
-    <Link href="labs">Labs</Link>
-    <Link href="protocol">Protocol</Link>
+    <Link href="backend">Backend</Link>
+    <Link href="remote">Remote</Link>
+    <Link href="examples">Examples</Link>
   </Section>
 
-  <Section title="Remote">
-    <Text>Run erza run erza.ryangerardwilson.com to open this version over HTTPS.</Text>
-    <Text>The hosted domain serves browser pages and terminal pages together.</Text>
+  <Section title="Reference">
+    <Text>Patterns, labs, and protocol notes live here once the basics make sense.</Text>
+    <Link href="reference">Reference</Link>
   </Section>
 </Screen>

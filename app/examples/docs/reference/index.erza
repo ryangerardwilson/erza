@@ -1,0 +1,17 @@
+<Screen title="ERZA Reference">
+  <Section title="Reference">
+    <Header>Deep notes after the basics.</Header>
+    <Text>Use these pages once you already understand the core screen model and have run at least one example.</Text>
+  </Section>
+
+  <Section title="Read">
+    <Link href="../patterns">Patterns</Link>
+    <Link href="../labs">Labs</Link>
+    <Link href="../protocol">Protocol</Link>
+  </Section>
+
+  <Section title="Back">
+    <Link href="../examples">Examples</Link>
+    <Link href="../">Start Here</Link>
+  </Section>
+</Screen>

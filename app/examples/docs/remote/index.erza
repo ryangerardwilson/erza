@@ -1,0 +1,24 @@
+<Screen title="ERZA Remote">
+  <Section title="Remote">
+    <Header>erza can open a host directly over HTTPS.</Header>
+    <Text>Run erza run example.com and the client assumes HTTPS.</Text>
+    <Text>The client asks the host for an erza page before it falls back to HTML.</Text>
+  </Section>
+
+  <Section title="Same Host">
+    <Text>The browser can get Next.js pages while erza gets .erza pages from the same domain.</Text>
+    <Text>The current hosted docs at erza.ryangerardwilson.com already do this.</Text>
+  </Section>
+
+  <Section title="Current Boundary">
+    <Text>The authoring surface stays .erza.</Text>
+    <Text>The future transport should stay declarative and must not ship arbitrary backend code to the client.</Text>
+    <Text>HTML fallback still exists today for hosts that do not expose terminal-native pages.</Text>
+  </Section>
+
+  <Section title="Next">
+    <Link href="../examples">Examples</Link>
+    <Link href="../reference">Reference</Link>
+    <Link href="../backend">Backend</Link>
+  </Section>
+</Screen>

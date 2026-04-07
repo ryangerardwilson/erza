@@ -1,0 +1,18 @@
+<Screen title="ERZA Install">
+  <Section title="Install">
+    <Header>Install or upgrade the CLI.</Header>
+    <Text>From a clone of the repo, run: cd app && ./install.sh -u</Text>
+    <Text>Check the installed version with: erza -v</Text>
+    <Text>The installer keeps the app in ~/.erza and writes a launcher to ~/.local/bin.</Text>
+  </Section>
+
+  <Section title="Without Installing">
+    <Text>You can still run local examples directly from the repo.</Text>
+    <Text>python app/main.py run app/examples/landing</Text>
+  </Section>
+
+  <Section title="Next">
+    <Link href="../first-run">First Run</Link>
+    <Link href="../">Start Here</Link>
+  </Section>
+</Screen>

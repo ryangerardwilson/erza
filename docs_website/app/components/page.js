@@ -1,98 +1,61 @@
 import SiteFrame from "@/ui/site-frame";
 import { remoteCommandForPage } from "@/lib/erza-pages";
-import { animationFrames, animationMarkup, componentFamilies, nestingRules } from "@/lib/site-data";
+import { componentFamilies } from "@/lib/site-data";
 
 export const metadata = {
   title: "Components",
-  description: "Component gallery and nesting rules for erza."
+  description: "Light browser preview of erza components."
 };
 
 export default function ComponentsPage() {
   return (
     <SiteFrame footer="back">
       <section className="hero hero-small">
-        <p className="eyebrow">component gallery</p>
-        <h1>A small component set with hard boundaries.</h1>
+        <p className="eyebrow">components</p>
+        <h1>A small component surface, with the full rules in the terminal docs.</h1>
         <p className="lede">
-          The goal is not widget sprawl. It is a compact set of primitives with clear nesting
-          rules, reliable motion, and enough structure to make remote terminal documents feel
-          deliberate.
-        </p>
-        <p className="terminal-twin">
-          In erza: <code>{remoteCommandForPage("/components")}</code>
+          erza keeps the public vocabulary intentionally small. The browser page only previews the
+          current groups. The detailed walkthrough, nesting rules, and usage notes live in the
+          terminal docs.
         </p>
       </section>
 
       <section className="section">
         <div className="section-heading">
-          <p className="eyebrow">families</p>
+          <p className="eyebrow">preview</p>
           <h2>Current component groups</h2>
         </div>
-        <div className="card-grid">
+        <div className="family-list">
           {componentFamilies.map((family) => (
-            <article className="card" key={family.name}>
+            <article className="family-row" key={family.name}>
               <h3>{family.name}</h3>
               <p>{family.summary}</p>
-              <ul className="bullet-list">
-                {family.items.map((item) => (
-                  <li key={item}>
+              <p className="family-items">
+                {family.items.map((item, index) => (
+                  <span key={item}>
                     <code>{item}</code>
-                  </li>
+                    {index < family.items.length - 1 ? "  " : ""}
+                  </span>
                 ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section-heading">
-          <p className="eyebrow">nesting</p>
-          <h2>Rules worth enforcing in the language</h2>
-        </div>
-        <div className="card-grid">
-          {nestingRules.map((rule) => (
-            <article className="card" key={rule.parent}>
-              <h3>
-                <code>{rule.parent}</code>
-              </h3>
-              <p>
-                <strong>Allows:</strong> {rule.allows}
               </p>
-              <p>{rule.body}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="section section-accent">
+      <section className="section section-first">
         <div className="section-heading">
-          <p className="eyebrow">motion</p>
-          <h2>The new AsciiAnimation component</h2>
+          <p className="eyebrow">open in terminal</p>
+          <h2>The detailed component docs are in erza.</h2>
         </div>
-        <div className="page-grid">
-          <div>
-            <p>
-              The runtime component is declarative: a label, an FPS value, and a sequence of raw
-              ASCII frames. The docs site cannot play it natively, so this page shows the poster
-              and the source shape instead.
-            </p>
-            <pre className="code-block">
-              <code>{animationMarkup}</code>
-            </pre>
-          </div>
-          <div>
-            <div className="ascii-gallery">
-              {animationFrames.map((frame) => (
-                <article className="ascii-frame-card" key={frame.title}>
-                  <p className="command-label">{frame.title}</p>
-                  <pre className="ascii-stage">
-                    <code>{frame.art}</code>
-                  </pre>
-                </article>
-              ))}
-            </div>
-          </div>
+        <div className="terminal-jump">
+          <pre className="code-block">
+            <code>{remoteCommandForPage("/components")}</code>
+          </pre>
+          <p className="protocol-link">
+            The terminal page covers what each component is for, which ones own layout, and how
+            links, actions, and animation should be used.
+          </p>
         </div>
       </section>
     </SiteFrame>

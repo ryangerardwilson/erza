@@ -1,0 +1,20 @@
+<Screen title="ERZA First Run">
+  <Section title="First Run">
+    <Header>Open something immediately.</Header>
+    <Text>Hosted docs: erza run erza.ryangerardwilson.com</Text>
+    <Text>Local landing: python app/main.py run app/examples/landing</Text>
+    <Text>Local greetings example: python app/main.py run app/examples/greetings</Text>
+  </Section>
+
+  <Section title="Movement">
+    <Text>Ctrl+N and Ctrl+P move between panels.</Text>
+    <Text>j and k move inside the active panel.</Text>
+    <Text>l opens the focused link. h goes back. q exits cleanly.</Text>
+  </Section>
+
+  <Section title="Next">
+    <Link href="../first-file">First File</Link>
+    <Link href="../install">Install</Link>
+    <Link href="../">Start Here</Link>
+  </Section>
+</Screen>

@@ -485,6 +485,10 @@ h3 {
   grid-template-columns: minmax(0, 1.05fr) minmax(290px, 0.95fr);
 }
 
+.home-grid {
+  align-items: start;
+}
+
 .demo-grid {
   align-items: start;
 }
@@ -613,6 +617,37 @@ pre,
 
 .protocol-link {
   margin-top: 1.15rem;
+}
+
+.statement-list,
+.family-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.statement-list p,
+.family-row {
+  margin-bottom: 0;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.family-row {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.family-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.6rem;
+  color: var(--muted);
+}
+
+.terminal-jump {
+  display: grid;
+  gap: 0.8rem;
+  max-width: 40rem;
 }
 
 .terminal-twin {

@@ -2,6 +2,7 @@
   <Section title="Labs">
     <Header>What works where.</Header>
     <Text>Use the hosted site as a checkpoint for runtime, browser, and erzanet gaps.</Text>
+    <Text>This page matters after you already know the basic authoring model.</Text>
   </Section>
 
   <Section title="Status">
@@ -17,10 +18,9 @@
     <Text>Keep the animation component declarative and safe to transport.</Text>
   </Section>
 
-  <Section title="Open">
-    <Link href="../">Docs</Link>
-    <Link href="../components">Components</Link>
-    <Link href="../patterns">Patterns</Link>
+  <Section title="Next">
     <Link href="../protocol">Protocol</Link>
+    <Link href="../reference">Reference</Link>
+    <Link href="../patterns">Patterns</Link>
   </Section>
 </Screen>

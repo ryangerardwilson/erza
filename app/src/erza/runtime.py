@@ -173,10 +173,6 @@ def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderP
             lines.append([])
             cursor_y += 1
 
-    lines.append([])
-    lines.append(
-        [Segment(x=0, text="ctrl-n/p sections  gg top  G end  j/k within  h back  l open  q quit", style="help")]
-    )
     return RenderPlan(
         title=screen.title,
         lines=lines,
@@ -539,14 +535,15 @@ def _build_block(component: Component, *, animation_time: float, max_width: int)
     if isinstance(component, Text):
         return _wrapped_text_block(component.content, style="text", max_width=max_width)
     if isinstance(component, Link):
-        label = _truncate_text(f"-> {component.label}", max_width)
-        block = _leaf_block(label, style="action")
+        display_label = _truncate_text(f"*{component.label}*", max_width)
+        active_label = _truncate_text(f"-> *{component.label}*", max_width)
+        block = _leaf_block(display_label, style="action")
         block.actionables.append(
             ActionableTarget(
                 x=0,
                 y=0,
-                width=len(label),
-                label_text=label,
+                width=len(active_label),
+                label_text=active_label,
                 actionable=component,
             )
         )

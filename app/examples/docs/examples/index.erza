@@ -1,0 +1,26 @@
+<Screen title="ERZA Examples">
+  <Section title="Examples">
+    <Header>Run the local surfaces and read the source.</Header>
+    <Text>These examples are the fastest way to see what the runtime can already do.</Text>
+  </Section>
+
+  <Section title="Current">
+    <Text>Landing: app/examples/landing and a recordable hero surface.</Text>
+    <Text>Greetings: app/examples/greetings and simple backend state changes.</Text>
+    <Text>Tasks: app/examples/tasks/app.erza and a backend-fed workflow.</Text>
+    <Text>Animation: app/examples/animation and the AsciiAnimation tick loop.</Text>
+  </Section>
+
+  <Section title="Commands">
+    <Text>python app/main.py run app/examples/landing</Text>
+    <Text>python app/main.py run app/examples/greetings</Text>
+    <Text>python app/main.py run app/examples/tasks/app.erza</Text>
+    <Text>python app/main.py run app/examples/animation</Text>
+  </Section>
+
+  <Section title="Next">
+    <Link href="../reference">Reference</Link>
+    <Link href="../remote">Remote</Link>
+    <Link href="../">Start Here</Link>
+  </Section>
+</Screen>

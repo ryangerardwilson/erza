@@ -53,6 +53,9 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(
             plan.lines[plan.sections[0].y + plan.sections[0].height - 1][0].text.startswith("+---")
         )
+        link_line = " ".join(segment.text for segment in plan.lines[plan.sections[1].y + 1])
+        self.assertIn("*Protocol*", link_line)
+        self.assertEqual(plan.sections[1].actionables[0].label_text, "-> *Protocol*")
 
     def test_section_and_item_navigation_wraps(self) -> None:
         screen = Screen(

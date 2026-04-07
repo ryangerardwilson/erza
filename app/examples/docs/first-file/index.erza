@@ -1,0 +1,28 @@
+<Screen title="ERZA First File">
+  <Section title="First File">
+    <Header>Write the smallest useful page.</Header>
+    <Text>Put this in index.erza inside a directory you can run.</Text>
+  </Section>
+
+  <Section title="Shape">
+    <Text>&lt;Screen title="Hello"&gt;</Text>
+    <Text>&lt;Section title="Intro"&gt;</Text>
+    <Text>&lt;Header&gt;Hello&lt;/Header&gt;</Text>
+    <Text>&lt;Text&gt;This is a terminal page.&lt;/Text&gt;</Text>
+    <Text>&lt;Link href="https://erza.ryangerardwilson.com/components"&gt;Open components&lt;/Link&gt;</Text>
+    <Text>&lt;/Section&gt;</Text>
+    <Text>&lt;/Screen&gt;</Text>
+  </Section>
+
+  <Section title="Rules">
+    <Text>Screen owns the page title and the top-level composition.</Text>
+    <Text>Section owns one idea or one workflow step.</Text>
+    <Text>backend.py is optional until you need state or actions.</Text>
+  </Section>
+
+  <Section title="Next">
+    <Link href="../components">Components</Link>
+    <Link href="../backend">Backend</Link>
+    <Link href="../first-run">First Run</Link>
+  </Section>
+</Screen>

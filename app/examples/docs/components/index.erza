@@ -1,27 +1,40 @@
 <Screen title="ERZA Components">
   <Section title="Components">
-    <Header>Small component set. Hard edges.</Header>
-    <Text>Keep the authoring surface compact and the runtime predictable.</Text>
+    <Header>The language stays small on purpose.</Header>
+    <Text>erza is not aiming for a huge widget catalog. The public pieces should stay legible enough to remember.</Text>
   </Section>
 
-  <Section title="Current">
-    <Text>Shell: Screen, Section, Column, Row</Text>
-    <Text>Content: Header, Text, Link</Text>
-    <Text>Action: Action, Button</Text>
-    <Text>Motion: AsciiAnimation, Frame</Text>
+  <Section title="Shell">
+    <Text>Screen owns the page title and the top-level composition.</Text>
+    <Text>Section owns one idea, one workflow step, or one cluster of actions.</Text>
+    <Text>Column stacks children. Row keeps tightly related items side by side.</Text>
+  </Section>
+
+  <Section title="Content">
+    <Text>Header names the current idea.</Text>
+    <Text>Text carries prose, status, and explanation.</Text>
+    <Text>Link opens another page, local or remote.</Text>
+  </Section>
+
+  <Section title="Action">
+    <Text>Action or Button calls a backend handler.</Text>
+    <Text>Links change pages. Actions mutate state.</Text>
+  </Section>
+
+  <Section title="Motion">
+    <Text>AsciiAnimation holds raw Frame children, an fps value, and a label.</Text>
+    <Text>Keep motion sparse. It should clarify a surface, not dominate it.</Text>
   </Section>
 
   <Section title="Rules">
-    <Text>Screen owns the page.</Text>
-    <Text>Section owns one idea or one workflow step.</Text>
-    <Text>AsciiAnimation only accepts Frame children.</Text>
-    <Text>Rows stay compact. Long prose belongs in columns.</Text>
+    <Text>Keep one strong idea per section.</Text>
+    <Text>Keep rows compact. Long prose belongs in columns.</Text>
+    <Text>Keep animation declarative and safe to transport.</Text>
   </Section>
 
-  <Section title="Open">
-    <Link href="../">Docs</Link>
-    <Link href="../patterns">Patterns</Link>
-    <Link href="../labs">Labs</Link>
-    <Link href="../protocol">Protocol</Link>
+  <Section title="Next">
+    <Link href="../backend">Backend</Link>
+    <Link href="../examples">Examples</Link>
+    <Link href="../">Start Here</Link>
   </Section>
 </Screen>

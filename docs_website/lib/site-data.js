@@ -16,6 +16,19 @@ export const nav = [
   { href: site.repoUrl, label: "GitHub", external: true }
 ];
 
+export const whyUseCases = [
+  "Long docs that should open without browser chrome, banners, or tab sprawl.",
+  "Remote tools that should feel keyboard-native instead of browser-heavy.",
+  "Focused workflows where the terminal is already the right place to stay."
+];
+
+export const starterScript = `git clone https://github.com/ryangerardwilson/erza.git
+cd erza/app && ./install.sh -u
+erza run erza.ryangerardwilson.com`;
+
+export const terminalDocsCommand = "erza run erza.ryangerardwilson.com";
+export const terminalDocsSequence = ["Install", "First Run", "First File"];
+
 export const commands = [
   { label: "Landing demo", command: "python app/main.py run app/examples/landing" },
   { label: "Local example", command: "python app/main.py run app/examples/greetings" },

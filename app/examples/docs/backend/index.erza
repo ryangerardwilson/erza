@@ -1,0 +1,26 @@
+<Screen title="ERZA Backend">
+  <Section title="Backend">
+    <Header>backend.py lives beside the .erza file.</Header>
+    <Text>Use Python as the current prototype backend, but keep the language model product-level and language-neutral.</Text>
+    <Text>A handler is just a named function the template or runtime can call.</Text>
+  </Section>
+
+  <Section title="Shape">
+    <Text>@handler("tasks.list")</Text>
+    <Text>def tasks_list():</Text>
+    <Text>return [{"id": 1, "title": "Ship erza docs"}]</Text>
+    <Text>Template call: backend("tasks.list")</Text>
+  </Section>
+
+  <Section title="Rules">
+    <Text>backend.py is auto-loaded from the same directory as the entry file.</Text>
+    <Text>Action attributes like task:id arrive as Python kwargs like task_id.</Text>
+    <Text>Use links for navigation and actions for state changes.</Text>
+  </Section>
+
+  <Section title="Next">
+    <Link href="../remote">Remote</Link>
+    <Link href="../examples">Examples</Link>
+    <Link href="../components">Components</Link>
+  </Section>
+</Screen>

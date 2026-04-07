@@ -2,6 +2,7 @@
   <Section title="Protocol">
     <Header>Remote mode over HTTPS.</Header>
     <Text>The browser and the terminal can share one host without sharing one renderer.</Text>
+    <Text>This is the transport sketch behind erzanet, not a browser replacement plan.</Text>
   </Section>
 
   <Section title="Flow">
@@ -18,10 +19,9 @@
     <Text>Avoid inheriting browser-compatibility scope by accident.</Text>
   </Section>
 
-  <Section title="Open">
-    <Link href="../">Docs</Link>
-    <Link href="../components">Components</Link>
-    <Link href="../patterns">Patterns</Link>
-    <Link href="../labs">Labs</Link>
+  <Section title="Next">
+    <Link href="../reference">Reference</Link>
+    <Link href="../remote">Remote</Link>
+    <Link href="../">Start Here</Link>
   </Section>
 </Screen>

@@ -2,6 +2,7 @@
   <Section title="Patterns">
     <Header>Reference surfaces for the runtime.</Header>
     <Text>These are durable screen shapes, not a widget catalog.</Text>
+    <Text>Read this page after Start Here, First File, and Components.</Text>
   </Section>
 
   <Section title="Current">
@@ -19,10 +20,9 @@
     <Text>Does navigation still feel calm under nested structure?</Text>
   </Section>
 
-  <Section title="Open">
-    <Link href="../">Docs</Link>
-    <Link href="../components">Components</Link>
+  <Section title="Next">
     <Link href="../labs">Labs</Link>
     <Link href="../protocol">Protocol</Link>
+    <Link href="../reference">Reference</Link>
   </Section>
 </Screen>
