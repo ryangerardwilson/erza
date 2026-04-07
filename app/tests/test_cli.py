@@ -4,6 +4,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
+from _test_bootstrap import ensure_test_paths
+
+ensure_test_paths()
+
 from erza.cli import _build_parser, _resolve_source_path
 from erza.source import SourceResolutionError
 

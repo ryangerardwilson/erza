@@ -17,10 +17,10 @@ export const nav = [
 ];
 
 export const commands = [
-  { label: "Landing demo", command: "python -m erza run app/examples/landing" },
-  { label: "Local example", command: "python -m erza run app/examples/greetings" },
-  { label: "Animation lab", command: "python -m erza run app/examples/animation" },
-  { label: "Remote docs", command: "python -m erza run erza.ryangerardwilson.com" },
+  { label: "Landing demo", command: "python main.py run app/examples/landing" },
+  { label: "Local example", command: "python main.py run app/examples/greetings" },
+  { label: "Animation lab", command: "python main.py run app/examples/animation" },
+  { label: "Remote docs", command: "python main.py run erza.ryangerardwilson.com" },
   { label: "Legacy docs build", command: "./docs_website/update_docs.sh" }
 ];
 
@@ -30,7 +30,7 @@ export const storyPhrases = [
   "frontend was designed for keyboards first?"
 ];
 
-export const landingCommand = "python -m erza run app/examples/landing";
+export const landingCommand = "python main.py run app/examples/landing";
 export const landingVideo = "/assets/landing-demo.mp4";
 const landingMarkupPath = join(process.cwd(), "..", "app", "examples", "landing", "index.erza");
 export const landingMarkup = readFileSync(landingMarkupPath, "utf8");

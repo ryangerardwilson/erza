@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import unittest
 
+from _test_bootstrap import ensure_test_paths
+
+ensure_test_paths()
+
 from erza.model import AsciiAnimation, Button, Link, Screen, Section, Text
 from erza.runtime import (
     StaticScreenApp,

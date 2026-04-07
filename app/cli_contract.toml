@@ -1,0 +1,5 @@
+[app]
+name = "erza"
+repo = "ryangerardwilson/erza"
+install_strategy = "source-checkout"
+install_test_path = "tests/test_install_contract.py"

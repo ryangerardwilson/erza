@@ -78,10 +78,10 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
             {"href": repo_url, "label": "GitHub"},
         ],
         "commands": [
-            {"label": "Landing demo", "command": "python -m erza run app/examples/landing"},
-            {"label": "Local example", "command": "python -m erza run app/examples/greetings"},
-            {"label": "Animation lab", "command": "python -m erza run app/examples/animation"},
-            {"label": "Remote docs", "command": "python -m erza run erza.ryangerardwilson.com"},
+            {"label": "Landing demo", "command": "python main.py run app/examples/landing"},
+            {"label": "Local example", "command": "python main.py run app/examples/greetings"},
+            {"label": "Animation lab", "command": "python main.py run app/examples/animation"},
+            {"label": "Remote docs", "command": "python main.py run erza.ryangerardwilson.com"},
             {"label": "Docs build", "command": "./docs_website/update_docs.sh"},
         ],
         "story_questions": [
@@ -96,7 +96,7 @@ def _build_context(*, domain: str, repo_url: str) -> dict[str, object]:
                 "frontend was redesigned to be CLI and TUI first?",
             ]
         ),
-        "landing_command": "python -m erza run app/examples/landing",
+        "landing_command": "python main.py run app/examples/landing",
         "landing_video": "/assets/landing-demo.mp4",
         "landing_markup": _block(
             """

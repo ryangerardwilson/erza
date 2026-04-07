@@ -15,7 +15,7 @@ from erza.docs_builder import DEFAULT_DOMAIN, build_docs
 
 
 def main() -> int:
-    source_dir = DOCS_ROOT / "website"
+    source_dir = DOCS_ROOT / "erzanet_site"
     output_dir = DOCS_ROOT / "site"
     written = build_docs(source_dir, output_dir, domain=DEFAULT_DOMAIN)
     print(f"built {len(written)} docs artifacts into {output_dir}")

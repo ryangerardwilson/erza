@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import unittest
 
+from _test_bootstrap import ensure_test_paths
+
+ensure_test_paths()
+
 from erza.backend import BackendBridge
 from erza.template import render_template
 

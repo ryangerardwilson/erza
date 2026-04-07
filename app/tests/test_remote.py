@@ -6,6 +6,10 @@ from urllib.parse import parse_qs, urlparse
 import unittest
 from unittest.mock import patch
 
+from _test_bootstrap import ensure_test_paths
+
+ensure_test_paths()
+
 from erza.remote import (
     _resolve_hostname_via_doh,
     fetch_remote_document,

@@ -2,15 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import sys
 import unittest
 
+from _test_bootstrap import ensure_test_paths
 
-ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "src"
-
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+ensure_test_paths()
 
 from erza.docs_builder import build_docs
 

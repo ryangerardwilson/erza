@@ -66,9 +66,9 @@ export function remoteCommandForPage(href) {
     return null;
   }
   if (normalized === "/") {
-    return "python -m erza run erza.ryangerardwilson.com";
+    return "python main.py run erza.ryangerardwilson.com";
   }
-  return `python -m erza run erza.ryangerardwilson.com${normalized}`;
+  return `python main.py run erza.ryangerardwilson.com${normalized}`;
 }
 
 export function getErzaPageSource(href) {

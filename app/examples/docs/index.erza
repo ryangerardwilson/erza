@@ -13,7 +13,7 @@
   </Section>
 
   <Section title="Remote">
-    <Text>Run python -m erza run erza.ryangerardwilson.com to open this version over HTTPS.</Text>
+    <Text>Run python main.py run erza.ryangerardwilson.com to open this version over HTTPS.</Text>
     <Text>The hosted domain serves browser pages and terminal pages together.</Text>
   </Section>
 </Screen>

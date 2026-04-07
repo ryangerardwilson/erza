@@ -58,17 +58,30 @@ See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 ## Quick Start
 
 ```bash
-python -m erza run app/examples/docs
-python -m erza run app/examples/tasks/app.erza
-python -m erza run app/examples/greetings
-python -m erza run app/examples/animation
-python -m erza run https://erza.ryangerardwilson.com
-python -m erza run erza.ryangerardwilson.com
+python main.py run app/examples/docs
+python main.py run app/examples/tasks/app.erza
+python main.py run app/examples/greetings
+python main.py run app/examples/animation
+python main.py run https://erza.ryangerardwilson.com
+python main.py run erza.ryangerardwilson.com
 ```
 
-If you prefer, `PYTHONPATH=app/src python -m erza ...` also works. An installed
-CLI is available through `cd app && python -m pip install -e .` when `pip` is
-present.
+If you prefer working inside the app workspace, `cd app && python main.py ...`
+also works. An installed CLI is available through `cd app && python -m pip
+install -e .` when `pip` is present, after which `erza run ...` works as the
+packaged command.
+
+Canonical launcher and installer surface from the app workspace:
+
+```bash
+cd app
+python main.py -h
+python main.py -v
+python main.py run examples/docs
+./install.sh -h
+./install.sh -v
+./install.sh -u
+```
 
 `erza` automatically loads `backend.py` from the same directory as the `.erza`
 entry file unless `--backend` is provided explicitly. If you pass a directory,
@@ -178,12 +191,15 @@ npm run build
 Relevant paths:
 
 - `app/`: runtime package, examples, tests, and packaging metadata
+- `app/main.py`: canonical launcher entrypoint for the app workspace
+- `app/install.sh`: installer and upgrade path for the app workspace
+- `app/_version.py`: single runtime version source
 - `docs_website/app/`: Next.js routes
 - `docs_website/ui/`: shared React UI pieces for the docs site
 - `docs_website/lib/erza-pages.js`: shared route map for same-host browser and `.erza` pages
 - `docs_website/lib/site-data.js`: docs content data
 - `docs_website/public/assets/landing-demo.mp4`: homepage demo capture
-- `docs_website/website/`: archived static `.erza` docs source
+- `docs_website/erzanet_site/`: archived static `.erza` docs source
 - `docs_website/update_docs.sh`: archived legacy docs builder entrypoint
 - `.github/workflows/ci.yml`: Python + Next build verification
 
