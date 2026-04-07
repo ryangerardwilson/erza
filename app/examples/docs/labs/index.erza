@@ -1,0 +1,26 @@
+<Screen title="ERZA Labs">
+  <Section title="Labs">
+    <Header>What works where.</Header>
+    <Text>Use the hosted site as a checkpoint for runtime, browser, and erzanet gaps.</Text>
+  </Section>
+
+  <Section title="Status">
+    <Text>Boxed panel layout: runtime works, docs HTML works, erzanet ready.</Text>
+    <Text>Multi-page information architecture: runtime works, docs HTML works, erzanet ready.</Text>
+    <Text>AsciiAnimation playback: runtime works, docs HTML uses poster fallback.</Text>
+    <Text>Complex nested composition: runtime partial, docs HTML works, erzanet needs schema.</Text>
+    <Text>Stateful remote interaction: runtime local only, remote transport still future work.</Text>
+  </Section>
+
+  <Section title="Focus">
+    <Text>Pressure the remote path until HTML scraping is no longer necessary.</Text>
+    <Text>Keep the animation component declarative and safe to transport.</Text>
+  </Section>
+
+  <Section title="Open">
+    <Link href="../">Docs</Link>
+    <Link href="../components">Components</Link>
+    <Link href="../patterns">Patterns</Link>
+    <Link href="../protocol">Protocol</Link>
+  </Section>
+</Screen>

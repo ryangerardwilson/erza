@@ -8,15 +8,17 @@ import textwrap
 from contextlib import contextmanager
 import re
 from typing import Literal
-from urllib.error import URLError
-from urllib.parse import urljoin, urlparse
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from erza.model import Component, Link, Screen, Section, Text
+from erza.parser import ParseError, compile_markup
 
 
 REMOTE_WRAP_WIDTH = 72
 REMOTE_USER_AGENT = "erza/0.0.1"
+REMOTE_ERZA_CONTENT_TYPES = {"application/erza", "text/erza"}
 REMOTE_SCHEME_RE = re.compile(r"^https?://", re.IGNORECASE)
 DOMAIN_RE = re.compile(r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?:/[^\s]*)?$")
 
@@ -70,29 +72,49 @@ def normalize_remote_url(value: str) -> str:
 
 
 def fetch_remote_document(url: str, *, timeout: float = 10.0) -> RemoteDocument:
-    request = Request(url, headers={"User-Agent": REMOTE_USER_AGENT})
+    erza_request = Request(
+        _erza_endpoint_url(url),
+        headers={
+            "Accept": "application/erza, text/erza;q=0.9, text/plain;q=0.2",
+            "User-Agent": REMOTE_USER_AGENT,
+        },
+    )
     try:
-        return _fetch_document(request, timeout=timeout)
-    except URLError as exc:
-        if not _is_dns_resolution_error(exc):
-            raise RemoteError(f"failed to fetch remote source: {url}") from exc
+        erza_document = _fetch_document_with_dns_fallback(
+            erza_request,
+            timeout=timeout,
+            allow_http_statuses={404},
+        )
+    except (HTTPError, URLError) as exc:
+        raise RemoteError(f"failed to fetch remote source: {url}") from exc
 
-        hostname = urlparse(url).hostname
-        if not hostname:
-            raise RemoteError(f"failed to fetch remote source: {url}") from exc
+    if erza_document is not None and _is_erza_document(erza_document):
+        return erza_document
 
-        resolved_ips = _resolve_hostname_via_doh(hostname)
-        if not resolved_ips:
-            raise RemoteError(f"failed to fetch remote source: {url}") from exc
+    request = Request(
+        url,
+        headers={
+            "Accept": "text/html, text/plain;q=0.9, */*;q=0.1",
+            "User-Agent": REMOTE_USER_AGENT,
+        },
+    )
+    try:
+        document = _fetch_document_with_dns_fallback(request, timeout=timeout)
+    except (HTTPError, URLError) as exc:
+        raise RemoteError(f"failed to fetch remote source: {url}") from exc
 
-        try:
-            with _temporary_host_resolution(hostname, resolved_ips):
-                return _fetch_document(request, timeout=timeout)
-        except URLError as retry_exc:
-            raise RemoteError(f"failed to fetch remote source: {url}") from retry_exc
+    if document is None:
+        raise RemoteError(f"failed to fetch remote source: {url}")
+    return document
 
 
 def remote_document_to_screen(document: RemoteDocument) -> Screen:
+    if _is_erza_document(document):
+        try:
+            return compile_markup(document.body)
+        except ParseError as exc:
+            raise RemoteError(f"failed to parse remote erza document: {document.url}") from exc
+
     if document.content_type == "text/plain":
         return _plain_text_to_screen(document.url, document.body)
 
@@ -124,6 +146,59 @@ def _wrap_text(text: str) -> list[str]:
     if not normalized:
         return []
     return textwrap.wrap(normalized, width=REMOTE_WRAP_WIDTH) or [normalized]
+
+
+def _erza_endpoint_url(url: str) -> str:
+    parsed = urlparse(url)
+    request_path = parsed.path or "/"
+    return parsed._replace(
+        path="/.well-known/erza",
+        params="",
+        query=urlencode({"path": request_path}),
+        fragment="",
+    ).geturl()
+
+
+def _is_erza_document(document: RemoteDocument) -> bool:
+    if document.content_type in REMOTE_ERZA_CONTENT_TYPES:
+        return True
+    return document.content_type == "text/plain" and document.body.lstrip().startswith("<Screen")
+
+
+def _fetch_document_with_dns_fallback(
+    request: Request,
+    *,
+    timeout: float,
+    allow_http_statuses: set[int] | None = None,
+) -> RemoteDocument | None:
+    allow_http_statuses = allow_http_statuses or set()
+    try:
+        return _fetch_document(request, timeout=timeout)
+    except HTTPError as exc:
+        if exc.code in allow_http_statuses:
+            exc.close()
+            return None
+        raise
+    except URLError as exc:
+        if not _is_dns_resolution_error(exc):
+            raise
+
+        hostname = urlparse(request.full_url).hostname
+        if not hostname:
+            raise
+
+        resolved_ips = _resolve_hostname_via_doh(hostname)
+        if not resolved_ips:
+            raise
+
+        with _temporary_host_resolution(hostname, resolved_ips):
+            try:
+                return _fetch_document(request, timeout=timeout)
+            except HTTPError as retry_exc:
+                if retry_exc.code in allow_http_statuses:
+                    retry_exc.close()
+                    return None
+                raise
 
 
 def _fetch_document(request: Request, *, timeout: float) -> RemoteDocument:

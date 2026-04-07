@@ -1,4 +1,5 @@
 import SiteFrame from "@/ui/site-frame";
+import { remoteCommandForPage } from "@/lib/erza-pages";
 import { animationFrames, animationMarkup, componentFamilies, nestingRules } from "@/lib/site-data";
 
 export const metadata = {
@@ -16,6 +17,9 @@ export default function ComponentsPage() {
           The goal is not widget sprawl. It is a compact set of primitives with clear nesting
           rules, reliable motion, and enough structure to make remote terminal documents feel
           deliberate.
+        </p>
+        <p className="terminal-twin">
+          In erza: <code>{remoteCommandForPage("/components")}</code>
         </p>
       </section>
 

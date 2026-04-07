@@ -1,0 +1,27 @@
+<Screen title="ERZA Protocol">
+  <Section title="Protocol">
+    <Header>Remote mode over HTTPS.</Header>
+    <Text>The browser and the terminal can share one host without sharing one renderer.</Text>
+  </Section>
+
+  <Section title="Flow">
+    <Text>1. Resolve a domain and assume HTTPS.</Text>
+    <Text>2. Ask the host for an erza page, not a browser document.</Text>
+    <Text>3. Follow links and actions as structured terminal navigation.</Text>
+    <Text>4. Rerender locally when the next screen arrives.</Text>
+  </Section>
+
+  <Section title="Guardrails">
+    <Text>Do not ship arbitrary backend code to the client.</Text>
+    <Text>Keep the wire format declarative and terminal-native.</Text>
+    <Text>Preserve normal backend integration over HTTPS.</Text>
+    <Text>Avoid inheriting browser-compatibility scope by accident.</Text>
+  </Section>
+
+  <Section title="Open">
+    <Link href="../">Docs</Link>
+    <Link href="../components">Components</Link>
+    <Link href="../patterns">Patterns</Link>
+    <Link href="../labs">Labs</Link>
+  </Section>
+</Screen>

@@ -58,6 +58,7 @@ See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 ## Quick Start
 
 ```bash
+python -m erza run app/examples/docs
 python -m erza run app/examples/tasks/app.erza
 python -m erza run app/examples/greetings
 python -m erza run app/examples/animation
@@ -73,8 +74,9 @@ present.
 entry file unless `--backend` is provided explicitly. If you pass a directory,
 `erza` looks for `index.erza` inside it. If you omit the source entirely,
 `erza run` defaults to the current directory. If you pass an `http(s)` URL or a
-bare domain, `erza` fetches the remote page and renders a read-only terminal
-view of the content.
+bare domain, `erza` now first looks for a same-host `.erza` endpoint and falls
+back to HTML rendering only when the host does not expose terminal-native
+pages.
 
 ## V0 Surface Area
 
@@ -178,6 +180,7 @@ Relevant paths:
 - `app/`: runtime package, examples, tests, and packaging metadata
 - `docs_website/app/`: Next.js routes
 - `docs_website/ui/`: shared React UI pieces for the docs site
+- `docs_website/lib/erza-pages.js`: shared route map for same-host browser and `.erza` pages
 - `docs_website/lib/site-data.js`: docs content data
 - `docs_website/public/assets/landing-demo.mp4`: homepage demo capture
 - `docs_website/website/`: archived static `.erza` docs source
@@ -192,6 +195,7 @@ Relevant paths:
 - `app/src/erza/backend.py`: Python backend bridge
 - `app/src/erza/remote.py`: remote fetch and read-only remote viewer
 - `app/examples/animation/`: local AsciiAnimation lab
+- `app/examples/docs/`: minimal `.erza` twins for the public docs routes
 - `app/examples/`: runnable terminal examples
 - `app/tests/`: unit coverage for templates, parsing, runtime behavior, and docs build
 

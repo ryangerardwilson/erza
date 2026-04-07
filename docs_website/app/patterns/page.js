@@ -1,4 +1,5 @@
 import SiteFrame from "@/ui/site-frame";
+import { remoteCommandForPage } from "@/lib/erza-pages";
 import { labTracks, patterns } from "@/lib/site-data";
 
 export const metadata = {
@@ -15,6 +16,9 @@ export default function PatternsPage() {
         <p className="lede">
           These are not all first-class components yet. They are durable screen shapes to
           pressure-test layout, density, hierarchy, and navigation.
+        </p>
+        <p className="terminal-twin">
+          In erza: <code>{remoteCommandForPage("/patterns")}</code>
         </p>
       </section>
 

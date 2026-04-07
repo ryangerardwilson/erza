@@ -1,0 +1,19 @@
+<Screen title="ERZA Docs">
+  <Section title="ERZA">
+    <Header>Same host, two renderers.</Header>
+    <Text>The browser gets the Next.js docs. erza gets simple .erza pages from the same domain.</Text>
+    <Text>Open pages with l. Go back with h. Quit with q.</Text>
+  </Section>
+
+  <Section title="Pages">
+    <Link href="components">Components</Link>
+    <Link href="patterns">Patterns</Link>
+    <Link href="labs">Labs</Link>
+    <Link href="protocol">Protocol</Link>
+  </Section>
+
+  <Section title="Remote">
+    <Text>Run python -m erza run erza.ryangerardwilson.com to open this version over HTTPS.</Text>
+    <Text>The hosted domain serves browser pages and terminal pages together.</Text>
+  </Section>
+</Screen>

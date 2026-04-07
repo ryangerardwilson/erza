@@ -1,17 +1,7 @@
 import SiteFrame from "@/ui/site-frame";
 import TypewriterHero from "@/ui/typewriter-hero";
-import {
-  capabilityMatrix,
-  commands,
-  componentFamilies,
-  examples,
-  landingMarkup,
-  landingVideo,
-  patterns,
-  pillars,
-  protocolSteps,
-  storyPhrases
-} from "@/lib/site-data";
+import { erzaDocsPages } from "@/lib/erza-pages";
+import { landingMarkup, landingVideo, storyPhrases } from "@/lib/site-data";
 
 export default function HomePage() {
   return (
@@ -70,146 +60,26 @@ export default function HomePage() {
 
       <section className="section">
         <div className="section-heading">
-          <p className="eyebrow">thesis</p>
-          <h2>Why this site exists</h2>
+          <p className="eyebrow">same host</p>
+          <h2>The browser docs and the erza site ship together.</h2>
         </div>
-        <div className="card-grid">
-          {pillars.map((pillar) => (
-            <article className="card" key={pillar.title}>
-              <h3>{pillar.title}</h3>
-              <p>{pillar.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section-heading">
-          <p className="eyebrow">component map</p>
-          <h2>What exists today</h2>
-        </div>
-        <div className="card-grid">
-          {componentFamilies.map((family) => (
-            <article className="card" key={family.name}>
-              <h3>{family.name}</h3>
-              <p>{family.summary}</p>
-              <ul className="bullet-list">
-                {family.items.map((item) => (
-                  <li key={item}>
-                    <code>{item}</code>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-        <p className="protocol-link">
-          <a href="/components">Open the component gallery</a>
-        </p>
-      </section>
-
-      <section className="section">
-        <div className="section-heading">
-          <p className="eyebrow">patterns</p>
-          <h2>Reference surfaces</h2>
-        </div>
-        <div className="card-grid">
-          {patterns.map((pattern) => (
-            <article className="card" key={pattern.name}>
-              <h3>{pattern.name}</h3>
-              <p>{pattern.summary}</p>
-              <p>
-                <strong>Regions:</strong> {pattern.regions}
-              </p>
-            </article>
-          ))}
-        </div>
-        <p className="protocol-link">
-          <a href="/patterns">Open the pattern library</a>
-        </p>
-      </section>
-
-      <section className="section section-accent">
-        <div className="section-heading">
-          <p className="eyebrow">labs</p>
-          <h2>What works where</h2>
-        </div>
-        <div className="matrix-grid">
-          {capabilityMatrix.map((item) => (
-            <article className="step-card" key={item.feature}>
-              <h3>{item.feature}</h3>
-              <p>
-                <strong>Runtime:</strong> {item.runtime}
-              </p>
-              <p>
-                <strong>Docs HTML:</strong> {item.docs}
-              </p>
-              <p>
-                <strong>Remote Viewer:</strong> {item.remote}
-              </p>
-              <p>
-                <strong>Erzanet:</strong> {item.erzanet}
-              </p>
-            </article>
-          ))}
-        </div>
-        <p className="protocol-link">
-          <a href="/labs">Open the labs page</a>
-        </p>
-      </section>
-
-      <section className="section">
-        <div className="section-heading">
-          <p className="eyebrow">examples</p>
-          <h2>Runnable local surfaces</h2>
-        </div>
-        <div className="card-grid">
-          {examples.map((example) => (
-            <article className="card" key={example.name}>
-              <h3>{example.name}</h3>
-              <p>{example.summary}</p>
-              <p>
-                <code>{example.path}</code>
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section-heading">
-          <p className="eyebrow">commands</p>
-          <h2>Open the current surfaces</h2>
-        </div>
-        <div className="command-list command-list-tight">
-          {commands.map((command) => (
-            <div className="command-card" key={command.label}>
-              <p className="command-label">{command.label}</p>
-              <pre>
-                <code>{command.command}</code>
+        <div className="page-directory">
+          {erzaDocsPages.map((page) => (
+            <article className="page-row" key={page.href}>
+              <div className="page-row-copy">
+                <h3>{page.label}</h3>
+                <p>{page.summary}</p>
+                <p className="page-row-links">
+                  <a href={page.href}>Open in browser</a>
+                  <span>Source: <code>{page.localPath}</code></span>
+                </p>
+              </div>
+              <pre className="page-row-command">
+                <code>{page.remoteCommand}</code>
               </pre>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section-heading">
-          <p className="eyebrow">next hop</p>
-          <h2>Remote mode over HTTPS</h2>
-        </div>
-        <div className="flow-grid">
-          {protocolSteps.map((item) => (
-            <article className="step-card" key={item.step}>
-              <p className="step-number">{item.step}</p>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
             </article>
           ))}
         </div>
-        <p className="protocol-link">
-          <a href="/protocol">Read the remote-mode notes</a>
-        </p>
       </section>
     </SiteFrame>
   );

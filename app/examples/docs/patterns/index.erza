@@ -1,0 +1,28 @@
+<Screen title="ERZA Patterns">
+  <Section title="Patterns">
+    <Header>Reference surfaces for the runtime.</Header>
+    <Text>These are durable screen shapes, not a widget catalog.</Text>
+  </Section>
+
+  <Section title="Current">
+    <Text>Operator Dashboard: metrics, queue, alerts, audit trail.</Text>
+    <Text>Docs Reader: overview, topic panels, code windows, appendix.</Text>
+    <Text>Inbox + Inspector: folders, list, reading pane, metadata rail.</Text>
+    <Text>Settings Surface: category nav, fields, confirmation, recent changes.</Text>
+    <Text>Launch Pad: primary actions, saved endpoints, session state.</Text>
+    <Text>Animation Lab: poster frame, runtime note, frame strip, open questions.</Text>
+  </Section>
+
+  <Section title="Checks">
+    <Text>Does the layout stay readable at 79 columns?</Text>
+    <Text>Does component focus stay obvious as density increases?</Text>
+    <Text>Does navigation still feel calm under nested structure?</Text>
+  </Section>
+
+  <Section title="Open">
+    <Link href="../">Docs</Link>
+    <Link href="../components">Components</Link>
+    <Link href="../labs">Labs</Link>
+    <Link href="../protocol">Protocol</Link>
+  </Section>
+</Screen>

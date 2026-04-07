@@ -1,0 +1,27 @@
+<Screen title="ERZA Components">
+  <Section title="Components">
+    <Header>Small component set. Hard edges.</Header>
+    <Text>Keep the authoring surface compact and the runtime predictable.</Text>
+  </Section>
+
+  <Section title="Current">
+    <Text>Shell: Screen, Section, Column, Row</Text>
+    <Text>Content: Header, Text, Link</Text>
+    <Text>Action: Action, Button</Text>
+    <Text>Motion: AsciiAnimation, Frame</Text>
+  </Section>
+
+  <Section title="Rules">
+    <Text>Screen owns the page.</Text>
+    <Text>Section owns one idea or one workflow step.</Text>
+    <Text>AsciiAnimation only accepts Frame children.</Text>
+    <Text>Rows stay compact. Long prose belongs in columns.</Text>
+  </Section>
+
+  <Section title="Open">
+    <Link href="../">Docs</Link>
+    <Link href="../patterns">Patterns</Link>
+    <Link href="../labs">Labs</Link>
+    <Link href="../protocol">Protocol</Link>
+  </Section>
+</Screen>

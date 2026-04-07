@@ -1,4 +1,5 @@
 import SiteFrame from "@/ui/site-frame";
+import { remoteCommandForPage } from "@/lib/erza-pages";
 import { protocolSteps, protocolWireFormat, safetyPoints } from "@/lib/site-data";
 
 export const metadata = {
@@ -19,6 +20,9 @@ export default function ProtocolPage() {
           terminal session. The transport is the new piece. The authoring model remains{" "}
           <code>.erza</code>, but the wire format should eventually speak in safe component state,
           not browser documents.
+        </p>
+        <p className="terminal-twin">
+          In erza: <code>{remoteCommandForPage("/protocol")}</code>
         </p>
       </section>
 

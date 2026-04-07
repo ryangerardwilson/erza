@@ -1,4 +1,5 @@
 import SiteFrame from "@/ui/site-frame";
+import { remoteCommandForPage } from "@/lib/erza-pages";
 import { animationFrames, capabilityMatrix, labTracks } from "@/lib/site-data";
 
 export const metadata = {
@@ -16,6 +17,9 @@ export default function LabsPage() {
           This page is where the browser build, the local runtime, the remote HTML viewer, and the
           future erzanet transport stop pretending to be the same thing. Each row below is a prompt
           for what to add next.
+        </p>
+        <p className="terminal-twin">
+          In erza: <code>{remoteCommandForPage("/labs")}</code>
         </p>
       </section>
 
