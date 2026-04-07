@@ -175,40 +175,41 @@ h3 code {
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: clamp(1.1rem, 2.6vw, 1.8rem);
+  gap: clamp(1.35rem, 2.9vw, 2.1rem);
   width: 100%;
   flex: 1;
 }
 
 .brand-lockup {
-  display: grid;
-  justify-items: center;
-  gap: clamp(0.85rem, 2vw, 1.35rem);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(0.9rem, 2vw, 1.35rem);
+  width: 100%;
 }
 
 .brand-mark {
   display: flex;
   align-items: center;
-  gap: clamp(0.7rem, 1.8vw, 1rem);
+  gap: clamp(0.45rem, 1vw, 0.7rem);
+  transform: translateY(-0.22rem);
 }
 
-.brand-mark-left,
-.brand-mark-right {
+.terminal-prompt {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(2.6rem, 5.2vw, 4.3rem);
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.08em;
+}
+
+.terminal-cursor {
   display: block;
-  height: clamp(2.7rem, 5vw, 4rem);
-  border-radius: 0.2rem;
-}
-
-.brand-mark-left {
-  width: clamp(4.4rem, 8vw, 6.2rem);
-  background: rgba(255, 255, 255, 0.9);
-  clip-path: polygon(0 50%, 22% 0, 100% 0, 78% 100%, 22% 100%);
-}
-
-.brand-mark-right {
-  width: clamp(2.6rem, 4.6vw, 3.5rem);
-  background: rgba(255, 255, 255, 0.38);
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  width: clamp(1rem, 2vw, 1.55rem);
+  height: clamp(2.1rem, 4vw, 3.15rem);
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 0.12rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .brand-word {
@@ -223,9 +224,10 @@ h3 code {
 
 .story-stack {
   display: grid;
-  gap: 0.35rem;
-  justify-items: center;
-  max-width: 40rem;
+  gap: 0.45rem;
+  justify-items: stretch;
+  width: min(100%, 68rem);
+  max-width: 68rem;
   margin: 0 auto;
 }
 
@@ -236,16 +238,22 @@ h3 code {
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.14em;
+  text-align: center;
   text-transform: uppercase;
 }
 
 .story-rotator {
   position: relative;
   display: block;
-  width: 100%;
-  max-width: 40rem;
+  width: min(100%, 68rem);
+  max-width: 68rem;
   margin-bottom: 0;
-  min-height: 2.1em;
+  min-height: 2.9em;
+  font-size: clamp(0.9rem, 1.25vw, 1.04rem);
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .story-rotator::before {
@@ -262,6 +270,7 @@ h3 code {
   display: block;
   width: 100%;
   min-height: 100%;
+  text-align: center;
 }
 
 .typewriter-target::after {
@@ -610,6 +619,16 @@ pre,
   .topbar {
     margin-bottom: 2.4rem;
     justify-content: flex-start;
+  }
+
+  .brand-lockup {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .brand-mark {
+    transform: none;
   }
 
   .section {

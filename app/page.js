@@ -20,8 +20,8 @@ export default function HomePage() {
         <div className="hero-poster">
           <div className="brand-lockup" aria-label="ERZA">
             <div className="brand-mark" aria-hidden="true">
-              <span className="brand-mark-left" />
-              <span className="brand-mark-right" />
+              <span className="terminal-prompt">&gt;</span>
+              <span className="terminal-cursor" />
             </div>
             <h1 className="brand-word">ERZA</h1>
           </div>
