@@ -152,20 +152,34 @@ the full loop:
 
 ## Docs Site
 
-The repo also includes a multi-page capability-lab documentation site authored
-in `.erza` and built for GitHub Pages.
+The public docs site now runs as a root-level Next.js app and is intended to be
+iterated on like a normal web app while the terminal runtime evolves beside it.
+
+Local docs workflow:
 
 ```bash
-./update_docs.sh
-python -m erza run erza.ryangerardwilson.com
+npm install
+npm run dev
+```
+
+Then open `http://localhost:3000`.
+
+Production build:
+
+```bash
+npm run build
 ```
 
 Relevant paths:
 
-- `website/`: `.erza` docs source plus static assets
-- `scripts/build_docs.py`: docs-site compiler entrypoint
-- `src/erza/docs_builder.py`: build logic shared with tests
-- `.github/workflows/deploy-docs.yml`: GitHub Pages deployment
+- `app/`: Next.js routes
+- `ui/`: shared React UI pieces for the docs site
+- `lib/site-data.js`: docs content data
+- `public/assets/landing-demo.mp4`: homepage demo capture
+- `.github/workflows/ci.yml`: Python + Next build verification
+
+Legacy static docs source remains in `website/` for now as an archived reference
+to the earlier builder-driven version.
 
 ## Repo Layout
 
