@@ -83,6 +83,12 @@ python main.py run examples/docs
 ./install.sh -u
 ```
 
+Release helper from the repo root:
+
+```bash
+./push_release_upgrade.sh
+```
+
 `erza` automatically loads `backend.py` from the same directory as the `.erza`
 entry file unless `--backend` is provided explicitly. If you pass a directory,
 `erza` looks for `index.erza` inside it. If you omit the source entirely,
@@ -195,6 +201,7 @@ Relevant paths:
 - `app/install.sh`: installer and upgrade path for the app workspace
 - `app/requirements.txt`: Python dependency manifest for the app workspace
 - `app/_version.py`: single runtime version source
+- `push_release_upgrade.sh`: release tag and local upgrade helper
 - `docs_website/app/`: Next.js routes
 - `docs_website/ui/`: shared React UI pieces for the docs site
 - `docs_website/lib/erza-pages.js`: shared route map for same-host browser and `.erza` pages
