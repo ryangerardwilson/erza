@@ -104,12 +104,56 @@ release_is_published() {
     >/dev/null 2>&1
 }
 
+release_workflow_failed() {
+  local version="$1"
+  command -v gh >/dev/null 2>&1 || return 1
+  VERSION="$version" REPO_SLUG="$REPO_SLUG" python3 - <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+version = os.environ["VERSION"]
+repo = os.environ["REPO_SLUG"]
+target = f"v{version}"
+result = subprocess.run(
+    [
+        "gh",
+        "run",
+        "list",
+        "--repo",
+        repo,
+        "--workflow",
+        "Release",
+        "--limit",
+        "20",
+        "--json",
+        "displayTitle,status,conclusion",
+    ],
+    capture_output=True,
+    text=True,
+    check=True,
+)
+runs = json.loads(result.stdout)
+for run in runs:
+    if run.get("displayTitle") != target:
+        continue
+    if run.get("status") == "completed" and run.get("conclusion") not in {"success", None}:
+        sys.exit(0)
+    break
+sys.exit(1)
+PY
+}
+
 wait_for_release() {
   local version="$1"
   local attempt
   for ((attempt = 1; attempt <= POLL_ATTEMPTS; attempt += 1)); do
     if release_is_published "$version"; then
       return 0
+    fi
+    if release_workflow_failed "$version"; then
+      die "GitHub release workflow failed for v${version}; inspect the Release workflow logs"
     fi
     sleep "$POLL_INTERVAL_SECONDS"
   done
