@@ -28,13 +28,14 @@ Each screen should be readable as a small set of named regions and components:
 
 That shape lets the runtime provide a simple navigation contract:
 
-- page mode `j` and `k` move between sections
-- page mode `l` opens the current section
+- header mode `h`, `j`, `k`, and `l` move across the section grid
+- `Enter` focuses the current section body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move inside the current section line by line
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
-- `h` exits section mode or goes back one page
+- `h` exits section mode and returns to the header grid
 - section mode `l` opens the selected link or activates the selected action
+- `Backspace` goes back one page
 - `?` toggles the shortcuts modal
 
 This is the default interaction identity for `erza`.
@@ -83,7 +84,7 @@ Example shape:
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Page mode uses j/k to switch sections. Press l to open the current section.</Text>
+    <Text>Header mode uses hjkl to switch sections. Press Enter to focus the current section.</Text>
 
     <? for task in tasks ?>
       <Text><?= task.title ?></Text>
@@ -113,7 +114,7 @@ Design intent:
 The runtime owns:
 
 - layout
-- section traversal in page mode
+- section traversal in header mode
 - line traversal inside a section in section mode
 - page history
 - input handling
@@ -130,12 +131,14 @@ must remain terminal-native in both behavior and constraints.
 
 Default interaction rules:
 
-- page mode `j` and `k` move across sections
+- header mode `h`, `j`, `k`, and `l` move across the section grid
+- `Enter` focuses the current section body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move across rendered lines inside the active section
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
-- `h` exits section mode or pops one page of history
+- `h` exits section mode and returns to the header grid
 - section mode `l` opens the selected link or triggers the selected action
+- `Backspace` pops one page of history
 - `?` toggles the shortcuts modal
 - arrow keys and Enter may exist as compatibility helpers, but they are not the
   primary documented interaction model

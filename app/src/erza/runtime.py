@@ -21,11 +21,16 @@ TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
 MIN_ANIMATION_INTERVAL_MS = 50
 HELP_MODAL_MAX_WIDTH = 67
+HEADER_CELL_GAP = 2
+HEADER_CELL_ROW_HEIGHT = 3
+HEADER_CELL_ROW_GAP = 1
+MAX_HEADER_VISIBLE_ROWS = 3
+MIN_SECTION_BODY_HEIGHT = 7
 HELP_SHORTCUTS = [
-    ("Page j / k", "Move between sections."),
-    ("Page l", "Open the current section."),
-    ("Page gg / G", "Jump to the first or last section."),
-    ("Page h", "Go back one page."),
+    ("Header h / j / k / l", "Move across the section grid."),
+    ("Enter", "Focus the current section body."),
+    ("Header gg / G", "Jump to the first or last section."),
+    ("Backspace", "Go back one page."),
     ("Section j / k", "Move line by line inside the current section."),
     ("Section Ctrl+J / Ctrl+K", "Move by half a page."),
     ("Section l", "Open the current link or action."),
@@ -78,6 +83,15 @@ class RenderPlan:
     lines: list[list[Segment]]
     sections: list[SectionTarget]
     animation_interval_ms: int | None = None
+
+
+@dataclass(slots=True)
+class HeaderGridLayout:
+    cell_inner_width: int
+    cell_width: int
+    columns: int
+    rows: int
+    row_step: int = HEADER_CELL_ROW_HEIGHT + HEADER_CELL_ROW_GAP
 
 
 class ErzaApp:
@@ -230,38 +244,29 @@ def draw_plan(
         stdscr.refresh()
         return
 
-    list_height = _page_list_height(plan, visible_height)
-    list_start_y = 2
-    list_end = min(scroll_offset + list_height, len(plan.sections))
-    for row, source_index in enumerate(range(scroll_offset, list_end)):
-        section = plan.sections[source_index]
-        y = list_start_y + row
-        marker = "->" if source_index == section_index else "  "
-        label = _truncate_text(f"{marker} {section.title}", display_width)
-        style = styles["section_title_active"] if source_index == section_index else styles["section_title"]
-        _safe_addnstr(stdscr, y, origin_x, label, display_width, style)
-
-    preview_y = list_start_y + list_height + 1
-    preview_height = max(visible_height - preview_y, 0)
+    body_start_y = _draw_header_grid(
+        stdscr,
+        plan,
+        section_index if section_index is not None else 0,
+        scroll_offset,
+        visible_height,
+        display_width,
+        origin_x,
+        styles,
+    )
     active_section = plan.sections[section_index if section_index is not None else 0]
-    for row, line in enumerate(active_section.block.lines[:preview_height]):
-        y = preview_y + row
-        if y >= visible_height:
-            break
-        for segment in line:
-            if segment.x >= display_width:
-                continue
-            available = max(display_width - segment.x, 0)
-            if available == 0:
-                continue
-            _safe_addnstr(
-                stdscr,
-                y,
-                origin_x + segment.x,
-                segment.text,
-                available,
-                styles[segment.style],
-            )
+    _draw_section_body(
+        stdscr,
+        active_section,
+        start_y=body_start_y,
+        available_height=max(visible_height - body_start_y, 0),
+        origin_x=origin_x,
+        display_width=display_width,
+        styles=styles,
+        highlight_active_line=False,
+        line_index=0,
+        scroll_offset=0,
+    )
 
     if footer and height > 0:
         _safe_addnstr(
@@ -278,7 +283,10 @@ def draw_plan(
 
 def draw_section_page(
     stdscr: curses.window,
+    plan: RenderPlan,
     section: SectionTarget,
+    section_index: int,
+    header_scroll_offset: int,
     line_index: int,
     scroll_offset: int,
     footer: str = "",
@@ -289,68 +297,29 @@ def draw_section_page(
     display_width = _display_width(terminal_width)
     origin_x = _display_origin_x(terminal_width)
     styles = _styles()
-
-    modal_width = min(section.block.width, display_width)
-    modal_x = origin_x + max((display_width - modal_width) // 2, 0)
-    content_lines = section.block.lines[1:-1] or [[]]
-
-    if visible_height >= section.block.height:
-        top_y = 0
-        visible_lines = section.block.lines
-        active_modal_y = 1 + line_index if 0 <= line_index < len(content_lines) else None
-    else:
-        if visible_height <= 1:
-            visible_lines = [section.block.lines[0]]
-            active_modal_y = None
-        elif visible_height == 2:
-            visible_lines = [section.block.lines[0], section.block.lines[-1]]
-            active_modal_y = None
-        else:
-            content_viewport_height = visible_height - 2
-            visible_lines = [
-                section.block.lines[0],
-                *content_lines[scroll_offset : scroll_offset + content_viewport_height],
-                section.block.lines[-1],
-            ]
-            active_modal_y = (
-                1 + line_index - scroll_offset
-                if scroll_offset <= line_index < scroll_offset + content_viewport_height
-                else None
-            )
-        top_y = 0
-
-    for modal_y, line in enumerate(visible_lines):
-        screen_y = top_y + modal_y
-        if screen_y >= visible_height:
-            break
-        active_content_line = active_modal_y == modal_y
-        for segment in line:
-            if segment.x >= modal_width:
-                continue
-            available = max(modal_width - segment.x, 0)
-            if available == 0:
-                continue
-            _safe_addnstr(
-                stdscr,
-                screen_y,
-                modal_x + segment.x,
-                segment.text,
-                available,
-                _segment_style(styles, segment.style, active_content_line=active_content_line),
-            )
-
-    active_item = _section_line_actionable(section, line_index)
-    if active_item is not None and active_modal_y is not None:
-        screen_y = top_y + active_modal_y
-        if 0 <= screen_y < visible_height:
-            _safe_addnstr(
-                stdscr,
-                screen_y,
-                modal_x + active_item.x,
-                active_item.label_text,
-                max(modal_width - active_item.x, 0),
-                styles["action_active"],
-            )
+    _safe_addnstr(stdscr, 0, origin_x, plan.title, display_width, styles["title"])
+    body_start_y = _draw_header_grid(
+        stdscr,
+        plan,
+        section_index,
+        header_scroll_offset,
+        visible_height,
+        display_width,
+        origin_x,
+        styles,
+    )
+    _draw_section_body(
+        stdscr,
+        section,
+        start_y=body_start_y,
+        available_height=max(visible_height - body_start_y, 0),
+        origin_x=origin_x,
+        display_width=display_width,
+        styles=styles,
+        highlight_active_line=True,
+        line_index=line_index,
+        scroll_offset=scroll_offset,
+    )
 
     if footer and height > 0:
         _safe_addnstr(
@@ -414,6 +383,142 @@ def draw_shortcuts_modal(
     stdscr.refresh()
 
 
+def _draw_header_grid(
+    stdscr: curses.window,
+    plan: RenderPlan,
+    section_index: int,
+    scroll_offset: int,
+    visible_height: int,
+    display_width: int,
+    origin_x: int,
+    styles: dict[str, int],
+) -> int:
+    layout = _header_grid_layout(plan, display_width)
+    visible_rows = _visible_header_rows(layout, visible_height)
+    row_offset = min(max(scroll_offset, 0), max(layout.rows - visible_rows, 0))
+    start_y = 2
+
+    for row in range(row_offset, min(row_offset + visible_rows, layout.rows)):
+        y = start_y + (row - row_offset) * layout.row_step
+        for col in range(layout.columns):
+            section_pos = row * layout.columns + col
+            if section_pos >= len(plan.sections):
+                continue
+            x = origin_x + col * (layout.cell_width + HEADER_CELL_GAP)
+            _draw_header_cell(
+                stdscr,
+                x=x,
+                y=y,
+                title=plan.sections[section_pos].title,
+                inner_width=layout.cell_inner_width,
+                active=section_pos == section_index,
+                styles=styles,
+            )
+
+    return start_y + visible_rows * layout.row_step
+
+
+def _draw_header_cell(
+    stdscr: curses.window,
+    *,
+    x: int,
+    y: int,
+    title: str,
+    inner_width: int,
+    active: bool,
+    styles: dict[str, int],
+) -> None:
+    title_text = _truncate_text(title, inner_width).center(inner_width)
+    border = "+" + "-" * (inner_width + 2) + "+"
+    middle = f"| {title_text} |"
+    border_style = styles["section_title_active"] if active else styles["section_border"]
+    title_style = styles["section_title_active"] if active else styles["section_title"]
+
+    _safe_addnstr(stdscr, y, x, border, len(border), border_style)
+    _safe_addnstr(stdscr, y + 1, x, "| ", 2, border_style)
+    _safe_addnstr(stdscr, y + 1, x + 2, title_text, len(title_text), title_style)
+    _safe_addnstr(stdscr, y + 1, x + 2 + len(title_text), " |", 2, border_style)
+    _safe_addnstr(stdscr, y + 2, x, border, len(border), border_style)
+
+
+def _draw_section_body(
+    stdscr: curses.window,
+    section: SectionTarget,
+    *,
+    start_y: int,
+    available_height: int,
+    origin_x: int,
+    display_width: int,
+    styles: dict[str, int],
+    highlight_active_line: bool,
+    line_index: int,
+    scroll_offset: int,
+) -> None:
+    if available_height <= 0:
+        return
+
+    block_width = min(section.block.width, display_width)
+    block_x = origin_x + max((display_width - block_width) // 2, 0)
+    content_lines = section.block.lines[1:-1] or [[]]
+
+    if available_height >= section.block.height:
+        top_y = start_y
+        visible_lines = section.block.lines
+        active_y = 1 + line_index if highlight_active_line and 0 <= line_index < len(content_lines) else None
+    else:
+        if available_height <= 1:
+            visible_lines = [section.block.lines[0]]
+            active_y = None
+        elif available_height == 2:
+            visible_lines = [section.block.lines[0], section.block.lines[-1]]
+            active_y = None
+        else:
+            content_viewport_height = available_height - 2
+            visible_lines = [
+                section.block.lines[0],
+                *content_lines[scroll_offset : scroll_offset + content_viewport_height],
+                section.block.lines[-1],
+            ]
+            active_y = (
+                1 + line_index - scroll_offset
+                if highlight_active_line and scroll_offset <= line_index < scroll_offset + content_viewport_height
+                else None
+            )
+        top_y = start_y
+
+    for body_y, line in enumerate(visible_lines):
+        screen_y = top_y + body_y
+        if screen_y >= start_y + available_height:
+            break
+        active_content_line = active_y == body_y
+        for segment in line:
+            if segment.x >= block_width:
+                continue
+            available = max(block_width - segment.x, 0)
+            if available == 0:
+                continue
+            _safe_addnstr(
+                stdscr,
+                screen_y,
+                block_x + segment.x,
+                segment.text,
+                available,
+                _segment_style(styles, segment.style, active_content_line=active_content_line),
+            )
+
+    active_item = _section_line_actionable(section, line_index) if highlight_active_line else None
+    if active_item is not None and active_y is not None:
+        screen_y = top_y + active_y
+        _safe_addnstr(
+            stdscr,
+            screen_y,
+            block_x + active_item.x,
+            active_item.label_text,
+            max(block_width - active_item.x, 0),
+            styles["action_active"],
+        )
+
+
 class _RuntimeSession:
     def __init__(self, app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
         self.app = app
@@ -450,13 +555,17 @@ class _RuntimeSession:
                 self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
                 draw_section_page(
                     stdscr,
+                    plan,
                     plan.sections[self.section_index],
+                    self.section_index,
+                    self.scroll_offset,
                     self.section_line_index,
                     self.section_scroll_offset,
                     footer,
                 )
             else:
-                self._sync_page_scroll(plan, stdscr.getmaxyx()[0])
+                screen_height, terminal_width = stdscr.getmaxyx()
+                self._sync_page_scroll(plan, screen_height, terminal_width)
                 draw_plan(
                     stdscr,
                     plan,
@@ -476,6 +585,9 @@ class _RuntimeSession:
             if self.show_help:
                 if key in {ord("?"), 27, ord("h")}:
                     self.show_help = False
+                continue
+            if key in {curses.KEY_BACKSPACE, 127, 8}:
+                self._go_back()
                 continue
             if key == 27:
                 return
@@ -501,17 +613,29 @@ class _RuntimeSession:
                 continue
 
             self.pending_g = False
+            if self.mode == "page":
+                if key in {ord("h"), curses.KEY_LEFT}:
+                    self._move_header_selection(plan, stdscr.getmaxyx()[1], "left")
+                    continue
+                if key in {ord("l"), curses.KEY_RIGHT}:
+                    self._move_header_selection(plan, stdscr.getmaxyx()[1], "right")
+                    continue
+                if key in {ord("j"), curses.KEY_DOWN}:
+                    self._move_header_selection(plan, stdscr.getmaxyx()[1], "down")
+                    continue
+                if key in {ord("k"), curses.KEY_UP}:
+                    self._move_header_selection(plan, stdscr.getmaxyx()[1], "up")
+                    continue
+                if key in {curses.KEY_ENTER, ord("\n"), ord(" ")}:
+                    self._enter_section_mode(plan)
+                    continue
             if key in {ord("j"), curses.KEY_DOWN}:
                 if self.mode == "section":
                     self._move_section_line(plan, 1)
-                else:
-                    self._move_section(plan, 1)
                 continue
             if key in {ord("k"), curses.KEY_UP}:
                 if self.mode == "section":
                     self._move_section_line(plan, -1)
-                else:
-                    self._move_section(plan, -1)
                 continue
             if key == CTRL_J and self.mode == "section":
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], 1)
@@ -519,17 +643,11 @@ class _RuntimeSession:
             if key == CTRL_K and self.mode == "section":
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], -1)
                 continue
-            if key in {ord("h"), curses.KEY_LEFT}:
-                if self.mode == "section":
-                    self._exit_section_mode()
-                else:
-                    self._go_back()
+            if key in {ord("h"), curses.KEY_LEFT} and self.mode == "section":
+                self._exit_section_mode()
                 continue
-            if key in {ord("l"), curses.KEY_RIGHT}:
-                if self.mode == "section":
-                    self._activate(plan)
-                else:
-                    self._enter_section_mode(plan)
+            if key in {ord("l"), curses.KEY_RIGHT} and self.mode == "section":
+                self._activate(plan)
                 continue
 
     def _current_screen(self) -> Screen:
@@ -558,11 +676,12 @@ class _RuntimeSession:
             max(_section_content_line_count(active_section) - 1, 0),
         )
 
-    def _sync_page_scroll(self, plan: RenderPlan, screen_height: int) -> None:
+    def _sync_page_scroll(self, plan: RenderPlan, screen_height: int, terminal_width: int) -> None:
         self.scroll_offset = compute_scroll_offset(
             plan,
             self.section_index,
             screen_height,
+            terminal_width,
             self.scroll_offset,
         )
 
@@ -584,6 +703,37 @@ class _RuntimeSession:
         if next_index == self.section_index:
             return
         self.section_index = next_index
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
+        self.status = ""
+
+    def _move_header_selection(self, plan: RenderPlan, terminal_width: int, direction: str) -> None:
+        if not plan.sections:
+            return
+        layout = _header_grid_layout(plan, _display_width(terminal_width))
+        row, col = divmod(self.section_index, layout.columns)
+        next_index = self.section_index
+
+        if direction == "left":
+            row_start = row * layout.columns
+            next_index = max(self.section_index - 1, row_start)
+        elif direction == "right":
+            row_end = min((row + 1) * layout.columns, len(plan.sections)) - 1
+            next_index = min(self.section_index + 1, row_end)
+        elif direction == "up":
+            target_row = max(row - 1, 0)
+            next_index = min(target_row * layout.columns + col, len(plan.sections) - 1)
+        elif direction == "down":
+            target_row = min(row + 1, layout.rows - 1)
+            row_start = target_row * layout.columns
+            row_end = min(row_start + layout.columns, len(plan.sections)) - 1
+            next_index = min(row_start + col, row_end)
+
+        if next_index == self.section_index:
+            return
+        self.section_index = next_index
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
         self.status = ""
 
     def _move_section_line(self, plan: RenderPlan, delta: int) -> None:
@@ -600,12 +750,16 @@ class _RuntimeSession:
         if not plan.sections:
             return
         self.section_index = 0
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
         self.status = ""
 
     def _jump_to_last_section(self, plan: RenderPlan) -> None:
         if not plan.sections:
             return
         self.section_index = len(plan.sections) - 1
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
         self.status = ""
 
     def _jump_to_first_line(self, plan: RenderPlan) -> None:
@@ -707,15 +861,17 @@ def compute_scroll_offset(
     plan: RenderPlan,
     section_index: int,
     screen_height: int,
+    terminal_width: int,
     current_offset: int = 0,
 ) -> int:
     if not plan.sections:
         return 0
 
-    viewport_height = _page_list_height(plan, _viewport_height(screen_height))
-    max_offset = max(len(plan.sections) - viewport_height, 0)
+    layout = _header_grid_layout(plan, _display_width(terminal_width))
+    viewport_rows = _visible_header_rows(layout, _viewport_height(screen_height))
+    max_offset = max(layout.rows - viewport_rows, 0)
     offset = min(max(current_offset, 0), max_offset)
-    offset = _ensure_line_visible(section_index, offset, viewport_height)
+    offset = _ensure_line_visible(_header_row_for_section(section_index, layout.columns), offset, viewport_rows)
     return min(max(offset, 0), max_offset)
 
 
@@ -757,13 +913,32 @@ def _viewport_height(screen_height: int) -> int:
     return max(screen_height - 1, 1)
 
 
-def _page_list_height(plan: RenderPlan, viewport_height: int) -> int:
+def _header_grid_layout(plan: RenderPlan, display_width: int) -> HeaderGridLayout:
     if not plan.sections:
+        return HeaderGridLayout(cell_inner_width=1, cell_width=5, columns=1, rows=0)
+    max_title = max(len(section.title) for section in plan.sections)
+    cell_inner_width = min(max_title, max(display_width - 4, 1))
+    cell_width = cell_inner_width + 4
+    columns = max((display_width + HEADER_CELL_GAP) // (cell_width + HEADER_CELL_GAP), 1)
+    rows = (len(plan.sections) + columns - 1) // columns
+    return HeaderGridLayout(
+        cell_inner_width=cell_inner_width,
+        cell_width=cell_width,
+        columns=columns,
+        rows=rows,
+    )
+
+
+def _visible_header_rows(layout: HeaderGridLayout, viewport_height: int) -> int:
+    available_for_header = max(viewport_height - MIN_SECTION_BODY_HEIGHT - 2, HEADER_CELL_ROW_HEIGHT)
+    visible_rows = max(1, min(MAX_HEADER_VISIBLE_ROWS, (available_for_header + HEADER_CELL_ROW_GAP) // layout.row_step))
+    return min(layout.rows, visible_rows)
+
+
+def _header_row_for_section(section_index: int, columns: int) -> int:
+    if columns <= 0:
         return 0
-    list_height = min(len(plan.sections), max(1, min(6, viewport_height // 3)))
-    while list_height > 1 and viewport_height - (2 + list_height + 1) < 4:
-        list_height -= 1
-    return max(list_height, 1)
+    return section_index // columns
 
 
 def _section_content_viewport_height(screen_height: int) -> int:

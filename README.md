@@ -19,7 +19,7 @@ This repository includes a runnable Python prototype with:
 - HTML-like tags with PHP-style template blocks
 - component-oriented screen composition rendered as bordered terminal panels
 - terminal-native rendering through `curses`
-- keyboard-first navigation with `h`, `j`, `k`, `l`, `gg`, `G`, and `?`
+- keyboard-first navigation with `h`, `j`, `k`, `l`, `Enter`, `gg`, `G`, and `?`
 - transparent/default terminal backgrounds and host terminal typography
 
 ## Direction
@@ -29,13 +29,14 @@ prototype still renders many screens as sectional panels.
 
 - A screen is composed from terminal components rather than browser pages.
 - The current runtime uses titled panels as a neat default presentation.
-- Page mode uses `j` and `k` to move between top-level sections.
-- Page mode uses `l` to open the current section.
+- Header mode uses `h`, `j`, `k`, and `l` to move across the section grid.
+- `Enter` focuses the current section body.
 - `gg` jumps to the first section and `G` jumps to the last.
 - Section mode uses `j` and `k` line by line.
 - Section mode uses `Ctrl+J` and `Ctrl+K` to move by half a page.
-- `h` exits section mode or goes back one page.
+- `h` exits section mode and returns focus to the header grid.
 - Section mode uses `l` to open the current link or fire the current action.
+- `Backspace` goes back one page.
 - `?` toggles the shortcuts modal.
 
 This keeps the runtime closer to navigating a clean terminal workspace than to
@@ -162,7 +163,7 @@ literals, and `backend(...)` calls.
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Page mode uses j/k to switch sections. Press l to open the current section.</Text>
+    <Text>Header mode uses hjkl to move across the section grid. Press Enter to focus the current section.</Text>
 
     <? if tasks ?>
       <? for task in tasks ?>
@@ -189,13 +190,13 @@ the full loop:
 
 - load backend data during template expansion
 - render named sections as the primary screen structure
-- move across top-level sections in page mode with `j` and `k`
+- move across the header grid with `h`, `j`, `k`, and `l`
 - jump directly to the bounds with `gg` and `G`
-- open the current section with `l`
+- enter the current section with `Enter`
 - move through the current section line by line with `j` and `k`
 - move faster through the current section with `Ctrl+J` and `Ctrl+K`
 - play declarative ASCII frame animations inside the runtime
-- use `h` to exit section mode or move back in page history, and `l` to open links or dispatch actions inside section mode
+- use `h` to return to the header grid, `Backspace` to move back in page history, and `l` to open links or dispatch actions inside section mode
 - toggle the shortcuts modal with `?`
 
 ## Docs Site

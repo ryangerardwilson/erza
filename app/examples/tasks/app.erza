@@ -2,7 +2,7 @@
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Page mode uses j/k to choose a section. Press l to open the current section.</Text>
+    <Text>Header mode uses h, j, k, and l to choose a section. Press Enter to focus the current section.</Text>
 
     <? if tasks ?>
       <? for task in tasks ?>
@@ -23,8 +23,8 @@
   </Section>
 
   <Section title="Controls">
-    <Text>Page mode uses j/k to move between sections. Press l to open the current section.</Text>
+    <Text>Header mode uses h, j, k, and l to move across the section grid. Press Enter to focus the current section.</Text>
     <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
-    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back one page. l opens the current link or action. ? shows shortcuts.</Text>
+    <Text>gg and G jump to the first or last section or line. h returns to the header grid. Backspace goes back one page. l opens the current link or action. ? shows shortcuts.</Text>
   </Section>
 </Screen>

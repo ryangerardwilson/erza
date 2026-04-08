@@ -13,8 +13,9 @@ from erza.runtime import (
     StaticScreenApp,
     _RuntimeSession,
     _display_origin_x,
+    _header_grid_layout,
     _help_modal_lines,
-    _page_list_height,
+    _visible_header_rows,
     align_section_top_offset,
     build_render_plan,
     compute_scroll_offset,
@@ -95,11 +96,12 @@ class RuntimeTests(unittest.TestCase):
         ]
         plan = build_render_plan(Screen(title="Long", children=sections))
 
-        offset = compute_scroll_offset(plan, 5, screen_height=8)
+        offset = compute_scroll_offset(plan, 5, screen_height=8, terminal_width=79)
 
         self.assertGreater(offset, 0)
-        list_height = _page_list_height(plan, 7)
-        self.assertLessEqual(5, offset + list_height - 1)
+        layout = _header_grid_layout(plan, 79)
+        list_height = _visible_header_rows(layout, 7)
+        self.assertLessEqual(5 // layout.columns, offset + list_height - 1)
 
     def test_section_scroll_offset_reveals_active_line_within_modal(self) -> None:
         lines = [Text(f"Line {index}") for index in range(10)]
@@ -155,6 +157,26 @@ class RuntimeTests(unittest.TestCase):
 
         session._jump_to_last_section(plan)
         self.assertEqual(session.section_index, len(plan.sections) - 1)
+
+    def test_header_grid_navigation_moves_across_rows_and_columns(self) -> None:
+        screen = Screen(
+            title="Grid",
+            children=[
+                Section(title=f"Section Title {index}", children=[Text(f"Body {index}")])
+                for index in range(7)
+            ],
+        )
+        plan = build_render_plan(screen)
+        session = _RuntimeSession(StaticScreenApp(screen))
+
+        session._move_header_selection(plan, 79, "right")
+        self.assertEqual(session.section_index, 1)
+
+        session._move_header_selection(plan, 79, "down")
+        self.assertEqual(session.section_index, 4)
+
+        session._move_header_selection(plan, 79, "left")
+        self.assertEqual(session.section_index, 3)
 
     def test_jump_to_line_boundaries_updates_active_line(self) -> None:
         screen = Screen(
@@ -317,7 +339,7 @@ class RuntimeTests(unittest.TestCase):
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)
 
-        self.assertTrue(any("Page j / k" in line for line in lines))
+        self.assertTrue(any("Header h / j / k / l" in line for line in lines))
         self.assertTrue(any("?              Toggle the shortcuts modal." in line for line in lines))
 
 
