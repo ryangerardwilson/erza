@@ -233,7 +233,6 @@ def draw_plan(
     origin_x = _display_origin_x(terminal_width)
     styles = _styles()
 
-    _safe_addnstr(stdscr, 0, origin_x, plan.title, display_width, styles["title"])
     if not plan.sections:
         if footer and height > 0:
             _safe_addnstr(stdscr, height - 1, origin_x, footer, display_width, styles["status"])
@@ -293,7 +292,6 @@ def draw_section_page(
     display_width = _display_width(terminal_width)
     origin_x = _display_origin_x(terminal_width)
     styles = _styles()
-    _safe_addnstr(stdscr, 0, origin_x, plan.title, display_width, styles["title"])
     body_start_y = _draw_header_grid(
         stdscr,
         plan,
@@ -390,7 +388,7 @@ def _draw_header_grid(
     styles: dict[str, int],
 ) -> int:
     layout = _header_grid_layout(plan, display_width)
-    start_y = 2
+    start_y = 0
     section_start = min(max(scroll_offset, 0), max(len(plan.sections) - layout.visible_slots, 0))
     section_end = min(section_start + layout.visible_slots, len(plan.sections))
     items_in_row = section_end - section_start
