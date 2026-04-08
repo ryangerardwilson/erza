@@ -9,7 +9,7 @@
   <Section title="Movement">
     <Text>Header mode uses h, j, k, and l to move across the section grid.</Text>
     <Text>Press Enter to focus the current section. In section mode, j and k move line by line.</Text>
-    <Text>Ctrl+J and Ctrl+K move by half a page. h returns to the header grid. Backspace goes back. ? shows shortcuts. q exits cleanly.</Text>
+    <Text>Ctrl+J and Ctrl+K move by half a page. Esc returns to the header grid. Backspace goes back. ? shows shortcuts. q exits cleanly.</Text>
   </Section>
 
   <Section title="Next">

@@ -33,8 +33,8 @@ HELP_SHORTCUTS = [
     ("Backspace", "Go back one page."),
     ("Section j / k", "Move line by line inside the current section."),
     ("Section Ctrl+J / Ctrl+K", "Move by half a page."),
-    ("Section l", "Open the current link or action."),
-    ("Section h", "Leave section mode and return to the page."),
+    ("Section Enter", "Open the current link or action."),
+    ("Esc", "Leave section mode and return to the header."),
     ("?", "Toggle the shortcuts modal."),
     ("q", "Exit erza cleanly."),
 ]
@@ -400,11 +400,13 @@ def _draw_header_grid(
 
     for row in range(row_offset, min(row_offset + visible_rows, layout.rows)):
         y = start_y + (row - row_offset) * layout.row_step
-        for col in range(layout.columns):
-            section_pos = row * layout.columns + col
-            if section_pos >= len(plan.sections):
-                continue
-            x = origin_x + col * (layout.cell_width + HEADER_CELL_GAP)
+        row_start = row * layout.columns
+        row_end = min(row_start + layout.columns, len(plan.sections))
+        items_in_row = row_end - row_start
+        row_width = items_in_row * layout.cell_width + max(items_in_row - 1, 0) * HEADER_CELL_GAP
+        row_origin_x = origin_x + max((display_width - row_width) // 2, 0)
+        for col, section_pos in enumerate(range(row_start, row_end)):
+            x = row_origin_x + col * (layout.cell_width + HEADER_CELL_GAP)
             _draw_header_cell(
                 stdscr,
                 x=x,
@@ -430,12 +432,13 @@ def _draw_header_cell(
 ) -> None:
     title_text = _truncate_text(title, inner_width).center(inner_width)
     border = "+" + "-" * (inner_width + 2) + "+"
-    middle = f"| {title_text} |"
-    border_style = styles["section_title_active"] if active else styles["section_border"]
+    border_style = styles["section_border"]
+    fill_style = styles["section_fill"] | curses.A_REVERSE if active else styles["section_fill"]
     title_style = styles["section_title_active"] if active else styles["section_title"]
 
     _safe_addnstr(stdscr, y, x, border, len(border), border_style)
     _safe_addnstr(stdscr, y + 1, x, "| ", 2, border_style)
+    _safe_addnstr(stdscr, y + 1, x + 2, " " * inner_width, inner_width, fill_style)
     _safe_addnstr(stdscr, y + 1, x + 2, title_text, len(title_text), title_style)
     _safe_addnstr(stdscr, y + 1, x + 2 + len(title_text), " |", 2, border_style)
     _safe_addnstr(stdscr, y + 2, x, border, len(border), border_style)
@@ -583,17 +586,19 @@ class _RuntimeSession:
             if key == -1:
                 continue
             if self.show_help:
-                if key in {ord("?"), 27, ord("h")}:
+                if key in {ord("?"), 27}:
                     self.show_help = False
                 continue
             if key in {curses.KEY_BACKSPACE, 127, 8}:
                 self._go_back()
                 continue
-            if key == 27:
-                return
             if key == ord("?"):
                 self.show_help = True
                 self.pending_g = False
+                continue
+            if key == 27:
+                if self.mode == "section":
+                    self._exit_section_mode()
                 continue
             if key == ord("g"):
                 if self.pending_g:
@@ -643,10 +648,7 @@ class _RuntimeSession:
             if key == CTRL_K and self.mode == "section":
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], -1)
                 continue
-            if key in {ord("h"), curses.KEY_LEFT} and self.mode == "section":
-                self._exit_section_mode()
-                continue
-            if key in {ord("l"), curses.KEY_RIGHT} and self.mode == "section":
+            if key in {curses.KEY_ENTER, ord("\n"), ord("\r")} and self.mode == "section":
                 self._activate(plan)
                 continue
 

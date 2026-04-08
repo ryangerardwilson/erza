@@ -33,8 +33,8 @@ That shape lets the runtime provide a simple navigation contract:
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move inside the current section line by line
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
-- `h` exits section mode and returns to the header grid
-- section mode `l` opens the selected link or activates the selected action
+- `Esc` exits section mode and returns to the header grid
+- section mode `Enter` opens the selected link or activates the selected action
 - `Backspace` goes back one page
 - `?` toggles the shortcuts modal
 
@@ -136,8 +136,8 @@ Default interaction rules:
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move across rendered lines inside the active section
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
-- `h` exits section mode and returns to the header grid
-- section mode `l` opens the selected link or triggers the selected action
+- `Esc` exits section mode and returns to the header grid
+- section mode `Enter` opens the selected link or triggers the selected action
 - `Backspace` pops one page of history
 - `?` toggles the shortcuts modal
 - arrow keys and Enter may exist as compatibility helpers, but they are not the

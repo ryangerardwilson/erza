@@ -34,6 +34,6 @@
   <Section title="Controls">
     <Text>Header mode uses h, j, k, and l to move across the section grid. Press Enter to focus the current section.</Text>
     <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
-    <Text>gg and G jump to the first or last section or line. h returns to the header grid. Backspace goes back. ? shows shortcuts. q exits cleanly.</Text>
+    <Text>gg and G jump to the first or last section or line. Esc returns to the header grid. Backspace goes back. ? shows shortcuts. q exits cleanly.</Text>
   </Section>
 </Screen>
