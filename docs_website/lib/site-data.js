@@ -11,10 +11,12 @@ export const site = {
 };
 
 export const nav = [
-  { href: "/", label: "Docs" },
-  { href: "/components", label: "Components" },
+  { href: "/#full-docs", label: "Docs" },
   { href: site.repoUrl, label: "GitHub", external: true }
 ];
+
+export const installCommand =
+  "curl -fsSL https://raw.githubusercontent.com/ryangerardwilson/erza/main/app/install.sh | bash";
 
 export const whyUseCases = [
   "Long docs that should open without browser chrome, banners, or tab sprawl.",
@@ -22,8 +24,7 @@ export const whyUseCases = [
   "Focused workflows where the terminal is already the right place to stay."
 ];
 
-export const starterScript = `git clone https://github.com/ryangerardwilson/erza.git
-cd erza/app && ./install.sh -u
+export const starterScript = `${installCommand}
 erza run erza.ryangerardwilson.com`;
 
 export const terminalDocsCommand = "erza run erza.ryangerardwilson.com";

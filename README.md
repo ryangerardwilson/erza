@@ -55,15 +55,35 @@ experience back into a terminal-shaped environment.
 
 See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ryangerardwilson/erza/main/app/install.sh | bash
+```
+
+If `~/.local/bin` is not already on your `PATH`, add it once to `~/.bashrc`
+and reload your shell:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+source ~/.bashrc
+```
+
 ## Quick Start
+
+```bash
+erza run erza.ryangerardwilson.com
+erza run erza.ryangerardwilson.com/install
+erza run erza.ryangerardwilson.com/first-run
+```
+
+From a local checkout:
 
 ```bash
 python app/main.py run app/examples/docs
 python app/main.py run app/examples/tasks/app.erza
 python app/main.py run app/examples/greetings
 python app/main.py run app/examples/animation
-erza run https://erza.ryangerardwilson.com
-erza run erza.ryangerardwilson.com
 ```
 
 If you prefer working inside the app workspace, `cd app && python main.py ...`

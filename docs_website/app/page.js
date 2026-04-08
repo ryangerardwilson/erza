@@ -1,6 +1,15 @@
 import SiteFrame from "@/ui/site-frame";
 import TypewriterHero from "@/ui/typewriter-hero";
-import { landingMarkup, landingVideo, starterScript, storyPhrases, terminalDocsCommand, terminalDocsSequence, whyUseCases } from "@/lib/site-data";
+import {
+  installCommand,
+  landingMarkup,
+  landingVideo,
+  starterScript,
+  storyPhrases,
+  terminalDocsCommand,
+  terminalDocsSequence,
+  whyUseCases
+} from "@/lib/site-data";
 
 export default function HomePage() {
   return (
@@ -92,18 +101,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="section">
+      <section className="section" id="full-docs">
         <div className="section-heading">
           <p className="eyebrow">full docs</p>
-          <h2>Read the complete docs in erza, not in the browser.</h2>
+          <h2>Read the full docs in erza, not in the browser.</h2>
         </div>
         <div className="terminal-jump">
+          <pre className="code-block">
+            <code>{installCommand}</code>
+          </pre>
+          <p className="protocol-link">
+            Install the CLI first, then open the full docs in the terminal.
+          </p>
           <pre className="code-block">
             <code>{terminalDocsCommand}</code>
           </pre>
           <p className="protocol-link">
-            The browser site is the quick pitch. The terminal site carries the full getting-started path,
-            component rules, backend notes, remote model, examples, and reference material.
+            The browser site is the quick pitch. The terminal site carries the full getting-started
+            path, component rules, backend notes, remote model, examples, and reference material.
           </p>
         </div>
       </section>
