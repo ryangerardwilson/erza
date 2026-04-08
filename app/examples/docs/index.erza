@@ -5,18 +5,30 @@
     <Text>Use it when docs, tools, or product surfaces feel worse inside a browser tab.</Text>
   </Section>
 
-  <Section title="Get Started">
-    <Text>Read these pages in order if you are new.</Text>
+  <Section title="Install">
+    <Text>Install the CLI first, then verify the launcher and version.</Text>
     <Link href="install">Install</Link>
+  </Section>
+
+  <Section title="First Run">
+    <Text>Open the hosted docs and one local example before writing anything.</Text>
     <Link href="first-run">First Run</Link>
+  </Section>
+
+  <Section title="First File">
+    <Text>Write the smallest useful screen once the first run makes sense.</Text>
     <Link href="first-file">First File</Link>
   </Section>
 
   <Section title="Build">
-    <Text>Then move into the language, backend, remote model, and examples.</Text>
+    <Text>Then move into the language rules, backend shape, and remote model.</Text>
     <Link href="components">Components</Link>
     <Link href="backend">Backend</Link>
     <Link href="remote">Remote</Link>
+  </Section>
+
+  <Section title="Examples">
+    <Text>Open the bundled local surfaces once the core model feels clear.</Text>
     <Link href="examples">Examples</Link>
   </Section>
 
