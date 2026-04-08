@@ -23,11 +23,9 @@ MIN_ANIMATION_INTERVAL_MS = 50
 HELP_MODAL_MAX_WIDTH = 67
 HEADER_CELL_GAP = 2
 HEADER_CELL_ROW_HEIGHT = 3
-HEADER_CELL_ROW_GAP = 1
-MAX_HEADER_VISIBLE_ROWS = 3
-MIN_SECTION_BODY_HEIGHT = 7
 HELP_SHORTCUTS = [
-    ("Header h / j / k / l", "Move across the section grid."),
+    ("Header h / k", "Move to the previous section header."),
+    ("Header j / l", "Move to the next section header."),
     ("Enter", "Focus the current section body."),
     ("Header gg / G", "Jump to the first or last section."),
     ("Backspace", "Go back one page."),
@@ -89,9 +87,7 @@ class RenderPlan:
 class HeaderGridLayout:
     cell_inner_width: int
     cell_width: int
-    columns: int
-    rows: int
-    row_step: int = HEADER_CELL_ROW_HEIGHT + HEADER_CELL_ROW_GAP
+    visible_slots: int
 
 
 class ErzaApp:
@@ -394,30 +390,26 @@ def _draw_header_grid(
     styles: dict[str, int],
 ) -> int:
     layout = _header_grid_layout(plan, display_width)
-    visible_rows = _visible_header_rows(layout, visible_height)
-    row_offset = min(max(scroll_offset, 0), max(layout.rows - visible_rows, 0))
     start_y = 2
+    section_start = min(max(scroll_offset, 0), max(len(plan.sections) - layout.visible_slots, 0))
+    section_end = min(section_start + layout.visible_slots, len(plan.sections))
+    items_in_row = section_end - section_start
+    row_width = items_in_row * layout.cell_width + max(items_in_row - 1, 0) * HEADER_CELL_GAP
+    row_origin_x = origin_x + max((display_width - row_width) // 2, 0)
 
-    for row in range(row_offset, min(row_offset + visible_rows, layout.rows)):
-        y = start_y + (row - row_offset) * layout.row_step
-        row_start = row * layout.columns
-        row_end = min(row_start + layout.columns, len(plan.sections))
-        items_in_row = row_end - row_start
-        row_width = items_in_row * layout.cell_width + max(items_in_row - 1, 0) * HEADER_CELL_GAP
-        row_origin_x = origin_x + max((display_width - row_width) // 2, 0)
-        for col, section_pos in enumerate(range(row_start, row_end)):
-            x = row_origin_x + col * (layout.cell_width + HEADER_CELL_GAP)
-            _draw_header_cell(
-                stdscr,
-                x=x,
-                y=y,
-                title=plan.sections[section_pos].title,
-                inner_width=layout.cell_inner_width,
-                active=section_pos == section_index,
-                styles=styles,
-            )
+    for slot, section_pos in enumerate(range(section_start, section_end)):
+        x = row_origin_x + slot * (layout.cell_width + HEADER_CELL_GAP)
+        _draw_header_cell(
+            stdscr,
+            x=x,
+            y=start_y,
+            title=plan.sections[section_pos].title,
+            inner_width=layout.cell_inner_width,
+            active=section_pos == section_index,
+            styles=styles,
+        )
 
-    return start_y + visible_rows * layout.row_step
+    return start_y + HEADER_CELL_ROW_HEIGHT + 1
 
 
 def _draw_header_cell(
@@ -712,24 +704,11 @@ class _RuntimeSession:
     def _move_header_selection(self, plan: RenderPlan, terminal_width: int, direction: str) -> None:
         if not plan.sections:
             return
-        layout = _header_grid_layout(plan, _display_width(terminal_width))
-        row, col = divmod(self.section_index, layout.columns)
         next_index = self.section_index
-
-        if direction == "left":
-            row_start, row_end = _header_row_bounds(row, layout.columns, len(plan.sections))
-            next_index = row_end if self.section_index == row_start else self.section_index - 1
-        elif direction == "right":
-            row_start, row_end = _header_row_bounds(row, layout.columns, len(plan.sections))
-            next_index = row_start if self.section_index == row_end else self.section_index + 1
-        elif direction == "up":
-            target_row = (row - 1) % max(layout.rows, 1)
-            row_start, row_end = _header_row_bounds(target_row, layout.columns, len(plan.sections))
-            next_index = min(row_start + col, row_end)
-        elif direction == "down":
-            target_row = (row + 1) % max(layout.rows, 1)
-            row_start, row_end = _header_row_bounds(target_row, layout.columns, len(plan.sections))
-            next_index = min(row_start + col, row_end)
+        if direction in {"left", "up"}:
+            next_index = (self.section_index - 1) % len(plan.sections)
+        elif direction in {"right", "down"}:
+            next_index = (self.section_index + 1) % len(plan.sections)
 
         if next_index == self.section_index:
             return
@@ -870,10 +849,9 @@ def compute_scroll_offset(
         return 0
 
     layout = _header_grid_layout(plan, _display_width(terminal_width))
-    viewport_rows = _visible_header_rows(layout, _viewport_height(screen_height))
-    max_offset = max(layout.rows - viewport_rows, 0)
+    max_offset = max(len(plan.sections) - layout.visible_slots, 0)
     offset = min(max(current_offset, 0), max_offset)
-    offset = _ensure_line_visible(_header_row_for_section(section_index, layout.columns), offset, viewport_rows)
+    offset = _ensure_line_visible(section_index, offset, layout.visible_slots)
     return min(max(offset, 0), max_offset)
 
 
@@ -917,36 +895,16 @@ def _viewport_height(screen_height: int) -> int:
 
 def _header_grid_layout(plan: RenderPlan, display_width: int) -> HeaderGridLayout:
     if not plan.sections:
-        return HeaderGridLayout(cell_inner_width=1, cell_width=5, columns=1, rows=0)
+        return HeaderGridLayout(cell_inner_width=1, cell_width=5, visible_slots=1)
     max_title = max(len(section.title) for section in plan.sections)
     cell_inner_width = min(max_title, max(display_width - 4, 1))
     cell_width = cell_inner_width + 4
-    columns = max((display_width + HEADER_CELL_GAP) // (cell_width + HEADER_CELL_GAP), 1)
-    rows = (len(plan.sections) + columns - 1) // columns
+    visible_slots = max((display_width + HEADER_CELL_GAP) // (cell_width + HEADER_CELL_GAP), 1)
     return HeaderGridLayout(
         cell_inner_width=cell_inner_width,
         cell_width=cell_width,
-        columns=columns,
-        rows=rows,
+        visible_slots=visible_slots,
     )
-
-
-def _visible_header_rows(layout: HeaderGridLayout, viewport_height: int) -> int:
-    available_for_header = max(viewport_height - MIN_SECTION_BODY_HEIGHT - 2, HEADER_CELL_ROW_HEIGHT)
-    visible_rows = max(1, min(MAX_HEADER_VISIBLE_ROWS, (available_for_header + HEADER_CELL_ROW_GAP) // layout.row_step))
-    return min(layout.rows, visible_rows)
-
-
-def _header_row_for_section(section_index: int, columns: int) -> int:
-    if columns <= 0:
-        return 0
-    return section_index // columns
-
-
-def _header_row_bounds(row: int, columns: int, section_count: int) -> tuple[int, int]:
-    row_start = row * columns
-    row_end = min(row_start + columns, section_count) - 1
-    return row_start, row_end
 
 
 def _section_content_viewport_height(screen_height: int) -> int:

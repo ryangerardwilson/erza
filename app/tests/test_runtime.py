@@ -15,7 +15,6 @@ from erza.runtime import (
     _display_origin_x,
     _header_grid_layout,
     _help_modal_lines,
-    _visible_header_rows,
     align_section_top_offset,
     build_render_plan,
     compute_scroll_offset,
@@ -100,8 +99,7 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertGreater(offset, 0)
         layout = _header_grid_layout(plan, 79)
-        list_height = _visible_header_rows(layout, 7)
-        self.assertLessEqual(5 // layout.columns, offset + list_height - 1)
+        self.assertLessEqual(5, offset + layout.visible_slots - 1)
 
     def test_section_scroll_offset_reveals_active_line_within_modal(self) -> None:
         lines = [Text(f"Line {index}") for index in range(10)]
@@ -173,12 +171,12 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(session.section_index, 1)
 
         session._move_header_selection(plan, 79, "down")
-        self.assertEqual(session.section_index, 4)
+        self.assertEqual(session.section_index, 2)
 
         session._move_header_selection(plan, 79, "left")
-        self.assertEqual(session.section_index, 3)
+        self.assertEqual(session.section_index, 1)
 
-    def test_header_grid_navigation_wraps_at_row_and_column_edges(self) -> None:
+    def test_header_strip_navigation_wraps_at_edges(self) -> None:
         screen = Screen(
             title="Grid",
             children=[
@@ -189,29 +187,21 @@ class RuntimeTests(unittest.TestCase):
         plan = build_render_plan(screen)
         session = _RuntimeSession(StaticScreenApp(screen))
 
-        session.section_index = 2
+        session.section_index = len(plan.sections) - 1
         session._move_header_selection(plan, 79, "right")
         self.assertEqual(session.section_index, 0)
 
         session.section_index = 0
         session._move_header_selection(plan, 79, "left")
-        self.assertEqual(session.section_index, 2)
+        self.assertEqual(session.section_index, len(plan.sections) - 1)
 
-        session.section_index = 6
+        session.section_index = len(plan.sections) - 1
         session._move_header_selection(plan, 79, "down")
         self.assertEqual(session.section_index, 0)
 
         session.section_index = 0
         session._move_header_selection(plan, 79, "up")
-        self.assertEqual(session.section_index, 6)
-
-        session.section_index = 3
-        session._move_header_selection(plan, 79, "down")
-        self.assertEqual(session.section_index, 6)
-
-        session.section_index = 6
-        session._move_header_selection(plan, 79, "up")
-        self.assertEqual(session.section_index, 3)
+        self.assertEqual(session.section_index, len(plan.sections) - 1)
 
     def test_jump_to_line_boundaries_updates_active_line(self) -> None:
         screen = Screen(
@@ -374,7 +364,8 @@ class RuntimeTests(unittest.TestCase):
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)
 
-        self.assertTrue(any("Header h / j / k / l" in line for line in lines))
+        self.assertTrue(any("Header h / k" in line for line in lines))
+        self.assertTrue(any("Header j / l" in line for line in lines))
         self.assertTrue(any("?              Toggle the shortcuts modal." in line for line in lines))
 
 

@@ -29,12 +29,13 @@ prototype still renders many screens as sectional panels.
 
 - A screen is composed from terminal components rather than browser pages.
 - The current runtime uses titled panels as a neat default presentation.
-- Header mode uses `h`, `j`, `k`, and `l` to move across the section grid.
+- Header mode uses a single horizontal strip of section headers.
+- `h` and `k` move to the previous header. `j` and `l` move to the next header.
 - `Enter` focuses the current section body.
 - `gg` jumps to the first section and `G` jumps to the last.
 - Section mode uses `j` and `k` line by line.
 - Section mode uses `Ctrl+J` and `Ctrl+K` to move by half a page.
-- `Esc` exits section mode and returns focus to the header grid.
+- `Esc` exits section mode and returns focus to the header strip.
 - Section mode uses `Enter` to open the current link or fire the current action.
 - `Backspace` goes back one page.
 - `?` toggles the shortcuts modal.
@@ -163,7 +164,7 @@ literals, and `backend(...)` calls.
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Header mode uses hjkl to move across the section grid. Press Enter to focus the current section.</Text>
+    <Text>Header mode uses a horizontal strip of section headers. h and k move to the previous header. j and l move to the next header. Press Enter to focus the current section.</Text>
 
     <? if tasks ?>
       <? for task in tasks ?>
@@ -190,13 +191,13 @@ the full loop:
 
 - load backend data during template expansion
 - render named sections as the primary screen structure
-- move across the header grid with `h`, `j`, `k`, and `l`
+- move across the header strip with `h`, `j`, `k`, and `l`
 - jump directly to the bounds with `gg` and `G`
 - enter the current section with `Enter`
 - move through the current section line by line with `j` and `k`
 - move faster through the current section with `Ctrl+J` and `Ctrl+K`
 - play declarative ASCII frame animations inside the runtime
-- use `Esc` to return to the header grid, `Backspace` to move back in page history, and `Enter` to open links or dispatch actions inside section mode
+- use `Esc` to return to the header strip, `Backspace` to move back in page history, and `Enter` to open links or dispatch actions inside section mode
 - toggle the shortcuts modal with `?`
 
 ## Docs Site

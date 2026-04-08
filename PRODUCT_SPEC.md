@@ -28,12 +28,13 @@ Each screen should be readable as a small set of named regions and components:
 
 That shape lets the runtime provide a simple navigation contract:
 
-- header mode `h`, `j`, `k`, and `l` move across the section grid
+- header mode uses a single horizontal strip of section headers
+- `h` and `k` move to the previous header; `j` and `l` move to the next header
 - `Enter` focuses the current section body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move inside the current section line by line
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
-- `Esc` exits section mode and returns to the header grid
+- `Esc` exits section mode and returns to the header strip
 - section mode `Enter` opens the selected link or activates the selected action
 - `Backspace` goes back one page
 - `?` toggles the shortcuts modal
@@ -84,7 +85,7 @@ Example shape:
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Header mode uses hjkl to switch sections. Press Enter to focus the current section.</Text>
+    <Text>Header mode uses a horizontal strip of section headers. h and k move to the previous header. j and l move to the next header. Press Enter to focus the current section.</Text>
 
     <? for task in tasks ?>
       <Text><?= task.title ?></Text>
@@ -131,12 +132,13 @@ must remain terminal-native in both behavior and constraints.
 
 Default interaction rules:
 
-- header mode `h`, `j`, `k`, and `l` move across the section grid
+- header mode uses a single horizontal strip of section headers
+- `h` and `k` move to the previous header; `j` and `l` move to the next header
 - `Enter` focuses the current section body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move across rendered lines inside the active section
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
-- `Esc` exits section mode and returns to the header grid
+- `Esc` exits section mode and returns to the header strip
 - section mode `Enter` opens the selected link or triggers the selected action
 - `Backspace` pops one page of history
 - `?` toggles the shortcuts modal
