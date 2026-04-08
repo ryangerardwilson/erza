@@ -13,6 +13,7 @@ from erza.runtime import (
     StaticScreenApp,
     _RuntimeSession,
     _display_origin_x,
+    _help_modal_lines,
     align_section_top_offset,
     build_render_plan,
     compute_scroll_offset,
@@ -288,7 +289,7 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertGreater(session.section_line_index, 0)
 
-    def test_footer_text_shows_route_and_section(self) -> None:
+    def test_footer_text_shows_only_route_in_page_mode(self) -> None:
         screen = Screen(
             title="Docs",
             children=[Section(title="Start Here", children=[Text("Intro")])],
@@ -298,8 +299,28 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertEqual(
             session._footer_text(plan),
+            "https://erza.ryangerardwilson.com/first-run",
+        )
+
+    def test_footer_text_shows_route_and_section_in_section_mode(self) -> None:
+        screen = Screen(
+            title="Docs",
+            children=[Section(title="Start Here", children=[Text("Intro")])],
+        )
+        session = _RuntimeSession(RemoteApp("erza.ryangerardwilson.com/first-run"))
+        session.mode = "section"
+        plan = build_render_plan(screen)
+
+        self.assertEqual(
+            session._footer_text(plan),
             "https://erza.ryangerardwilson.com/first-run -> Start Here",
         )
+
+    def test_help_modal_lines_include_shortcuts(self) -> None:
+        lines = _help_modal_lines(63)
+
+        self.assertTrue(any("Page j / k" in line for line in lines))
+        self.assertTrue(any("?              Toggle the shortcuts modal." in line for line in lines))
 
 
 class _CountingApp:

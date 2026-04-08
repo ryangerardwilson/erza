@@ -1,4 +1,5 @@
 import SiteFrame from "@/ui/site-frame";
+import CopyCommand from "@/ui/copy-command";
 import TypewriterHero from "@/ui/typewriter-hero";
 import {
   installCommand,
@@ -51,9 +52,7 @@ export default function HomePage() {
               <h2>Install it, then open the real docs in erza.</h2>
             </div>
             <div className="terminal-jump">
-              <pre className="code-block">
-                <code>{starterScript}</code>
-              </pre>
+              <CopyCommand value={starterScript} />
               <p className="protocol-link">
                 In the terminal, start with{" "}
                 {terminalDocsSequence.map((item, index) => (
@@ -110,12 +109,8 @@ export default function HomePage() {
           <p className="protocol-link">
             Install the CLI first, then open the full docs in the terminal.
           </p>
-          <pre className="code-block">
-            <code>{installCommand}</code>
-          </pre>
-          <pre className="code-block">
-            <code>{terminalDocsCommand}</code>
-          </pre>
+          <CopyCommand value={installCommand} />
+          <CopyCommand value={terminalDocsCommand} />
           <p className="protocol-link">
             The browser site is the quick pitch. The terminal site carries the full getting-started
             path, component rules, backend notes, remote model, examples, and reference material.

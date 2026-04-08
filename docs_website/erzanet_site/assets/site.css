@@ -526,6 +526,41 @@ pre,
   word-break: break-word;
 }
 
+.copy-command {
+  display: grid;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.copy-button {
+  justify-self: start;
+  padding: 0.48rem 0.8rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.copy-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.copy-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
+}
+
 .command-card pre,
 .code-block {
   padding: 0.9rem 1rem;
@@ -533,6 +568,14 @@ pre,
   color: #f7f7f7;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
+}
+
+.code-block-command {
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+  line-height: 1.5;
+  scrollbar-width: thin;
 }
 
 .terminal-window {

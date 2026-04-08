@@ -34,6 +34,6 @@
   <Section title="Controls">
     <Text>Page mode uses j/k to move between sections. Press l to open the current section.</Text>
     <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
-    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back. q exits cleanly.</Text>
+    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back. ? shows shortcuts. q exits cleanly.</Text>
   </Section>
 </Screen>

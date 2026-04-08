@@ -35,6 +35,7 @@ That shape lets the runtime provide a simple navigation contract:
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
 - `h` exits section mode or goes back one page
 - section mode `l` opens the selected link or activates the selected action
+- `?` toggles the shortcuts modal
 
 This is the default interaction identity for `erza`.
 
@@ -135,6 +136,7 @@ Default interaction rules:
 - section mode `Ctrl+J` and `Ctrl+K` move by half a page
 - `h` exits section mode or pops one page of history
 - section mode `l` opens the selected link or triggers the selected action
+- `?` toggles the shortcuts modal
 - arrow keys and Enter may exist as compatibility helpers, but they are not the
   primary documented interaction model
 

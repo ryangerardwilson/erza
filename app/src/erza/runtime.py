@@ -20,6 +20,19 @@ DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
 MIN_ANIMATION_INTERVAL_MS = 50
+HELP_MODAL_MAX_WIDTH = 67
+HELP_SHORTCUTS = [
+    ("Page j / k", "Move between sections."),
+    ("Page l", "Open the current section."),
+    ("Page gg / G", "Jump to the first or last section."),
+    ("Page h", "Go back one page."),
+    ("Section j / k", "Move line by line inside the current section."),
+    ("Section Ctrl+J / Ctrl+K", "Move by half a page."),
+    ("Section l", "Open the current link or action."),
+    ("Section h", "Leave section mode and return to the page."),
+    ("?", "Toggle the shortcuts modal."),
+    ("q", "Exit erza cleanly."),
+]
 
 
 @dataclass(slots=True)
@@ -346,12 +359,62 @@ def draw_section_page(
     stdscr.refresh()
 
 
+def draw_shortcuts_modal(
+    stdscr: curses.window,
+    *,
+    footer: str = "",
+) -> None:
+    height, terminal_width = stdscr.getmaxyx()
+    visible_height = _viewport_height(height)
+    display_width = _display_width(terminal_width)
+    origin_x = _display_origin_x(terminal_width)
+    styles = _styles()
+
+    inner_width = min(HELP_MODAL_MAX_WIDTH - 4, max(display_width - 8, 24))
+    width = inner_width + 4
+    title_text = _truncate_text("[ Shortcuts ]", inner_width)
+    lines = _help_modal_lines(inner_width)
+    top_border = "+-" + title_text + "-" * max(inner_width + 1 - len(title_text), 0) + "+"
+    bottom_border = "+" + "-" * (width - 2) + "+"
+    modal_x = origin_x + max((display_width - width) // 2, 0)
+    modal_height = len(lines) + 2
+    top_y = max((visible_height - modal_height) // 2, 0)
+
+    _safe_addnstr(stdscr, top_y, modal_x, top_border, width, styles["section_title_active"])
+
+    for index, line in enumerate(lines, start=1):
+        screen_y = top_y + index
+        if screen_y >= visible_height:
+            break
+        _safe_addnstr(stdscr, screen_y, modal_x, "| ", 2, styles["section_border"])
+        _safe_addnstr(stdscr, screen_y, modal_x + 2, " " * inner_width, inner_width, styles["section_fill"])
+        _safe_addnstr(stdscr, screen_y, modal_x + width - 2, " |", 2, styles["section_border"])
+        _safe_addnstr(stdscr, screen_y, modal_x + 2, line, inner_width, styles["text"])
+
+    bottom_y = top_y + modal_height - 1
+    if bottom_y < visible_height:
+        _safe_addnstr(stdscr, bottom_y, modal_x, bottom_border, width, styles["section_border"])
+
+    if footer and height > 0:
+        _safe_addnstr(
+            stdscr,
+            height - 1,
+            origin_x,
+            footer,
+            display_width,
+            styles["status"],
+        )
+
+    stdscr.refresh()
+
+
 class _RuntimeSession:
     def __init__(self, app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
         self.app = app
         self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
         self._screen: Screen | None = None
         self.mode = "page"
+        self.show_help = False
         self.section_index = 0
         self.scroll_offset = 0
         self.section_line_index = 0
@@ -396,12 +459,24 @@ class _RuntimeSession:
                     self.scroll_offset,
                     footer,
                 )
+            if self.show_help:
+                draw_shortcuts_modal(stdscr, footer=footer)
 
             stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
             key = stdscr.getch()
-            if key in {ord("q"), 27}:
+            if key == ord("q"):
                 return
             if key == -1:
+                continue
+            if self.show_help:
+                if key in {ord("?"), 27, ord("h")}:
+                    self.show_help = False
+                continue
+            if key == 27:
+                return
+            if key == ord("?"):
+                self.show_help = True
+                self.pending_g = False
                 continue
             if key == ord("g"):
                 if self.pending_g:
@@ -561,12 +636,14 @@ class _RuntimeSession:
             self.status = "page has no sections"
             return
         self.mode = "section"
+        self.show_help = False
         self.section_line_index = 0
         self.section_scroll_offset = 0
         self.status = ""
 
     def _exit_section_mode(self) -> None:
         self.mode = "page"
+        self.show_help = False
         self.section_scroll_offset = 0
         self.status = ""
 
@@ -577,6 +654,7 @@ class _RuntimeSession:
         self.app = self.history.pop()
         self._invalidate_screen(reset_animation=True)
         self.mode = "page"
+        self.show_help = False
         self.section_index = 0
         self.scroll_offset = 0
         self.section_line_index = 0
@@ -587,7 +665,7 @@ class _RuntimeSession:
 
     def _footer_text(self, plan: RenderPlan) -> str:
         location = _app_location(self.app)
-        if plan.sections:
+        if self.mode == "section" and plan.sections:
             location = f"{location} -> {plan.sections[self.section_index].title}"
         if self.status:
             return f"{location} | {self.status}"
@@ -619,6 +697,7 @@ class _RuntimeSession:
         self.app = next_app
         self._invalidate_screen(reset_animation=True)
         self.mode = "page"
+        self.show_help = False
         self.section_index = 0
         self.scroll_offset = 0
         self.section_line_index = 0
@@ -1053,6 +1132,16 @@ def _safe_addnstr(
         stdscr.addnstr(y, x, text, max_length, style)
     except curses.error:
         pass
+
+
+def _help_modal_lines(inner_width: int) -> list[str]:
+    lines: list[str] = []
+    for label, description in HELP_SHORTCUTS:
+        wrapped = textwrap.wrap(description, width=max(inner_width - 16, 10)) or [description]
+        for index, part in enumerate(wrapped):
+            prefix = f"{label:<14} " if index == 0 else " " * 15
+            lines.append(_truncate_text(prefix + part, inner_width))
+    return lines
 
 
 def _segment_style(
