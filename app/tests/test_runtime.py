@@ -14,6 +14,7 @@ from erza.runtime import (
     _RuntimeSession,
     _display_origin_x,
     _help_modal_lines,
+    _page_list_height,
     align_section_top_offset,
     build_render_plan,
     compute_scroll_offset,
@@ -97,8 +98,8 @@ class RuntimeTests(unittest.TestCase):
         offset = compute_scroll_offset(plan, 5, screen_height=8)
 
         self.assertGreater(offset, 0)
-        visible_height = 7
-        self.assertLessEqual(plan.sections[5].y, offset + visible_height - 1)
+        list_height = _page_list_height(plan, 7)
+        self.assertLessEqual(5, offset + list_height - 1)
 
     def test_section_scroll_offset_reveals_active_line_within_modal(self) -> None:
         lines = [Text(f"Line {index}") for index in range(10)]
@@ -151,12 +152,9 @@ class RuntimeTests(unittest.TestCase):
 
         session._jump_to_first_section(plan)
         self.assertEqual(session.section_index, 0)
-        self.assertTrue(session.snap_section_to_top)
 
-        session.snap_section_to_top = False
         session._jump_to_last_section(plan)
         self.assertEqual(session.section_index, len(plan.sections) - 1)
-        self.assertTrue(session.snap_section_to_top)
 
     def test_jump_to_line_boundaries_updates_active_line(self) -> None:
         screen = Screen(

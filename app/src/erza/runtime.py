@@ -214,7 +214,7 @@ def draw_plan(
     plan: RenderPlan,
     section_index: int | None,
     scroll_offset: int,
-    status: str = "",
+    footer: str = "",
 ) -> None:
     stdscr.erase()
     height, terminal_width = stdscr.getmaxyx()
@@ -223,10 +223,29 @@ def draw_plan(
     origin_x = _display_origin_x(terminal_width)
     styles = _styles()
 
-    for source_y, line in enumerate(plan.lines):
-        if source_y < scroll_offset:
-            continue
-        y = source_y - scroll_offset
+    _safe_addnstr(stdscr, 0, origin_x, plan.title, display_width, styles["title"])
+    if not plan.sections:
+        if footer and height > 0:
+            _safe_addnstr(stdscr, height - 1, origin_x, footer, display_width, styles["status"])
+        stdscr.refresh()
+        return
+
+    list_height = _page_list_height(plan, visible_height)
+    list_start_y = 2
+    list_end = min(scroll_offset + list_height, len(plan.sections))
+    for row, source_index in enumerate(range(scroll_offset, list_end)):
+        section = plan.sections[source_index]
+        y = list_start_y + row
+        marker = "->" if source_index == section_index else "  "
+        label = _truncate_text(f"{marker} {section.title}", display_width)
+        style = styles["section_title_active"] if source_index == section_index else styles["section_title"]
+        _safe_addnstr(stdscr, y, origin_x, label, display_width, style)
+
+    preview_y = list_start_y + list_height + 1
+    preview_height = max(visible_height - preview_y, 0)
+    active_section = plan.sections[section_index if section_index is not None else 0]
+    for row, line in enumerate(active_section.block.lines[:preview_height]):
+        y = preview_y + row
         if y >= visible_height:
             break
         for segment in line:
@@ -244,25 +263,12 @@ def draw_plan(
                 styles[segment.style],
             )
 
-    if section_index is not None and plan.sections:
-        active_section = plan.sections[section_index]
-        active_section_y = active_section.y - scroll_offset
-        if 0 <= active_section_y < visible_height:
-            _safe_addnstr(
-                stdscr,
-                active_section_y,
-                origin_x + active_section.x,
-                active_section.title_text,
-                max(display_width - active_section.x, 0),
-                styles["section_title_active"],
-            )
-
-    if status and height > 0:
+    if footer and height > 0:
         _safe_addnstr(
             stdscr,
             height - 1,
             origin_x,
-            status,
+            footer,
             display_width,
             styles["status"],
         )
@@ -419,7 +425,6 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
-        self.snap_section_to_top = False
         self.pending_g = False
         self.animation_epoch = time.monotonic()
         self.status = ""
@@ -554,10 +559,6 @@ class _RuntimeSession:
         )
 
     def _sync_page_scroll(self, plan: RenderPlan, screen_height: int) -> None:
-        if self.snap_section_to_top:
-            self.scroll_offset = align_section_top_offset(plan, self.section_index, screen_height)
-            self.snap_section_to_top = False
-            return
         self.scroll_offset = compute_scroll_offset(
             plan,
             self.section_index,
@@ -583,7 +584,6 @@ class _RuntimeSession:
         if next_index == self.section_index:
             return
         self.section_index = next_index
-        self.snap_section_to_top = True
         self.status = ""
 
     def _move_section_line(self, plan: RenderPlan, delta: int) -> None:
@@ -600,14 +600,12 @@ class _RuntimeSession:
         if not plan.sections:
             return
         self.section_index = 0
-        self.snap_section_to_top = True
         self.status = ""
 
     def _jump_to_last_section(self, plan: RenderPlan) -> None:
         if not plan.sections:
             return
         self.section_index = len(plan.sections) - 1
-        self.snap_section_to_top = True
         self.status = ""
 
     def _jump_to_first_line(self, plan: RenderPlan) -> None:
@@ -659,7 +657,6 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
-        self.snap_section_to_top = False
         self.pending_g = False
         self.status = "went back"
 
@@ -702,7 +699,6 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
-        self.snap_section_to_top = False
         self.pending_g = False
         self.status = f"opened {actionable.href}"
 
@@ -713,16 +709,13 @@ def compute_scroll_offset(
     screen_height: int,
     current_offset: int = 0,
 ) -> int:
-    viewport_height = _viewport_height(screen_height)
-    max_offset = max(len(plan.lines) - 1, 0)
-    if viewport_height <= 0 or not plan.sections:
+    if not plan.sections:
         return 0
 
+    viewport_height = _page_list_height(plan, _viewport_height(screen_height))
+    max_offset = max(len(plan.sections) - viewport_height, 0)
     offset = min(max(current_offset, 0), max_offset)
-    section = plan.sections[min(section_index, len(plan.sections) - 1)]
-
-    offset = _ensure_line_visible(section.y, offset, viewport_height)
-
+    offset = _ensure_line_visible(section_index, offset, viewport_height)
     return min(max(offset, 0), max_offset)
 
 
@@ -762,6 +755,15 @@ def _ensure_line_visible(line_y: int, offset: int, viewport_height: int) -> int:
 
 def _viewport_height(screen_height: int) -> int:
     return max(screen_height - 1, 1)
+
+
+def _page_list_height(plan: RenderPlan, viewport_height: int) -> int:
+    if not plan.sections:
+        return 0
+    list_height = min(len(plan.sections), max(1, min(6, viewport_height // 3)))
+    while list_height > 1 and viewport_height - (2 + list_height + 1) < 4:
+        list_height -= 1
+    return max(list_height, 1)
 
 
 def _section_content_viewport_height(screen_height: int) -> int:
