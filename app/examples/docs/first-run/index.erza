@@ -7,9 +7,9 @@
   </Section>
 
   <Section title="Movement">
-    <Text>Ctrl+N and Ctrl+P move between panels.</Text>
-    <Text>j and k move inside the active panel.</Text>
-    <Text>l opens the focused link. h goes back. q exits cleanly.</Text>
+    <Text>Page mode uses j and k to move between sections.</Text>
+    <Text>Press l to open the current section. In section mode, j and k move line by line.</Text>
+    <Text>Ctrl+J and Ctrl+K move by half a page. h exits section mode or goes back. q exits cleanly.</Text>
   </Section>
 
   <Section title="Next">

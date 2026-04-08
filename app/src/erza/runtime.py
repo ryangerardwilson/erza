@@ -14,8 +14,8 @@ from erza.source import SourceResolutionError, resolve_local_source_path, resolv
 from erza.template import render_template
 
 
-CTRL_N = 14
-CTRL_P = 16
+CTRL_J = 10
+CTRL_K = 11
 DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
@@ -46,6 +46,7 @@ class SectionTarget:
     width: int
     height: int
     title_text: str
+    block: "Block"
     actionables: list[ActionableTarget]
 
 
@@ -152,6 +153,7 @@ def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderP
                 width=block.width,
                 height=block.height,
                 title_text=block.lines[0][0].text if block.lines and block.lines[0] else "",
+                block=block,
                 actionables=[
                     ActionableTarget(
                         x=item.x,
@@ -184,23 +186,20 @@ def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderP
 def next_section_index(plan: RenderPlan, current_index: int, delta: int) -> int:
     if not plan.sections:
         return 0
-    return (current_index + delta) % len(plan.sections)
+    return min(max(current_index + delta, 0), len(plan.sections) - 1)
 
 
-def next_item_index(plan: RenderPlan, section_index: int, current_index: int, delta: int) -> int:
-    if not plan.sections:
+def next_section_line_index(section: SectionTarget, current_index: int, delta: int) -> int:
+    line_count = _section_content_line_count(section)
+    if line_count <= 0:
         return 0
-    actionables = plan.sections[section_index].actionables
-    if not actionables:
-        return 0
-    return (current_index + delta) % len(actionables)
+    return min(max(current_index + delta, 0), line_count - 1)
 
 
 def draw_plan(
     stdscr: curses.window,
     plan: RenderPlan,
     section_index: int | None,
-    item_indices: list[int],
     scroll_offset: int,
     status: str = "",
 ) -> None:
@@ -245,18 +244,94 @@ def draw_plan(
                 styles["section_title_active"],
             )
 
-        if active_section.actionables:
-            active_item = active_section.actionables[item_indices[section_index]]
-            active_item_y = active_item.y - scroll_offset
-            if 0 <= active_item_y < visible_height:
-                _safe_addnstr(
-                    stdscr,
-                    active_item_y,
-                    origin_x + active_item.x,
-                    active_item.label_text,
-                    max(display_width - active_item.x, 0),
-                    styles["action_active"],
-                )
+    if status and height > 0:
+        _safe_addnstr(
+            stdscr,
+            height - 1,
+            origin_x,
+            status,
+            display_width,
+            styles["status"],
+        )
+
+    stdscr.refresh()
+
+
+def draw_section_modal(
+    stdscr: curses.window,
+    section: SectionTarget,
+    line_index: int,
+    scroll_offset: int,
+    status: str = "",
+) -> None:
+    stdscr.erase()
+    height, terminal_width = stdscr.getmaxyx()
+    visible_height = _viewport_height(height)
+    display_width = _display_width(terminal_width)
+    origin_x = _display_origin_x(terminal_width)
+    styles = _styles()
+
+    modal_width = min(section.block.width, display_width)
+    modal_x = origin_x + max((display_width - modal_width) // 2, 0)
+    content_lines = section.block.lines[1:-1] or [[]]
+
+    if visible_height >= section.block.height:
+        top_y = max((visible_height - section.block.height) // 2, 0)
+        visible_lines = section.block.lines
+        active_modal_y = 1 + line_index if 0 <= line_index < len(content_lines) else None
+    else:
+        if visible_height <= 1:
+            visible_lines = [section.block.lines[0]]
+            active_modal_y = None
+        elif visible_height == 2:
+            visible_lines = [section.block.lines[0], section.block.lines[-1]]
+            active_modal_y = None
+        else:
+            content_viewport_height = visible_height - 2
+            visible_lines = [
+                section.block.lines[0],
+                *content_lines[scroll_offset : scroll_offset + content_viewport_height],
+                section.block.lines[-1],
+            ]
+            active_modal_y = (
+                1 + line_index - scroll_offset
+                if scroll_offset <= line_index < scroll_offset + content_viewport_height
+                else None
+            )
+        top_y = 0
+
+    for modal_y, line in enumerate(visible_lines):
+        screen_y = top_y + modal_y
+        if screen_y >= visible_height:
+            break
+        active_content_line = active_modal_y == modal_y
+        for segment in line:
+            if segment.x >= modal_width:
+                continue
+            available = max(modal_width - segment.x, 0)
+            if available == 0:
+                continue
+            _safe_addnstr(
+                stdscr,
+                screen_y,
+                modal_x + segment.x,
+                segment.text,
+                available,
+                _segment_style(styles, segment.style, active_content_line=active_content_line),
+            )
+
+    active_item = _section_line_actionable(section, line_index)
+    if active_item is not None and active_modal_y is not None:
+        screen_y = top_y + active_modal_y
+        if 0 <= screen_y < visible_height:
+            _safe_addnstr(
+                stdscr,
+                screen_y,
+                modal_x + active_item.x,
+                active_item.label_text,
+                max(modal_width - active_item.x, 0),
+                styles["action_active"],
+            )
 
     if status and height > 0:
         _safe_addnstr(
@@ -276,9 +351,11 @@ class _RuntimeSession:
         self.app = app
         self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
         self._screen: Screen | None = None
+        self.mode = "page"
         self.section_index = 0
-        self.item_indices: list[int] = []
         self.scroll_offset = 0
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
         self.snap_section_to_top = False
         self.pending_g = False
         self.animation_epoch = time.monotonic()
@@ -300,15 +377,24 @@ class _RuntimeSession:
             animation_time = time.monotonic() - self.animation_epoch
             plan = build_render_plan(screen, animation_time=animation_time)
             self._sync_state(plan)
-            self._sync_scroll(plan, stdscr.getmaxyx()[0])
-            draw_plan(
-                stdscr,
-                plan,
-                self.section_index if plan.sections else None,
-                self.item_indices,
-                self.scroll_offset,
-                self.status,
-            )
+            if self.mode == "section" and plan.sections:
+                self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
+                draw_section_modal(
+                    stdscr,
+                    plan.sections[self.section_index],
+                    self.section_line_index,
+                    self.section_scroll_offset,
+                    self.status,
+                )
+            else:
+                self._sync_page_scroll(plan, stdscr.getmaxyx()[0])
+                draw_plan(
+                    stdscr,
+                    plan,
+                    self.section_index if plan.sections else None,
+                    self.scroll_offset,
+                    self.status,
+                )
 
             stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
             key = stdscr.getch()
@@ -318,32 +404,51 @@ class _RuntimeSession:
                 continue
             if key == ord("g"):
                 if self.pending_g:
-                    self._jump_to_first_section(plan)
+                    if self.mode == "section":
+                        self._jump_to_first_line(plan)
+                    else:
+                        self._jump_to_first_section(plan)
                 else:
                     self.pending_g = True
                 continue
             if key == ord("G"):
                 self.pending_g = False
-                self._jump_to_last_section(plan)
+                if self.mode == "section":
+                    self._jump_to_last_line(plan)
+                else:
+                    self._jump_to_last_section(plan)
                 continue
 
             self.pending_g = False
-            if key in {CTRL_N, CTRL_P}:
-                delta = -1 if key == CTRL_P else 1
-                self.section_index = next_section_index(plan, self.section_index, delta)
-                self.snap_section_to_top = True
-                continue
             if key in {ord("j"), curses.KEY_DOWN}:
-                self._move_item(plan, 1)
+                if self.mode == "section":
+                    self._move_section_line(plan, 1)
+                else:
+                    self._move_section(plan, 1)
                 continue
             if key in {ord("k"), curses.KEY_UP}:
-                self._move_item(plan, -1)
+                if self.mode == "section":
+                    self._move_section_line(plan, -1)
+                else:
+                    self._move_section(plan, -1)
+                continue
+            if key == CTRL_J and self.mode == "section":
+                self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], 1)
+                continue
+            if key == CTRL_K and self.mode == "section":
+                self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], -1)
                 continue
             if key in {ord("h"), curses.KEY_LEFT}:
-                self._go_back()
+                if self.mode == "section":
+                    self._exit_section_mode()
+                else:
+                    self._go_back()
                 continue
-            if key in {ord("l"), curses.KEY_RIGHT, curses.KEY_ENTER, ord("\n"), ord(" ")}:
-                self._activate(plan)
+            if key in {ord("l"), curses.KEY_RIGHT}:
+                if self.mode == "section":
+                    self._activate(plan)
+                else:
+                    self._enter_section_mode(plan)
                 continue
 
     def _current_screen(self) -> Screen:
@@ -358,24 +463,21 @@ class _RuntimeSession:
 
     def _sync_state(self, plan: RenderPlan) -> None:
         if not plan.sections:
+            self.mode = "page"
             self.section_index = 0
-            self.item_indices = []
             self.scroll_offset = 0
+            self.section_line_index = 0
+            self.section_scroll_offset = 0
             return
 
         self.section_index = min(self.section_index, len(plan.sections) - 1)
-        while len(self.item_indices) < len(plan.sections):
-            self.item_indices.append(0)
-        if len(self.item_indices) > len(plan.sections):
-            self.item_indices = self.item_indices[: len(plan.sections)]
+        active_section = plan.sections[self.section_index]
+        self.section_line_index = min(
+            self.section_line_index,
+            max(_section_content_line_count(active_section) - 1, 0),
+        )
 
-        for index, section in enumerate(plan.sections):
-            if not section.actionables:
-                self.item_indices[index] = 0
-                continue
-            self.item_indices[index] = min(self.item_indices[index], len(section.actionables) - 1)
-
-    def _sync_scroll(self, plan: RenderPlan, screen_height: int) -> None:
+    def _sync_page_scroll(self, plan: RenderPlan, screen_height: int) -> None:
         if self.snap_section_to_top:
             self.scroll_offset = align_section_top_offset(plan, self.section_index, screen_height)
             self.snap_section_to_top = False
@@ -383,36 +485,89 @@ class _RuntimeSession:
         self.scroll_offset = compute_scroll_offset(
             plan,
             self.section_index,
-            self.item_indices,
             screen_height,
             self.scroll_offset,
         )
 
-    def _move_item(self, plan: RenderPlan, delta: int) -> None:
+    def _sync_section_scroll(self, plan: RenderPlan, screen_height: int) -> None:
+        if not plan.sections:
+            self.section_scroll_offset = 0
+            return
+        self.section_scroll_offset = compute_section_scroll_offset(
+            plan.sections[self.section_index],
+            self.section_line_index,
+            screen_height,
+            self.section_scroll_offset,
+        )
+
+    def _move_section(self, plan: RenderPlan, delta: int) -> None:
         if not plan.sections:
             return
-        section = plan.sections[self.section_index]
-        if not section.actionables:
-            self.status = f"section '{section.title}' has no actions"
+        next_index = next_section_index(plan, self.section_index, delta)
+        if next_index == self.section_index:
             return
-        self.item_indices[self.section_index] = next_item_index(
-            plan,
-            self.section_index,
-            self.item_indices[self.section_index],
+        self.section_index = next_index
+        self.snap_section_to_top = True
+        self.status = ""
+
+    def _move_section_line(self, plan: RenderPlan, delta: int) -> None:
+        if not plan.sections:
+            return
+        self.section_line_index = next_section_line_index(
+            plan.sections[self.section_index],
+            self.section_line_index,
             delta,
         )
+        self.status = ""
 
     def _jump_to_first_section(self, plan: RenderPlan) -> None:
         if not plan.sections:
             return
         self.section_index = 0
         self.snap_section_to_top = True
+        self.status = ""
 
     def _jump_to_last_section(self, plan: RenderPlan) -> None:
         if not plan.sections:
             return
         self.section_index = len(plan.sections) - 1
         self.snap_section_to_top = True
+        self.status = ""
+
+    def _jump_to_first_line(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            return
+        self.section_line_index = 0
+        self.status = ""
+
+    def _jump_to_last_line(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            return
+        self.section_line_index = max(_section_content_line_count(plan.sections[self.section_index]) - 1, 0)
+        self.status = ""
+
+    def _scroll_section_half_page(self, plan: RenderPlan, screen_height: int, direction: int) -> None:
+        if not plan.sections:
+            return
+        section = plan.sections[self.section_index]
+        content_height = _section_content_viewport_height(screen_height)
+        step = max(content_height // 2, 1)
+        self.section_line_index = next_section_line_index(section, self.section_line_index, direction * step)
+        self.status = ""
+
+    def _enter_section_mode(self, plan: RenderPlan) -> None:
+        if not plan.sections:
+            self.status = "page has no sections"
+            return
+        self.mode = "section"
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
+        self.status = ""
+
+    def _exit_section_mode(self) -> None:
+        self.mode = "page"
+        self.section_scroll_offset = 0
+        self.status = ""
 
     def _go_back(self) -> None:
         if not self.history:
@@ -420,9 +575,11 @@ class _RuntimeSession:
             return
         self.app = self.history.pop()
         self._invalidate_screen(reset_animation=True)
+        self.mode = "page"
         self.section_index = 0
-        self.item_indices = []
         self.scroll_offset = 0
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
         self.snap_section_to_top = False
         self.pending_g = False
         self.status = "went back"
@@ -431,19 +588,20 @@ class _RuntimeSession:
         if not plan.sections:
             return
         section = plan.sections[self.section_index]
-        if not section.actionables:
-            self.status = f"section '{section.title}' has nothing to open"
+        target = _section_line_actionable(section, self.section_line_index)
+        if target is None:
+            self.status = f"line {self.section_line_index + 1} has nothing to open"
             return
 
-        target = section.actionables[self.item_indices[self.section_index]].actionable
-        if isinstance(target, Button):
-            self.app.backend.call(target.action, **target.params)
+        actionable = target.actionable
+        if isinstance(actionable, Button):
+            self.app.backend.call(actionable.action, **actionable.params)
             self._invalidate_screen(reset_animation=True)
-            self.status = f"ran {target.action}"
+            self.status = f"ran {actionable.action}"
             return
 
         try:
-            next_app = self.app.follow_link(target.href)
+            next_app = self.app.follow_link(actionable.href)
         except RuntimeError as exc:
             self.status = str(exc)
             return
@@ -451,18 +609,19 @@ class _RuntimeSession:
         self.history.append(self.app)
         self.app = next_app
         self._invalidate_screen(reset_animation=True)
+        self.mode = "page"
         self.section_index = 0
-        self.item_indices = []
         self.scroll_offset = 0
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
         self.snap_section_to_top = False
         self.pending_g = False
-        self.status = f"opened {target.href}"
+        self.status = f"opened {actionable.href}"
 
 
 def compute_scroll_offset(
     plan: RenderPlan,
     section_index: int,
-    item_indices: list[int],
     screen_height: int,
     current_offset: int = 0,
 ) -> int:
@@ -476,11 +635,22 @@ def compute_scroll_offset(
 
     offset = _ensure_line_visible(section.y, offset, viewport_height)
 
-    if section.actionables:
-        item_index = min(item_indices[section_index], len(section.actionables) - 1)
-        item_y = section.actionables[item_index].y
-        offset = _ensure_line_visible(item_y, offset, viewport_height)
+    return min(max(offset, 0), max_offset)
 
+
+def compute_section_scroll_offset(
+    section: SectionTarget,
+    line_index: int,
+    screen_height: int,
+    current_offset: int = 0,
+) -> int:
+    viewport_height = _section_content_viewport_height(screen_height)
+    max_offset = max(_section_content_line_count(section) - 1, 0)
+    if viewport_height <= 0:
+        return 0
+
+    offset = min(max(current_offset, 0), max_offset)
+    offset = _ensure_line_visible(line_index, offset, viewport_height)
     return min(max(offset, 0), max_offset)
 
 
@@ -506,12 +676,27 @@ def _viewport_height(screen_height: int) -> int:
     return max(screen_height - 1, 1)
 
 
+def _section_content_viewport_height(screen_height: int) -> int:
+    return max(_viewport_height(screen_height) - 2, 1)
+
+
 def _display_width(terminal_width: int) -> int:
     return min(DISPLAY_WIDTH, terminal_width)
 
 
 def _display_origin_x(terminal_width: int) -> int:
     return max((terminal_width - _display_width(terminal_width)) // 2, 0)
+
+
+def _section_content_line_count(section: SectionTarget) -> int:
+    return max(len(section.block.lines) - 2, 1)
+
+
+def _section_line_actionable(section: SectionTarget, line_index: int) -> ActionableTarget | None:
+    matching = [item for item in section.block.actionables if item.y - 1 == line_index]
+    if not matching:
+        return None
+    return min(matching, key=lambda item: item.x)
 
 
 def _normalize_sections(children: list[Component]) -> list[Section]:
@@ -859,6 +1044,18 @@ def _safe_addnstr(
         stdscr.addnstr(y, x, text, max_length, style)
     except curses.error:
         pass
+
+
+def _segment_style(
+    styles: dict[str, int],
+    style_name: str,
+    *,
+    active_content_line: bool = False,
+) -> int:
+    style = styles[style_name]
+    if active_content_line and style_name not in {"section_border", "section_title", "animation_title"}:
+        return style | curses.A_REVERSE
+    return style
 
 
 def _styles() -> dict[str, int]:

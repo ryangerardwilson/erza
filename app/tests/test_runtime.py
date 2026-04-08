@@ -15,8 +15,9 @@ from erza.runtime import (
     align_section_top_offset,
     build_render_plan,
     compute_scroll_offset,
-    next_item_index,
+    compute_section_scroll_offset,
     next_section_index,
+    next_section_line_index,
 )
 
 
@@ -58,30 +59,31 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("*Protocol*", link_line)
         self.assertEqual(plan.sections[1].actionables[0].label_text, "-> *Protocol*")
 
-    def test_section_and_item_navigation_wraps(self) -> None:
+    def test_page_and_section_navigation_clamp_at_boundaries(self) -> None:
         screen = Screen(
             title="Directional",
             children=[
                 Section(
                     title="Primary",
-                    children=[
-                        Button(label="One", action="noop"),
-                        Button(label="Two", action="noop"),
-                    ],
+                    children=[Text("One"), Text("Two"), Link(label="Docs", href="https://example.com")],
                 ),
                 Section(
                     title="Secondary",
-                    children=[Link(label="Docs", href="https://example.com")],
+                    children=[Text("Three")],
                 ),
             ],
         )
 
         plan = build_render_plan(screen)
 
+        self.assertEqual(next_section_index(plan, 0, -1), 0)
+        self.assertEqual(next_section_index(plan, 1, 1), 1)
         self.assertEqual(next_section_index(plan, 0, 1), 1)
-        self.assertEqual(next_section_index(plan, 1, 1), 0)
-        self.assertEqual(next_item_index(plan, 0, 0, 1), 1)
-        self.assertEqual(next_item_index(plan, 0, 1, 1), 0)
+        self.assertEqual(next_section_line_index(plan.sections[0], 0, -1), 0)
+        self.assertEqual(
+            next_section_line_index(plan.sections[0], len(plan.sections[0].block.lines) - 3, 1),
+            len(plan.sections[0].block.lines) - 3,
+        )
 
     def test_scroll_offset_moves_to_reveal_active_section(self) -> None:
         sections = [
@@ -90,26 +92,26 @@ class RuntimeTests(unittest.TestCase):
         ]
         plan = build_render_plan(Screen(title="Long", children=sections))
 
-        offset = compute_scroll_offset(plan, 5, [0] * len(plan.sections), screen_height=8)
+        offset = compute_scroll_offset(plan, 5, screen_height=8)
 
         self.assertGreater(offset, 0)
         visible_height = 7
         self.assertLessEqual(plan.sections[5].y, offset + visible_height - 1)
 
-    def test_scroll_offset_reveals_active_item_within_section(self) -> None:
-        actions = [Button(label=f"Action {index}", action="noop") for index in range(6)]
+    def test_section_scroll_offset_reveals_active_line_within_modal(self) -> None:
+        lines = [Text(f"Line {index}") for index in range(10)]
         plan = build_render_plan(
             Screen(
                 title="Deep",
-                children=[Section(title="Actions", children=actions)],
+                children=[Section(title="Actions", children=lines)],
             )
         )
 
-        offset = compute_scroll_offset(plan, 0, [5], screen_height=6)
+        offset = compute_section_scroll_offset(plan.sections[0], 8, screen_height=8)
 
         self.assertGreater(offset, 0)
         visible_height = 5
-        self.assertLessEqual(plan.sections[0].actionables[5].y, offset + visible_height - 1)
+        self.assertLessEqual(8, offset + visible_height - 1)
 
     def test_align_section_top_offset_snaps_header_to_top(self) -> None:
         sections = [
@@ -154,6 +156,27 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(session.section_index, len(plan.sections) - 1)
         self.assertTrue(session.snap_section_to_top)
 
+    def test_jump_to_line_boundaries_updates_active_line(self) -> None:
+        screen = Screen(
+            title="Bounds",
+            children=[
+                Section(
+                    title="One",
+                    children=[Text("First"), Text("Second"), Text("Third"), Text("Fourth")],
+                )
+            ],
+        )
+        plan = build_render_plan(screen)
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.mode = "section"
+        session.section_line_index = 2
+
+        session._jump_to_first_line(plan)
+        self.assertEqual(session.section_line_index, 0)
+
+        session._jump_to_last_line(plan)
+        self.assertEqual(session.section_line_index, len(plan.sections[0].block.lines) - 3)
+
     def test_display_origin_centers_79_column_canvas(self) -> None:
         self.assertEqual(_display_origin_x(79), 0)
         self.assertEqual(_display_origin_x(101), 11)
@@ -184,12 +207,12 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("o", " ".join(segment.text for segment in first.lines[frame_y]))
         self.assertIn("oo", " ".join(segment.text for segment in second.lines[frame_y]))
 
-    def test_runtime_session_caches_screen_between_navigation_steps(self) -> None:
+    def test_runtime_session_caches_screen_between_page_navigation_steps(self) -> None:
         screen = Screen(
             title="Cached",
             children=[
-                Section(title="One", children=[Link(label="Install", href="install")]),
-                Section(title="Two", children=[Link(label="Next", href="next")]),
+                Section(title="One", children=[Text("Install")]),
+                Section(title="Two", children=[Text("Next")]),
             ],
         )
         app = _CountingApp(screen)
@@ -199,17 +222,32 @@ class RuntimeTests(unittest.TestCase):
         second = session._current_screen()
         plan = build_render_plan(second)
         session._sync_state(plan)
-        session._move_item(plan, 1)
+        session._move_section(plan, 1)
         third = session._current_screen()
 
         self.assertIs(first, second)
         self.assertIs(second, third)
         self.assertEqual(app.build_calls, 1)
 
-    def test_link_activation_invalidates_cached_screen(self) -> None:
+    def test_go_back_from_section_mode_returns_to_page_mode(self) -> None:
+        screen = Screen(
+            title="Docs",
+            children=[Section(title="Open", children=[Text("Install"), Link(label="Next", href="next")])],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.mode = "section"
+
+        session._go_back()
+        self.assertEqual(session.status, "no previous page")
+
+        session.mode = "section"
+        session._exit_section_mode()
+        self.assertEqual(session.mode, "page")
+
+    def test_link_activation_from_section_mode_invalidates_cached_screen(self) -> None:
         initial = Screen(
             title="Initial",
-            children=[Section(title="Open", children=[Link(label="Install", href="install")])],
+            children=[Section(title="Open", children=[Text("Install"), Link(label="Install", href="install")])],
         )
         target = Screen(
             title="Install",
@@ -221,12 +259,33 @@ class RuntimeTests(unittest.TestCase):
         initial_screen = session._current_screen()
         plan = build_render_plan(initial_screen)
         session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[0].block.actionables[0].y - 1
         session._activate(plan)
         next_screen = session._current_screen()
 
         self.assertEqual(app.build_calls, 1)
         self.assertEqual(session.app.build_calls, 1)
         self.assertEqual(next_screen.title, "Install")
+        self.assertEqual(session.mode, "page")
+
+    def test_section_half_page_scroll_advances_line_index(self) -> None:
+        screen = Screen(
+            title="Scroll",
+            children=[
+                Section(
+                    title="Long",
+                    children=[Text(f"Line {index}") for index in range(12)],
+                )
+            ],
+        )
+        plan = build_render_plan(screen)
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.mode = "section"
+
+        session._scroll_section_half_page(plan, screen_height=12, direction=1)
+
+        self.assertGreater(session.section_line_index, 0)
 
 
 class _CountingApp:

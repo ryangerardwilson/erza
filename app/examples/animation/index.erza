@@ -27,13 +27,13 @@
 
   <Section title="Checklist">
     <Text>Check whether the animation block stays visually stable while frames change.</Text>
-    <Text>Check whether Ctrl+N/Ctrl+P, gg, and G still move between panels cleanly while the animation is ticking.</Text>
+    <Text>Check whether page mode movement, section mode scrolling, gg, and G still feel clean while the animation is ticking.</Text>
     <Link href="https://erza.ryangerardwilson.com/labs/">Open the hosted labs page</Link>
   </Section>
 
   <Section title="Controls">
-    <Text>Ctrl+N/Ctrl+P move between sections. j/k move inside the active section.</Text>
-    <Text>gg jumps to the first section. G jumps to the last.</Text>
-    <Text>h goes back. l opens the selected link or action. q exits cleanly.</Text>
+    <Text>Page mode uses j/k to move between sections. Press l to open the current section.</Text>
+    <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
+    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back. q exits cleanly.</Text>
   </Section>
 </Screen>

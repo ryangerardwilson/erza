@@ -36,7 +36,8 @@
   </Section>
 
   <Section title="Controls">
-    <Text>Ctrl+N and Ctrl+P move between panels. j and k move inside the active panel.</Text>
-    <Text>gg jumps to the first panel. G jumps to the last. h goes back. l opens the focused link. q exits cleanly.</Text>
+    <Text>Page mode uses j and k to move between sections. Press l to open the current section.</Text>
+    <Text>Section mode uses j and k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
+    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back. l opens the current link. q exits cleanly.</Text>
   </Section>
 </Screen>

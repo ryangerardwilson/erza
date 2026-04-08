@@ -2,7 +2,7 @@
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Ctrl+N/Ctrl+P choose a section. j/k move through actions in the active section.</Text>
+    <Text>Page mode uses j/k to choose a section. Press l to open the current section.</Text>
 
     <? if tasks ?>
       <? for task in tasks ?>
@@ -23,8 +23,8 @@
   </Section>
 
   <Section title="Controls">
-    <Text>Ctrl+N/Ctrl+P switch sections. j/k move inside the active section.</Text>
-    <Text>gg jumps to the first section. G jumps to the last.</Text>
-    <Text>h goes back one page. l opens the selected link or action.</Text>
+    <Text>Page mode uses j/k to move between sections. Press l to open the current section.</Text>
+    <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
+    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back one page. l opens the current link or action.</Text>
   </Section>
 </Screen>

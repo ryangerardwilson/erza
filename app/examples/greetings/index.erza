@@ -21,8 +21,8 @@
   </Section>
 
   <Section title="Controls">
-    <Text>Ctrl+N/Ctrl+P move between sections. j/k move inside the active section.</Text>
-    <Text>gg jumps to the first section. G jumps to the last.</Text>
-    <Text>h goes back. l opens the selected link or action.</Text>
+    <Text>Page mode uses j/k to move between sections. Press l to open the current section.</Text>
+    <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
+    <Text>gg and G jump to the first or last section or line. h exits section mode or goes back. l opens the current link or action.</Text>
   </Section>
 </Screen>

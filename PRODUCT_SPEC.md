@@ -28,11 +28,13 @@ Each screen should be readable as a small set of named regions and components:
 
 That shape lets the runtime provide a simple navigation contract:
 
-- `Ctrl+N` and `Ctrl+P` move between sections
+- page mode `j` and `k` move between sections
+- page mode `l` opens the current section
 - `gg` jumps to the first section and `G` jumps to the last
-- `j` and `k` move inside the active section
-- `h` goes back one page
-- `l` opens the selected link or activates the selected action
+- section mode `j` and `k` move inside the current section line by line
+- section mode `Ctrl+J` and `Ctrl+K` move by half a page
+- `h` exits section mode or goes back one page
+- section mode `l` opens the selected link or activates the selected action
 
 This is the default interaction identity for `erza`.
 
@@ -80,7 +82,7 @@ Example shape:
   <? tasks = backend("tasks.list") ?>
 
   <Section title="Open Tasks">
-    <Text>Ctrl+N/Ctrl+P switch sections. j/k move through work inside the active section.</Text>
+    <Text>Page mode uses j/k to switch sections. Press l to open the current section.</Text>
 
     <? for task in tasks ?>
       <Text><?= task.title ?></Text>
@@ -110,8 +112,8 @@ Design intent:
 The runtime owns:
 
 - layout
-- section traversal
-- item traversal inside a section
+- section traversal in page mode
+- line traversal inside a section in section mode
 - page history
 - input handling
 - repainting
@@ -127,11 +129,12 @@ must remain terminal-native in both behavior and constraints.
 
 Default interaction rules:
 
-- `Ctrl+N` and `Ctrl+P` move across sections
+- page mode `j` and `k` move across sections
 - `gg` jumps to the first section and `G` jumps to the last
-- `j` and `k` move across actionable items inside the active section
-- `h` pops one page of history
-- `l` opens the selected link or triggers the selected action
+- section mode `j` and `k` move across rendered lines inside the active section
+- section mode `Ctrl+J` and `Ctrl+K` move by half a page
+- `h` exits section mode or pops one page of history
+- section mode `l` opens the selected link or triggers the selected action
 - arrow keys and Enter may exist as compatibility helpers, but they are not the
   primary documented interaction model
 
