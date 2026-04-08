@@ -107,12 +107,12 @@ export default function HomePage() {
           <h2>Read the full docs in erza, not in the browser.</h2>
         </div>
         <div className="terminal-jump">
-          <pre className="code-block">
-            <code>{installCommand}</code>
-          </pre>
           <p className="protocol-link">
             Install the CLI first, then open the full docs in the terminal.
           </p>
+          <pre className="code-block">
+            <code>{installCommand}</code>
+          </pre>
           <pre className="code-block">
             <code>{terminalDocsCommand}</code>
           </pre>

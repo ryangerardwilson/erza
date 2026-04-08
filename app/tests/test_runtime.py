@@ -8,6 +8,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.model import AsciiAnimation, Button, Link, Screen, Section, Text
+from erza.remote import RemoteApp
 from erza.runtime import (
     StaticScreenApp,
     _RuntimeSession,
@@ -286,6 +287,19 @@ class RuntimeTests(unittest.TestCase):
         session._scroll_section_half_page(plan, screen_height=12, direction=1)
 
         self.assertGreater(session.section_line_index, 0)
+
+    def test_footer_text_shows_route_and_section(self) -> None:
+        screen = Screen(
+            title="Docs",
+            children=[Section(title="Start Here", children=[Text("Intro")])],
+        )
+        session = _RuntimeSession(RemoteApp("erza.ryangerardwilson.com/first-run"))
+        plan = build_render_plan(screen)
+
+        self.assertEqual(
+            session._footer_text(plan),
+            "https://erza.ryangerardwilson.com/first-run -> Start Here",
+        )
 
 
 class _CountingApp:

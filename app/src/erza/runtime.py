@@ -257,12 +257,12 @@ def draw_plan(
     stdscr.refresh()
 
 
-def draw_section_modal(
+def draw_section_page(
     stdscr: curses.window,
     section: SectionTarget,
     line_index: int,
     scroll_offset: int,
-    status: str = "",
+    footer: str = "",
 ) -> None:
     stdscr.erase()
     height, terminal_width = stdscr.getmaxyx()
@@ -276,7 +276,7 @@ def draw_section_modal(
     content_lines = section.block.lines[1:-1] or [[]]
 
     if visible_height >= section.block.height:
-        top_y = max((visible_height - section.block.height) // 2, 0)
+        top_y = 0
         visible_lines = section.block.lines
         active_modal_y = 1 + line_index if 0 <= line_index < len(content_lines) else None
     else:
@@ -333,12 +333,12 @@ def draw_section_modal(
                 styles["action_active"],
             )
 
-    if status and height > 0:
+    if footer and height > 0:
         _safe_addnstr(
             stdscr,
             height - 1,
             origin_x,
-            status,
+            footer,
             display_width,
             styles["status"],
         )
@@ -377,14 +377,15 @@ class _RuntimeSession:
             animation_time = time.monotonic() - self.animation_epoch
             plan = build_render_plan(screen, animation_time=animation_time)
             self._sync_state(plan)
+            footer = self._footer_text(plan)
             if self.mode == "section" and plan.sections:
                 self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
-                draw_section_modal(
+                draw_section_page(
                     stdscr,
                     plan.sections[self.section_index],
                     self.section_line_index,
                     self.section_scroll_offset,
-                    self.status,
+                    footer,
                 )
             else:
                 self._sync_page_scroll(plan, stdscr.getmaxyx()[0])
@@ -393,7 +394,7 @@ class _RuntimeSession:
                     plan,
                     self.section_index if plan.sections else None,
                     self.scroll_offset,
-                    self.status,
+                    footer,
                 )
 
             stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
@@ -583,6 +584,14 @@ class _RuntimeSession:
         self.snap_section_to_top = False
         self.pending_g = False
         self.status = "went back"
+
+    def _footer_text(self, plan: RenderPlan) -> str:
+        location = _app_location(self.app)
+        if plan.sections:
+            location = f"{location} -> {plan.sections[self.section_index].title}"
+        if self.status:
+            return f"{location} | {self.status}"
+        return location
 
     def _activate(self, plan: RenderPlan) -> None:
         if not plan.sections:
@@ -1081,3 +1090,14 @@ def _infer_backend_path(source: Path) -> Path | None:
     if inferred.exists():
         return inferred
     return None
+
+
+def _app_location(app: ErzaApp | RemoteApp | StaticScreenApp) -> str:
+    if isinstance(app, RemoteApp):
+        return app.current_url
+    if isinstance(app, ErzaApp):
+        try:
+            return str(app.current_source_path.relative_to(Path.cwd()))
+        except ValueError:
+            return str(app.current_source_path)
+    return "<screen>"
