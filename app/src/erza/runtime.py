@@ -717,18 +717,18 @@ class _RuntimeSession:
         next_index = self.section_index
 
         if direction == "left":
-            row_start = row * layout.columns
-            next_index = max(self.section_index - 1, row_start)
+            row_start, row_end = _header_row_bounds(row, layout.columns, len(plan.sections))
+            next_index = row_end if self.section_index == row_start else self.section_index - 1
         elif direction == "right":
-            row_end = min((row + 1) * layout.columns, len(plan.sections)) - 1
-            next_index = min(self.section_index + 1, row_end)
+            row_start, row_end = _header_row_bounds(row, layout.columns, len(plan.sections))
+            next_index = row_start if self.section_index == row_end else self.section_index + 1
         elif direction == "up":
-            target_row = max(row - 1, 0)
-            next_index = min(target_row * layout.columns + col, len(plan.sections) - 1)
+            target_row = (row - 1) % max(layout.rows, 1)
+            row_start, row_end = _header_row_bounds(target_row, layout.columns, len(plan.sections))
+            next_index = min(row_start + col, row_end)
         elif direction == "down":
-            target_row = min(row + 1, layout.rows - 1)
-            row_start = target_row * layout.columns
-            row_end = min(row_start + layout.columns, len(plan.sections)) - 1
+            target_row = (row + 1) % max(layout.rows, 1)
+            row_start, row_end = _header_row_bounds(target_row, layout.columns, len(plan.sections))
             next_index = min(row_start + col, row_end)
 
         if next_index == self.section_index:
@@ -941,6 +941,12 @@ def _header_row_for_section(section_index: int, columns: int) -> int:
     if columns <= 0:
         return 0
     return section_index // columns
+
+
+def _header_row_bounds(row: int, columns: int, section_count: int) -> tuple[int, int]:
+    row_start = row * columns
+    row_end = min(row_start + columns, section_count) - 1
+    return row_start, row_end
 
 
 def _section_content_viewport_height(screen_height: int) -> int:

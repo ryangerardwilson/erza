@@ -178,6 +178,41 @@ class RuntimeTests(unittest.TestCase):
         session._move_header_selection(plan, 79, "left")
         self.assertEqual(session.section_index, 3)
 
+    def test_header_grid_navigation_wraps_at_row_and_column_edges(self) -> None:
+        screen = Screen(
+            title="Grid",
+            children=[
+                Section(title=f"Section Title {index}", children=[Text(f"Body {index}")])
+                for index in range(7)
+            ],
+        )
+        plan = build_render_plan(screen)
+        session = _RuntimeSession(StaticScreenApp(screen))
+
+        session.section_index = 2
+        session._move_header_selection(plan, 79, "right")
+        self.assertEqual(session.section_index, 0)
+
+        session.section_index = 0
+        session._move_header_selection(plan, 79, "left")
+        self.assertEqual(session.section_index, 2)
+
+        session.section_index = 6
+        session._move_header_selection(plan, 79, "down")
+        self.assertEqual(session.section_index, 0)
+
+        session.section_index = 0
+        session._move_header_selection(plan, 79, "up")
+        self.assertEqual(session.section_index, 6)
+
+        session.section_index = 3
+        session._move_header_selection(plan, 79, "down")
+        self.assertEqual(session.section_index, 6)
+
+        session.section_index = 6
+        session._move_header_selection(plan, 79, "up")
+        self.assertEqual(session.section_index, 3)
+
     def test_jump_to_line_boundaries_updates_active_line(self) -> None:
         screen = Screen(
             title="Bounds",
