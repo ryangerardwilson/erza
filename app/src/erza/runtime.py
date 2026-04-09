@@ -20,6 +20,7 @@ CTRL_U = 21
 DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 6
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
+FORM_FIELD_INDENT = 4
 MIN_ANIMATION_INTERVAL_MS = 50
 HELP_MODAL_MAX_WIDTH = 67
 HEADER_CELL_GAP = 2
@@ -1361,6 +1362,7 @@ def _build_form_block(
 ) -> Block:
     form_key = f"form:{render_state.next_form_index}"
     render_state.next_form_index += 1
+    content_width = max(max_width - FORM_FIELD_INDENT, 8)
 
     lines: list[list[Segment]] = []
     actionables: list[ActionableTarget] = []
@@ -1371,22 +1373,21 @@ def _build_form_block(
     if form.children:
         body = _build_column_like(
             form.children,
-            gap=1,
+            gap=0,
             animation_time=animation_time,
-            max_width=max_width,
+            max_width=content_width,
             render_state=render_state,
             form_key=form_key,
         )
-        _merge_block(lines, actionables, body, x=0, y=cursor_y)
-        width = max(width, body.width)
+        _merge_block(lines, actionables, body, x=FORM_FIELD_INDENT, y=cursor_y)
+        width = max(width, FORM_FIELD_INDENT + body.width)
         animation_interval_ms = _merge_animation_interval(animation_interval_ms, body.animation_interval_ms)
         cursor_y += body.height
-        cursor_y += 1
-        lines.append([])
 
     submit_block = _build_form_submit_block(form, form_key=form_key, max_width=max_width)
-    _merge_block(lines, actionables, submit_block, x=0, y=cursor_y)
-    width = max(width, submit_block.width)
+    submit_x = max(max_width - submit_block.width, 0)
+    _merge_block(lines, actionables, submit_block, x=submit_x, y=cursor_y)
+    width = max(width, submit_x + submit_block.width)
 
     return Block(
         width=width,

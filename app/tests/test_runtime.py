@@ -311,6 +311,11 @@ class RuntimeTests(unittest.TestCase):
         first_input_line = "".join(segment.text for segment in plan.sections[0].block.lines[1])
         self.assertIn("Email: Email", first_input_line)
         self.assertNotIn("[ ", first_input_line)
+        self.assertEqual(targets[0].x, 6)
+        self.assertEqual(targets[1].x, 6)
+        self.assertEqual(targets[1].y, targets[0].y + 1)
+        self.assertEqual(targets[2].y, targets[1].y + 1)
+        self.assertGreater(targets[2].x, targets[0].x)
 
     def test_form_input_activation_enters_edit_mode_and_submits(self) -> None:
         screen = Screen(
