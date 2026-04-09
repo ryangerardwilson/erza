@@ -1731,7 +1731,10 @@ def _segment_style(
     active_content_line: bool = False,
 ) -> int:
     if style_name == "cursor":
-        return styles["cursor"]
+        style = styles["cursor"]
+        if active_content_line:
+            return style | curses.A_REVERSE
+        return style
     style = styles[style_name]
     if active_content_line and style_name not in {"section_border", "section_title", "animation_title"}:
         return style | curses.A_REVERSE
@@ -1751,7 +1754,7 @@ def _styles() -> dict[str, int]:
         "text": curses.A_NORMAL,
         "action": curses.A_NORMAL,
         "action_active": curses.A_REVERSE,
-        "cursor": curses.A_REVERSE,
+        "cursor": curses.A_BOLD,
         "help": curses.A_DIM,
         "status": curses.A_DIM,
     }
