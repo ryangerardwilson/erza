@@ -58,7 +58,8 @@ widgets.
 If the browser made the experience worse, `erza` is the attempt to move that
 experience back into a terminal-shaped environment.
 
-See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition.
+See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the current product definition and
+[`FORMS_SPEC.md`](FORMS_SPEC.md) for the planned localhost-backed form model.
 
 ## Install
 
@@ -89,6 +90,7 @@ python app/main.py run app/examples/docs
 python app/main.py run app/examples/tasks/app.erza
 python app/main.py run app/examples/greetings
 python app/main.py run app/examples/animation
+python app/main.py run app/examples/forms
 ```
 
 If you prefer working inside the app workspace, `cd app && python main.py ...`
@@ -131,6 +133,8 @@ Primary components:
 - `<Text>`
 - `<Link href="...">`
 - `<Action on:press="handler.name">`
+- `<Form action="/path" submit-button-text="...">`
+- `<Input name="field">`
 - `<AsciiAnimation fps="...">`
 
 Support layout components:
@@ -157,36 +161,33 @@ The v0 expression engine is intentionally constrained. It supports plain values,
 dot access such as `task.title`, simple comparisons, boolean logic, list/dict
 literals, and `backend(...)` calls.
 
+Local forms use backend routes in `backend.py`:
+
+- `@route("/auth/login")` handles submit requests from `<Form action="/auth/login">`
+- `session()` exposes per-run local state for rerendering after submit
+- form submits go through an ephemeral localhost server for local apps
+
 ## Authoring Shape
 
 ```erza
-<Screen title="Tasks">
-  <? tasks = backend("tasks.list") ?>
+<Screen title="Sign In">
+  <? status = backend("auth.status") ?>
+  <? email = backend("auth.email") ?>
 
-  <Section title="Open Tasks">
-    <Text>Header mode uses a horizontal strip of section headers. h and k move to the previous header. j and l move to the next header. Press Enter to focus the current section.</Text>
-
-    <? if tasks ?>
-      <? for task in tasks ?>
-        <Text><?= task.title ?></Text>
-        <Action on:press="tasks.complete" task:id="<?= task.id ?>">
-          Complete task
-        </Action>
-      <? endfor ?>
-    <? else ?>
-      <Text>All tasks complete.</Text>
-    <? endif ?>
-  </Section>
-
-  <Section title="Explore">
-    <Link href="https://erza.ryangerardwilson.com">Open hosted docs</Link>
+  <Section title="Account">
+    <Text><?= status ?></Text>
+    <Form action="/auth/login" submit-button-text="Sign in">
+      <Input name="email" type="text" label="Email" value="<?= email ?>" />
+      <Input name="password" type="password" label="Password" />
+    </Form>
   </Section>
 </Screen>
 ```
 
 The bundled examples in [`app/examples/tasks/app.erza`](app/examples/tasks/app.erza)
-[`app/examples/greetings/index.erza`](app/examples/greetings/index.erza), and
-[`app/examples/animation/index.erza`](app/examples/animation/index.erza) demonstrate
+[`app/examples/greetings/index.erza`](app/examples/greetings/index.erza),
+[`app/examples/animation/index.erza`](app/examples/animation/index.erza), and
+[`app/examples/forms/index.erza`](app/examples/forms/index.erza) demonstrate
 the full loop:
 
 - load backend data during template expansion
@@ -196,6 +197,7 @@ the full loop:
 - enter the current section with `Enter`
 - move through the current section line by line with `j` and `k`
 - move faster through the current section with `Ctrl+J` and `Ctrl+K`
+- enter edit mode on inputs and submit forms to backend URLs
 - play declarative ASCII frame animations inside the runtime
 - use `Esc` to return to the header strip, `Backspace` to move back in page history, and `Enter` to open links or dispatch actions inside section mode
 - toggle the shortcuts modal with `?`

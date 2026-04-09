@@ -14,11 +14,13 @@
     <Text>Header names the current idea.</Text>
     <Text>Text carries prose, status, and explanation.</Text>
     <Text>Link opens another page, local or remote.</Text>
+    <Text>Input captures one line of text inside a form.</Text>
   </Section>
 
   <Section title="Action">
     <Text>Action or Button calls a backend handler.</Text>
     <Text>Links change pages. Actions mutate state.</Text>
+    <Text>Form submits to a backend URL and owns an implicit submit control.</Text>
   </Section>
 
   <Section title="Motion">

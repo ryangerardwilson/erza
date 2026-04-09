@@ -9,6 +9,7 @@
     <Text>Greetings: app/examples/greetings and simple backend state changes.</Text>
     <Text>Tasks: app/examples/tasks/app.erza and a backend-fed workflow.</Text>
     <Text>Animation: app/examples/animation and the AsciiAnimation tick loop.</Text>
+    <Text>Forms: app/examples/forms and localhost-backed input + submit flow.</Text>
   </Section>
 
   <Section title="Commands">
@@ -16,6 +17,7 @@
     <Text>python app/main.py run app/examples/greetings</Text>
     <Text>python app/main.py run app/examples/tasks/app.erza</Text>
     <Text>python app/main.py run app/examples/animation</Text>
+    <Text>python app/main.py run app/examples/forms</Text>
   </Section>
 
   <Section title="Next">

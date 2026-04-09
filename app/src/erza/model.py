@@ -20,6 +20,15 @@ class Link:
 
 
 @dataclass(slots=True)
+class Input:
+    name: str
+    type: str = "text"
+    value: str = ""
+    placeholder: str = ""
+    label: str = ""
+
+
+@dataclass(slots=True)
 class Button:
     label: str
     action: str
@@ -47,6 +56,14 @@ class Row:
 
 
 @dataclass(slots=True)
+class Form:
+    action: str
+    children: list["Component"]
+    method: str = "post"
+    submit_button_text: str = "Submit"
+
+
+@dataclass(slots=True)
 class Section:
     title: str
     children: list["Component"]
@@ -59,4 +76,4 @@ class Screen:
     children: list["Component"]
 
 
-Component = Text | Header | Link | Button | AsciiAnimation | Column | Row | Section
+Component = Text | Header | Link | Input | Button | AsciiAnimation | Column | Row | Form | Section

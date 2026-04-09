@@ -213,3 +213,20 @@ The current prototype proves the model with:
 
 The prototype should stay easy to inspect and easy to revise while the
 component model and erzanet transport shape settle.
+
+## Form Direction
+
+Forms should stay HTML-like in syntax while remaining terminal-native in
+behavior.
+
+The intended direction is:
+
+- `<Form action="/path" submit-button-text="...">`
+- `<Input name="field">`
+- forms own an implicit submit control at the end
+- no JavaScript layer
+- no handler-name DSL
+- localhost-backed submit for local apps
+- future parity with remote erzanet apps
+
+See [`FORMS_SPEC.md`](FORMS_SPEC.md) for the exact planned form shape.

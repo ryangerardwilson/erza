@@ -18,6 +18,12 @@
     <Text>Use links for navigation and actions for state changes.</Text>
   </Section>
 
+  <Section title="Forms">
+    <Text>@route("/auth/login") handles POST submits from local forms.</Text>
+    <Text>session() exposes per-run local state so a rerender can show errors or saved values.</Text>
+    <Text>Form actions are URLs, not handler-name strings.</Text>
+  </Section>
+
   <Section title="Next">
     <Link href="../remote">Remote</Link>
     <Link href="../examples">Examples</Link>

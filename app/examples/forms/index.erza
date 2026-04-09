@@ -1,0 +1,28 @@
+<Screen title="Sign In">
+  <? status = backend("auth.status") ?>
+  <? email = backend("auth.email") ?>
+
+  <Section title="Account">
+    <Text><?= status ?></Text>
+    <Form action="/auth/login" submit-button-text="Sign in">
+      <Input
+        name="email"
+        type="text"
+        label="Email"
+        placeholder="demo@erza.dev"
+        value="<?= email ?>"
+      />
+      <Input
+        name="password"
+        type="password"
+        label="Password"
+        placeholder="terminal"
+      />
+    </Form>
+  </Section>
+
+  <Section title="Try">
+    <Text>Use demo@erza.dev and terminal to trigger the redirect.</Text>
+    <Text>Any other combination will stay on this page and show an error.</Text>
+  </Section>
+</Screen>

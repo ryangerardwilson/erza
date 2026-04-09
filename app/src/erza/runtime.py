@@ -6,8 +6,9 @@ from pathlib import Path
 import textwrap
 import time
 
-from erza.backend import BackendBridge
-from erza.model import AsciiAnimation, Button, Column, Component, Header, Link, Row, Screen, Section, Text
+from erza.backend import BackendBridge, bind_request_context
+from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
+from erza.model import AsciiAnimation, Button, Column, Component, Form, Header, Input, Link, Row, Screen, Section, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -31,7 +32,10 @@ HELP_SHORTCUTS = [
     ("Backspace", "Go back one page."),
     ("Section j / k", "Move line by line inside the current section."),
     ("Section Ctrl+J / Ctrl+K", "Move by half a page."),
-    ("Section Enter", "Open the current link or action."),
+    ("Section Enter", "Edit the current input or open the current link/action."),
+    ("Edit type", "Insert text into the current input."),
+    ("Edit Enter", "Commit the current input edit."),
+    ("Edit Esc", "Cancel the current input edit."),
     ("Esc", "Leave section mode and return to the header."),
     ("?", "Toggle the shortcuts modal."),
     ("q", "Exit erza cleanly."),
@@ -51,7 +55,7 @@ class ActionableTarget:
     y: int
     width: int
     label_text: str
-    actionable: Button | Link
+    actionable: Button | Link | "InputControl" | "SubmitControl"
 
 
 @dataclass(slots=True)
@@ -80,6 +84,7 @@ class RenderPlan:
     title: str
     lines: list[list[Segment]]
     sections: list[SectionTarget]
+    form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
     animation_interval_ms: int | None = None
 
 
@@ -90,16 +95,50 @@ class HeaderGridLayout:
     visible_slots: int
 
 
+@dataclass(slots=True)
+class InputControl:
+    form_key: str
+    input_name: str
+    input_type: str
+    initial_value: str
+
+
+@dataclass(slots=True)
+class SubmitControl:
+    form_key: str
+    action: str
+
+
+@dataclass(slots=True)
+class EditState:
+    form_key: str
+    input_name: str
+    cursor_index: int
+    original_value: str
+
+
+@dataclass(slots=True)
+class RenderState:
+    form_values: dict[str, dict[str, str]]
+    edit_state: EditState | None = None
+    next_form_index: int = 0
+    form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
+
+
 class ErzaApp:
     def __init__(
         self,
         source_path: str | Path,
         backend: BackendBridge | None = None,
         backend_path: Path | None = None,
+        session_state: dict[str, object] | None = None,
+        form_server: LocalFormServer | None = None,
     ) -> None:
         self.current_source_path = resolve_local_source_path(Path(source_path))
         self.explicit_backend_path = backend_path.resolve() if backend_path else None
         self.backend_path = self.explicit_backend_path or _infer_backend_path(self.current_source_path)
+        self.session_state: dict[str, object] = session_state if session_state is not None else {}
+        self._form_server = form_server
         if backend is not None:
             self.backend = backend
         elif self.backend_path is not None:
@@ -109,16 +148,28 @@ class ErzaApp:
 
     def build_screen(self) -> Screen:
         source = self.current_source_path.read_text(encoding="utf-8")
-        markup = render_template(source, backend=self.backend)
+        with bind_request_context(self.session_state):
+            markup = render_template(source, backend=self.backend)
         return compile_markup(markup)
 
+    def dispatch_action(self, action: str, params: dict[str, object]) -> object:
+        with bind_request_context(self.session_state):
+            return self.backend.call(action, **params)
+
+    def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
+        if self._form_server is None:
+            self._form_server = LocalFormServer(self.backend, self.session_state)
+        return self._form_server.submit(action, values)
+
     def follow_link(self, href: str) -> "ErzaApp | RemoteApp":
-        if is_remote_source(href) or href.startswith(("http://", "https://")):
+        if href.startswith(("http://", "https://")):
             return RemoteApp(normalize_remote_url(href))
 
         try:
             target = resolve_relative_source(self.current_source_path, href)
         except SourceResolutionError as exc:
+            if is_remote_source(href):
+                return RemoteApp(normalize_remote_url(href))
             raise RuntimeError(str(exc)) from exc
 
         target_backend_path = self.explicit_backend_path or _infer_backend_path(target)
@@ -129,7 +180,13 @@ class ErzaApp:
         else:
             backend = BackendBridge.empty()
 
-        return ErzaApp(target, backend=backend, backend_path=self.explicit_backend_path)
+        return ErzaApp(
+            target,
+            backend=backend,
+            backend_path=self.explicit_backend_path,
+            session_state=self.session_state,
+            form_server=self._form_server if backend is self.backend else None,
+        )
 
 
 class StaticScreenApp:
@@ -140,6 +197,12 @@ class StaticScreenApp:
     def build_screen(self) -> Screen:
         return self.screen
 
+    def dispatch_action(self, action: str, params: dict[str, object]) -> object:
+        return self.backend.call(action, **params)
+
+    def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
+        raise RuntimeError("forms are not supported in static screens")
+
     def follow_link(self, href: str) -> "ErzaApp | RemoteApp":
         raise RuntimeError(f"static screen cannot follow link: {href}")
 
@@ -149,8 +212,15 @@ def run_curses_app(app: ErzaApp | RemoteApp | StaticScreenApp) -> None:
     curses.wrapper(session.run)
 
 
-def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderPlan:
+def build_render_plan(
+    screen: Screen,
+    *,
+    animation_time: float = 0.0,
+    form_values: dict[str, dict[str, str]] | None = None,
+    edit_state: EditState | None = None,
+) -> RenderPlan:
     sections = _normalize_sections(screen.children)
+    render_state = RenderState(form_values=form_values or {}, edit_state=edit_state)
     lines = [
         [Segment(x=0, text=screen.title, style="title")],
         [],
@@ -160,7 +230,7 @@ def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderP
     animation_interval_ms: int | None = None
 
     for index, section in enumerate(sections):
-        block = _build_section_block(section, animation_time=animation_time)
+        block = _build_section_block(section, animation_time=animation_time, render_state=render_state)
         while len(lines) < cursor_y + block.height:
             lines.append([])
 
@@ -202,6 +272,7 @@ def build_render_plan(screen: Screen, *, animation_time: float = 0.0) -> RenderP
         title=screen.title,
         lines=lines,
         sections=section_targets,
+        form_defaults=render_state.form_defaults,
         animation_interval_ms=animation_interval_ms,
     )
 
@@ -523,6 +594,8 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.form_values: dict[str, dict[str, str]] = {}
+        self.edit_state: EditState | None = None
         self.pending_g = False
         self.animation_epoch = time.monotonic()
         self.status = ""
@@ -541,10 +614,15 @@ class _RuntimeSession:
         while True:
             screen = self._current_screen()
             animation_time = time.monotonic() - self.animation_epoch
-            plan = build_render_plan(screen, animation_time=animation_time)
+            plan = build_render_plan(
+                screen,
+                animation_time=animation_time,
+                form_values=self.form_values,
+                edit_state=self.edit_state,
+            )
             self._sync_state(plan)
             footer = self._footer_text(plan)
-            if self.mode == "section" and plan.sections:
+            if self.mode in {"section", "edit"} and plan.sections:
                 self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
                 draw_section_page(
                     stdscr,
@@ -571,10 +649,14 @@ class _RuntimeSession:
 
             stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
             key = stdscr.getch()
-            if key == ord("q"):
-                return
             if key == -1:
                 continue
+            if self.mode == "edit":
+                self.pending_g = False
+                self._handle_edit_key(key)
+                continue
+            if key == ord("q"):
+                return
             if self.show_help:
                 if key in {ord("?"), 27}:
                     self.show_help = False
@@ -659,6 +741,7 @@ class _RuntimeSession:
             self.scroll_offset = 0
             self.section_line_index = 0
             self.section_scroll_offset = 0
+            self.edit_state = None
             return
 
         self.section_index = min(self.section_index, len(plan.sections) - 1)
@@ -667,6 +750,11 @@ class _RuntimeSession:
             self.section_line_index,
             max(_section_content_line_count(active_section) - 1, 0),
         )
+        if self.mode == "edit":
+            active_target = _section_line_actionable(active_section, self.section_line_index)
+            if not isinstance(active_target.actionable, InputControl):
+                self.mode = "section"
+                self.edit_state = None
 
     def _sync_page_scroll(self, plan: RenderPlan, screen_height: int, terminal_width: int) -> None:
         self.scroll_offset = compute_scroll_offset(
@@ -776,6 +864,7 @@ class _RuntimeSession:
         self.mode = "page"
         self.show_help = False
         self.section_scroll_offset = 0
+        self.edit_state = None
         self.status = ""
 
     def _go_back(self) -> None:
@@ -790,12 +879,14 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.form_values = {}
+        self.edit_state = None
         self.pending_g = False
         self.status = "went back"
 
     def _footer_text(self, plan: RenderPlan) -> str:
         location = _app_location(self.app)
-        if self.mode == "section" and plan.sections:
+        if self.mode in {"section", "edit"} and plan.sections:
             location = f"{location} -> {plan.sections[self.section_index].title}"
         if self.status:
             return f"{location} | {self.status}"
@@ -811,8 +902,17 @@ class _RuntimeSession:
             return
 
         actionable = target.actionable
+        if isinstance(actionable, InputControl):
+            self._begin_edit(plan, actionable)
+            return
+        if isinstance(actionable, SubmitControl):
+            self._submit_form(plan, actionable)
+            return
         if isinstance(actionable, Button):
-            self.app.backend.call(actionable.action, **actionable.params)
+            if hasattr(self.app, "dispatch_action"):
+                self.app.dispatch_action(actionable.action, actionable.params)
+            else:
+                self.app.backend.call(actionable.action, **actionable.params)
             self._invalidate_screen(reset_animation=True)
             self.status = f"ran {actionable.action}"
             return
@@ -833,7 +933,110 @@ class _RuntimeSession:
         self.section_line_index = 0
         self.section_scroll_offset = 0
         self.pending_g = False
+        self.form_values = {}
+        self.edit_state = None
         self.status = f"opened {actionable.href}"
+
+    def _begin_edit(self, plan: RenderPlan, target: InputControl) -> None:
+        current_value = self.form_values.setdefault(target.form_key, {}).get(target.input_name, target.initial_value)
+        self.form_values[target.form_key][target.input_name] = current_value
+        self.edit_state = EditState(
+            form_key=target.form_key,
+            input_name=target.input_name,
+            cursor_index=len(current_value),
+            original_value=current_value,
+        )
+        self.mode = "edit"
+        self.show_help = False
+        self.status = ""
+
+    def _handle_edit_key(self, key: int) -> None:
+        if self.edit_state is None:
+            self.mode = "section"
+            return
+
+        value = self.form_values.setdefault(self.edit_state.form_key, {}).get(
+            self.edit_state.input_name,
+            self.edit_state.original_value,
+        )
+        cursor = min(max(self.edit_state.cursor_index, 0), len(value))
+
+        if key == 27:
+            self.form_values[self.edit_state.form_key][self.edit_state.input_name] = self.edit_state.original_value
+            self.edit_state = None
+            self.mode = "section"
+            self.status = ""
+            return
+        if key in {curses.KEY_ENTER, ord("\n"), ord("\r")}:
+            self.form_values[self.edit_state.form_key][self.edit_state.input_name] = value
+            self.edit_state = None
+            self.mode = "section"
+            self.status = ""
+            return
+        if key in {curses.KEY_BACKSPACE, 127, 8}:
+            if cursor > 0:
+                value = value[: cursor - 1] + value[cursor:]
+                cursor -= 1
+        elif key in {curses.KEY_LEFT}:
+            cursor = max(cursor - 1, 0)
+        elif key in {curses.KEY_RIGHT}:
+            cursor = min(cursor + 1, len(value))
+        elif key in {curses.KEY_HOME}:
+            cursor = 0
+        elif key in {curses.KEY_END}:
+            cursor = len(value)
+        elif 32 <= key <= 126:
+            value = value[:cursor] + chr(key) + value[cursor:]
+            cursor += 1
+        else:
+            return
+
+        self.form_values[self.edit_state.form_key][self.edit_state.input_name] = value
+        self.edit_state.cursor_index = cursor
+        self.status = ""
+
+    def _submit_form(self, plan: RenderPlan, target: SubmitControl) -> None:
+        if not hasattr(self.app, "submit_form"):
+            self.status = "forms are not supported for this app"
+            return
+
+        values = dict(plan.form_defaults.get(target.form_key, {}))
+        values.update(self.form_values.get(target.form_key, {}))
+
+        try:
+            result = self.app.submit_form(target.action, values)
+        except (RuntimeError, LocalServerError) as exc:
+            self.status = str(exc)
+            return
+
+        self.edit_state = None
+        self.mode = "section"
+        self._invalidate_screen(reset_animation=True)
+
+        if result.type == "redirect" and result.href:
+            try:
+                next_app = self.app.follow_link(result.href)
+            except RuntimeError as exc:
+                self.status = str(exc)
+                return
+            self.history.append(self.app)
+            self.app = next_app
+            self._invalidate_screen(reset_animation=True)
+            self.mode = "page"
+            self.section_index = 0
+            self.scroll_offset = 0
+            self.section_line_index = 0
+            self.section_scroll_offset = 0
+            self.form_values = {}
+            self.status = f"opened {result.href}"
+            return
+
+        if result.type == "error":
+            self.status = result.message or "form submit failed"
+            return
+
+        self.form_values.pop(target.form_key, None)
+        self.status = f"submitted {target.action}"
 
 
 def compute_scroll_offset(
@@ -946,18 +1149,45 @@ def _normalize_sections(children: list[Component]) -> list[Section]:
     return sections
 
 
-def _build_block(component: Component, *, animation_time: float, max_width: int) -> Block:
+def _build_block(
+    component: Component,
+    *,
+    animation_time: float,
+    max_width: int,
+    render_state: RenderState,
+    form_key: str | None = None,
+) -> Block:
     if isinstance(component, Section):
-        return _build_embedded_section_block(component, animation_time=animation_time, max_width=max_width)
+        return _build_embedded_section_block(
+            component,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+        )
+    if isinstance(component, Form):
+        return _build_form_block(
+            component,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+        )
     if isinstance(component, Column):
         return _build_column_like(
             component.children,
             gap=component.gap,
             animation_time=animation_time,
             max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
         )
     if isinstance(component, Row):
-        return _build_row(component, animation_time=animation_time, max_width=max_width)
+        return _build_row(
+            component,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+        )
     if isinstance(component, Header):
         return _wrapped_text_block(component.content, style="header", max_width=max_width)
     if isinstance(component, Text):
@@ -976,6 +1206,10 @@ def _build_block(component: Component, *, animation_time: float, max_width: int)
             )
         )
         return block
+    if isinstance(component, Input):
+        if form_key is None:
+            raise TypeError("<Input> requires an enclosing form")
+        return _build_input_block(component, form_key=form_key, max_width=max_width, render_state=render_state)
     if isinstance(component, Button):
         label = _truncate_text(f"[ {component.label} ]", max_width)
         block = _leaf_block(label, style="action")
@@ -994,12 +1228,13 @@ def _build_block(component: Component, *, animation_time: float, max_width: int)
     raise TypeError(f"unsupported component for layout: {type(component).__name__}")
 
 
-def _build_section_block(section: Section, *, animation_time: float) -> Block:
+def _build_section_block(section: Section, *, animation_time: float, render_state: RenderState) -> Block:
     body = _build_column_like(
         section.children,
         gap=1,
         animation_time=animation_time,
         max_width=TOP_LEVEL_SECTION_INNER_WIDTH,
+        render_state=render_state,
     )
     return _build_bordered_section_block(
         section,
@@ -1008,13 +1243,20 @@ def _build_section_block(section: Section, *, animation_time: float) -> Block:
     )
 
 
-def _build_embedded_section_block(section: Section, *, animation_time: float, max_width: int) -> Block:
+def _build_embedded_section_block(
+    section: Section,
+    *,
+    animation_time: float,
+    max_width: int,
+    render_state: RenderState,
+) -> Block:
     nested_inner_width = max(max_width - 4, 1)
     body = _build_column_like(
         section.children,
         gap=1,
         animation_time=animation_time,
         max_width=nested_inner_width,
+        render_state=render_state,
     )
     if not body.lines:
         return _build_bordered_section_block(section, fixed_inner_width=nested_inner_width)
@@ -1120,7 +1362,113 @@ def _build_animation_block(animation: AsciiAnimation, *, animation_time: float, 
     )
 
 
-def _build_column_like(children: list[Component], gap: int, *, animation_time: float, max_width: int) -> Block:
+def _build_form_block(
+    form: Form,
+    *,
+    animation_time: float,
+    max_width: int,
+    render_state: RenderState,
+) -> Block:
+    form_key = f"form:{render_state.next_form_index}"
+    render_state.next_form_index += 1
+
+    lines: list[list[Segment]] = []
+    actionables: list[ActionableTarget] = []
+    width = 0
+    cursor_y = 0
+    animation_interval_ms: int | None = None
+
+    if form.children:
+        body = _build_column_like(
+            form.children,
+            gap=1,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+        )
+        _merge_block(lines, actionables, body, x=0, y=cursor_y)
+        width = max(width, body.width)
+        animation_interval_ms = _merge_animation_interval(animation_interval_ms, body.animation_interval_ms)
+        cursor_y += body.height
+        cursor_y += 1
+        lines.append([])
+
+    submit_block = _build_form_submit_block(form, form_key=form_key, max_width=max_width)
+    _merge_block(lines, actionables, submit_block, x=0, y=cursor_y)
+    width = max(width, submit_block.width)
+
+    return Block(
+        width=width,
+        height=len(lines),
+        lines=lines,
+        actionables=actionables,
+        animation_interval_ms=animation_interval_ms,
+    )
+
+
+def _build_input_block(
+    input_component: Input,
+    *,
+    form_key: str,
+    max_width: int,
+    render_state: RenderState,
+) -> Block:
+    render_state.form_defaults.setdefault(form_key, {})[input_component.name] = input_component.value
+    current_value = _current_input_value(form_key, input_component, render_state.form_values)
+    is_editing = (
+        render_state.edit_state is not None
+        and render_state.edit_state.form_key == form_key
+        and render_state.edit_state.input_name == input_component.name
+    )
+    line_text = _render_input_line(
+        input_component,
+        current_value=current_value,
+        max_width=max_width,
+        edit_state=render_state.edit_state if is_editing else None,
+    )
+    block = _leaf_block(line_text, style="text")
+    block.actionables.append(
+        ActionableTarget(
+            x=0,
+            y=0,
+            width=len(line_text),
+            label_text=line_text,
+            actionable=InputControl(
+                form_key=form_key,
+                input_name=input_component.name,
+                input_type=input_component.type,
+                initial_value=input_component.value,
+            ),
+        )
+    )
+    return block
+
+
+def _build_form_submit_block(form: Form, *, form_key: str, max_width: int) -> Block:
+    label = _truncate_text(f"[ {form.submit_button_text} ]", max_width)
+    block = _leaf_block(label, style="action")
+    block.actionables.append(
+        ActionableTarget(
+            x=0,
+            y=0,
+            width=len(label),
+            label_text=label,
+            actionable=SubmitControl(form_key=form_key, action=form.action),
+        )
+    )
+    return block
+
+
+def _build_column_like(
+    children: list[Component],
+    gap: int,
+    *,
+    animation_time: float,
+    max_width: int,
+    render_state: RenderState,
+    form_key: str | None = None,
+) -> Block:
     lines: list[list[Segment]] = []
     actionables: list[ActionableTarget] = []
     width = 0
@@ -1128,7 +1476,13 @@ def _build_column_like(children: list[Component], gap: int, *, animation_time: f
     animation_interval_ms: int | None = None
 
     for index, child in enumerate(children):
-        block = _build_block(child, animation_time=animation_time, max_width=max_width)
+        block = _build_block(
+            child,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+        )
         _merge_block(lines, actionables, block, x=0, y=cursor_y)
         width = max(width, block.width)
         animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
@@ -1147,8 +1501,24 @@ def _build_column_like(children: list[Component], gap: int, *, animation_time: f
     )
 
 
-def _build_row(row: Row, *, animation_time: float, max_width: int) -> Block:
-    child_blocks = [_build_block(child, animation_time=animation_time, max_width=max_width) for child in row.children]
+def _build_row(
+    row: Row,
+    *,
+    animation_time: float,
+    max_width: int,
+    render_state: RenderState,
+    form_key: str | None = None,
+) -> Block:
+    child_blocks = [
+        _build_block(
+            child,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+        )
+        for child in row.children
+    ]
     width = 0
     height = max((block.height for block in child_blocks), default=0)
     lines = [[] for _ in range(height)]
@@ -1201,6 +1571,40 @@ def _boxed_content_line(inner_width: int) -> list[Segment]:
         Segment(x=2, text=" " * inner_width, style="section_fill"),
         Segment(x=inner_width + 2, text=" |", style="section_border"),
     ]
+
+
+def _current_input_value(form_key: str, input_component: Input, form_values: dict[str, dict[str, str]]) -> str:
+    return form_values.get(form_key, {}).get(input_component.name, input_component.value)
+
+
+def _render_input_line(
+    input_component: Input,
+    *,
+    current_value: str,
+    max_width: int,
+    edit_state: EditState | None,
+) -> str:
+    label = (input_component.label.strip() or _input_label(input_component.name)).strip()
+    label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
+    label_width = min(max(len(label_text), 8), 18)
+    box_width = max(max_width - label_width - 5, 8)
+    if input_component.type == "password":
+        visible_value = "*" * len(current_value)
+    else:
+        visible_value = current_value
+
+    if edit_state is not None:
+        cursor_index = min(max(edit_state.cursor_index, 0), len(visible_value))
+        visible_value = visible_value[:cursor_index] + "|" + visible_value[cursor_index:]
+    elif not visible_value and input_component.placeholder:
+        visible_value = input_component.placeholder
+
+    visible_value = _truncate_text(visible_value, box_width)
+    return f"{label_text:<{label_width}} [ {visible_value:<{box_width}} ]"
+
+
+def _input_label(name: str) -> str:
+    return name.replace("_", " ").replace("-", " ").title()
 
 
 def _select_animation_frame(animation: AsciiAnimation, animation_time: float) -> str:

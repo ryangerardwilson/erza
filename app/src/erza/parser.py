@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, Button, Column, Component, Header, Link, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Column, Component, Form, Header, Input, Link, Row, Screen, Section, Text
 
 
 class ParseError(RuntimeError):
@@ -49,6 +49,18 @@ class _MarkupParser(HTMLParser):
         if current.tag != tag.lower():
             raise ParseError(f"mismatched closing tag: expected </{current.tag}>")
 
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        element = Element(
+            tag=tag.lower(),
+            attrs={name: value or "" for name, value in attrs},
+        )
+        if self.stack:
+            self.stack[-1].children.append(element)
+            return
+        if self.root is not None:
+            raise ParseError("rendered .erza markup must have a single root element")
+        self.root = element
+
     def handle_data(self, data: str) -> None:
         if not self.stack:
             if data.strip():
@@ -75,29 +87,59 @@ def compile_markup(markup: str) -> Screen:
     return Screen(title=title, children=_convert_children(root))
 
 
-def _convert_children(element: Element) -> list[Component]:
+def _convert_children(element: Element, *, inside_form: bool = False) -> list[Component]:
     children: list[Component] = []
     for child in element.children:
         if isinstance(child, str):
             if _normalize_text(child):
                 children.append(Text(content=_normalize_text(child)))
             continue
-        children.append(_convert_element(child))
+        children.append(_convert_element(child, inside_form=inside_form))
     return children
 
 
-def _convert_element(element: Element) -> Component:
+def _convert_element(element: Element, *, inside_form: bool = False) -> Component:
     tag = element.tag
     if tag == "section":
         title = element.attrs.get("title", "").strip()
         if not title:
             raise ParseError("<Section> requires a title")
         tone = element.attrs.get("tone", "default").strip() or "default"
-        return Section(title=title, tone=tone, children=_convert_children(element))
+        return Section(title=title, tone=tone, children=_convert_children(element, inside_form=inside_form))
     if tag == "column":
-        return Column(children=_convert_children(element), gap=_parse_gap(element, default=0))
+        return Column(children=_convert_children(element, inside_form=inside_form), gap=_parse_gap(element, default=0))
     if tag == "row":
-        return Row(children=_convert_children(element), gap=_parse_gap(element, default=1))
+        return Row(children=_convert_children(element, inside_form=inside_form), gap=_parse_gap(element, default=1))
+    if tag == "form":
+        if inside_form:
+            raise ParseError("<Form> cannot be nested inside another <Form> in v1")
+        action = element.attrs.get("action", "").strip()
+        if not action:
+            raise ParseError("<Form> requires an action")
+        method = (element.attrs.get("method", "post").strip() or "post").lower()
+        if method != "post":
+            raise ParseError("<Form> only supports method=\"post\" in v1")
+        submit_button_text = element.attrs.get("submit-button-text", "").strip() or "Submit"
+        return Form(
+            action=action,
+            method=method,
+            submit_button_text=submit_button_text,
+            children=_convert_children(element, inside_form=True),
+        )
+    if tag == "input":
+        if not inside_form:
+            raise ParseError("<Input> may only appear inside <Form>")
+        name = element.attrs.get("name", "").strip()
+        if not name:
+            raise ParseError("<Input> requires a name")
+        input_type = _parse_input_type(element)
+        return Input(
+            name=name,
+            type=input_type,
+            value=element.attrs.get("value", ""),
+            placeholder=element.attrs.get("placeholder", ""),
+            label=element.attrs.get("label", ""),
+        )
     if tag == "text":
         return Text(content=_collect_text(element))
     if tag == "header":
@@ -115,6 +157,8 @@ def _convert_element(element: Element) -> Component:
             label=element.attrs.get("label", "").strip() or "Animation",
         )
     if tag in {"button", "action"}:
+        if inside_form:
+            raise ParseError(f"<{element.tag}> is not supported inside <Form> in v1")
         action = element.attrs.get("on:press", "").strip()
         if not action:
             raise ParseError(f"<{element.tag}> requires an on:press handler")
@@ -209,6 +253,13 @@ def _parse_bool(element: Element, name: str, *, default: bool) -> bool:
     if normalized == "false":
         return False
     raise ParseError(f"{name} must be true or false on <{element.tag}>")
+
+
+def _parse_input_type(element: Element) -> str:
+    input_type = (element.attrs.get("type", "text").strip() or "text").lower()
+    if input_type not in {"text", "password"}:
+        raise ParseError("<Input> type must be text or password in v1")
+    return input_type
 
 
 def _normalize_param_name(name: str) -> str:

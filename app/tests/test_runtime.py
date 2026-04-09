@@ -7,10 +7,13 @@ from _test_bootstrap import ensure_test_paths
 ensure_test_paths()
 
 from erza.backend import BackendBridge
-from erza.model import AsciiAnimation, Button, Link, Screen, Section, Text
+from erza.local_server import SubmitResult
+from erza.model import AsciiAnimation, Button, Form, Input, Link, Screen, Section, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
+    InputControl,
     StaticScreenApp,
+    SubmitControl,
     _RuntimeSession,
     _display_origin_x,
     _header_grid_layout,
@@ -276,6 +279,105 @@ class RuntimeTests(unittest.TestCase):
         self.assertIs(second, third)
         self.assertEqual(app.build_calls, 1)
 
+    def test_build_render_plan_collects_form_input_and_submit_targets(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[
+                        Form(
+                            action="/auth/login",
+                            submit_button_text="Sign in",
+                            children=[
+                                Input(name="email", placeholder="Email"),
+                                Input(name="password", type="password"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        targets = plan.sections[0].actionables
+
+        self.assertEqual(len(targets), 3)
+        self.assertIsInstance(targets[0].actionable, InputControl)
+        self.assertIsInstance(targets[1].actionable, InputControl)
+        self.assertIsInstance(targets[2].actionable, SubmitControl)
+        self.assertEqual(targets[2].label_text, "[ Sign in ]")
+
+    def test_form_input_activation_enters_edit_mode_and_submits(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[
+                        Form(
+                            action="/auth/login",
+                            submit_button_text="Sign in",
+                            children=[Input(name="email", placeholder="Email")],
+                        )
+                    ],
+                )
+            ],
+        )
+        app = _SubmittingApp(screen, SubmitResult(type="error", message="Invalid email"))
+        session = _RuntimeSession(app)
+
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[0].block.actionables[0].y - 1
+        session._activate(plan)
+
+        self.assertEqual(session.mode, "edit")
+
+        session._handle_edit_key(ord("a"))
+        session._handle_edit_key(ord("@"))
+        session._handle_edit_key(ord("b"))
+        self.assertEqual(session.form_values["form:0"]["email"], "a@b")
+
+        session._handle_edit_key(ord("\n"))
+        self.assertEqual(session.mode, "section")
+
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session.section_line_index = plan.sections[0].block.actionables[-1].y - 1
+        session._activate(plan)
+
+        self.assertEqual(app.submissions, [("/auth/login", {"email": "a@b"})])
+        self.assertEqual(session.status, "Invalid email")
+
+    def test_edit_mode_escape_restores_original_value(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[
+                        Form(
+                            action="/auth/login",
+                            submit_button_text="Sign in",
+                            children=[Input(name="email", value="seed@example.com")],
+                        )
+                    ],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[0].block.actionables[0].y - 1
+        session._activate(plan)
+        session._handle_edit_key(ord("!"))
+        session._handle_edit_key(27)
+
+        self.assertEqual(session.mode, "section")
+        self.assertEqual(session.form_values["form:0"]["email"], "seed@example.com")
+
     def test_go_back_from_section_mode_returns_to_page_mode(self) -> None:
         screen = Screen(
             title="Docs",
@@ -390,6 +492,17 @@ class _NavigatingApp(_CountingApp):
 
     def follow_link(self, href: str) -> "_NavigatingApp":
         return _NavigatingApp(self.target, self.target)
+
+
+class _SubmittingApp(_CountingApp):
+    def __init__(self, screen: Screen, result: SubmitResult) -> None:
+        super().__init__(screen)
+        self.result = result
+        self.submissions: list[tuple[str, dict[str, str]]] = []
+
+    def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
+        self.submissions.append((action, values))
+        return self.result
 
 
 if __name__ == "__main__":

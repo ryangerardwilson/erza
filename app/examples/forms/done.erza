@@ -1,0 +1,6 @@
+<Screen title="Signed In">
+  <Section title="Welcome">
+    <Header>Signed in.</Header>
+    <Text>The form posted to a backend URL and redirected to this page.</Text>
+  </Section>
+</Screen>
