@@ -569,18 +569,8 @@ def _draw_section_body(
                 available,
                 _segment_style(styles, segment.style, active_content_line=active_content_line),
             )
-
-    active_item = _section_line_actionable(section, line_index) if highlight_active_line else None
-    if active_item is not None and active_y is not None:
-        screen_y = top_y + active_y
-        _safe_addnstr(
-            stdscr,
-            screen_y,
-            block_x + active_item.x,
-            active_item.label_text,
-            max(block_width - active_item.x, 0),
-            styles["action_active"],
-        )
+        if active_content_line:
+            _safe_addnstr(stdscr, screen_y, block_x + 1, ">", 1, styles["selection_marker"])
 
 
 class _RuntimeSession:
@@ -1731,14 +1721,8 @@ def _segment_style(
     active_content_line: bool = False,
 ) -> int:
     if style_name == "cursor":
-        style = styles["cursor"]
-        if active_content_line:
-            return style | curses.A_REVERSE
-        return style
-    style = styles[style_name]
-    if active_content_line and style_name not in {"section_border", "section_title", "animation_title"}:
-        return style | curses.A_REVERSE
-    return style
+        return styles["cursor"]
+    return styles[style_name]
 
 
 def _styles() -> dict[str, int]:
@@ -1755,6 +1739,7 @@ def _styles() -> dict[str, int]:
         "action": curses.A_NORMAL,
         "action_active": curses.A_REVERSE,
         "cursor": curses.A_BOLD,
+        "selection_marker": curses.A_BOLD,
         "help": curses.A_DIM,
         "status": curses.A_DIM,
     }
