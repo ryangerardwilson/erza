@@ -452,7 +452,7 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertTrue(any(segment.style == "cursor" for segment in input_line))
         self.assertFalse(any(segment.text == "|" for segment in input_line))
-        self.assertTrue(any(segment.style == "cursor" and segment.text == "█" for segment in input_line))
+        self.assertTrue(any(segment.style == "cursor" and segment.text == "@" for segment in input_line))
 
     def test_edit_mode_ctrl_w_deletes_previous_word(self) -> None:
         screen = Screen(

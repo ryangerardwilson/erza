@@ -1670,6 +1670,7 @@ def _render_input_line(
     visible_window = display_value[window_start : window_start + field_width]
     relative_cursor = max(min(cursor_index - window_start, field_width - 1), 0)
     padded_window = list(f"{visible_window:<{field_width}}")
+    cursor_char = padded_window[relative_cursor]
     padded_window[relative_cursor] = ""
     before_cursor = "".join(padded_window[:relative_cursor])
     after_cursor = "".join(padded_window[relative_cursor + 1 :])
@@ -1681,7 +1682,7 @@ def _render_input_line(
     if before_cursor:
         segments.append(Segment(x=cursor_x, text=before_cursor, style="text"))
         cursor_x += len(before_cursor)
-    segments.append(Segment(x=cursor_x, text="█", style="cursor"))
+    segments.append(Segment(x=cursor_x, text=cursor_char or " ", style="cursor"))
     cursor_x += 1
     if after_cursor:
         segments.append(Segment(x=cursor_x, text=after_cursor, style="text"))
@@ -1798,7 +1799,7 @@ def _styles() -> dict[str, int]:
         "text": curses.A_NORMAL,
         "action": curses.A_NORMAL,
         "action_active": curses.A_REVERSE,
-        "cursor": curses.A_BOLD,
+        "cursor": curses.A_REVERSE | curses.A_BOLD,
         "selection_marker": curses.A_BOLD,
         "help": curses.A_DIM,
         "status": curses.A_DIM,
