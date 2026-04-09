@@ -1421,13 +1421,13 @@ def _build_input_block(
         and render_state.edit_state.form_key == form_key
         and render_state.edit_state.input_name == input_component.name
     )
-    line_text = _render_input_line(
+    line_text, segments = _render_input_line(
         input_component,
         current_value=current_value,
         max_width=max_width,
         edit_state=render_state.edit_state if is_editing else None,
     )
-    block = _leaf_block(line_text, style="text")
+    block = Block(width=len(line_text), height=1, lines=[segments])
     block.actionables.append(
         ActionableTarget(
             x=0,
@@ -1583,24 +1583,59 @@ def _render_input_line(
     current_value: str,
     max_width: int,
     edit_state: EditState | None,
-) -> str:
+) -> tuple[str, list[Segment]]:
     label = (input_component.label.strip() or _input_label(input_component.name)).strip()
     label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
     label_width = min(max(len(label_text), 8), 18)
     box_width = max(max_width - label_width - 5, 8)
-    if input_component.type == "password":
-        visible_value = "*" * len(current_value)
+    display_value = "*" * len(current_value) if input_component.type == "password" else current_value
+
+    prefix = f"{label_text:<{label_width}} [ "
+    suffix = " ]"
+    plain_field = display_value
+    if not plain_field and input_component.placeholder:
+        plain_field = input_component.placeholder
+
+    if edit_state is None:
+        field_text = _truncate_text(plain_field, box_width)
+        padded_field = f"{field_text:<{box_width}}"
+        line_text = f"{prefix}{padded_field}{suffix}"
+        return (
+            line_text,
+            [
+                Segment(x=0, text=prefix, style="text"),
+                Segment(x=len(prefix), text=padded_field, style="text"),
+                Segment(x=len(prefix) + len(padded_field), text=suffix, style="text"),
+            ],
+        )
+
+    cursor_index = min(max(edit_state.cursor_index, 0), len(display_value))
+    if len(display_value) <= box_width:
+        window_start = 0
     else:
-        visible_value = current_value
+        max_start = max(len(display_value) - box_width, 0)
+        window_start = min(max(cursor_index - box_width + 1, 0), max_start)
+    visible_window = display_value[window_start : window_start + box_width]
+    relative_cursor = max(min(cursor_index - window_start, box_width - 1), 0)
+    padded_window = list(f"{visible_window:<{box_width}}")
+    cursor_char = padded_window[relative_cursor]
+    padded_window[relative_cursor] = ""
+    before_cursor = "".join(padded_window[:relative_cursor])
+    after_cursor = "".join(padded_window[relative_cursor + 1 :])
+    plain_window = before_cursor + cursor_char + after_cursor
+    line_text = f"{prefix}{plain_window}{suffix}"
 
-    if edit_state is not None:
-        cursor_index = min(max(edit_state.cursor_index, 0), len(visible_value))
-        visible_value = visible_value[:cursor_index] + "|" + visible_value[cursor_index:]
-    elif not visible_value and input_component.placeholder:
-        visible_value = input_component.placeholder
-
-    visible_value = _truncate_text(visible_value, box_width)
-    return f"{label_text:<{label_width}} [ {visible_value:<{box_width}} ]"
+    segments = [Segment(x=0, text=prefix, style="text")]
+    cursor_x = len(prefix)
+    if before_cursor:
+        segments.append(Segment(x=cursor_x, text=before_cursor, style="text"))
+        cursor_x += len(before_cursor)
+    segments.append(Segment(x=cursor_x, text=cursor_char or " ", style="cursor"))
+    cursor_x += 1
+    if after_cursor:
+        segments.append(Segment(x=cursor_x, text=after_cursor, style="text"))
+    segments.append(Segment(x=len(prefix) + box_width, text=suffix, style="text"))
+    return line_text, segments
 
 
 def _input_label(name: str) -> str:
@@ -1695,6 +1730,8 @@ def _segment_style(
     *,
     active_content_line: bool = False,
 ) -> int:
+    if style_name == "cursor":
+        return styles["cursor"] if active_content_line else styles["cursor"] | curses.A_REVERSE
     style = styles[style_name]
     if active_content_line and style_name not in {"section_border", "section_title", "animation_title"}:
         return style | curses.A_REVERSE
@@ -1714,6 +1751,7 @@ def _styles() -> dict[str, int]:
         "text": curses.A_NORMAL,
         "action": curses.A_NORMAL,
         "action_active": curses.A_REVERSE,
+        "cursor": curses.A_NORMAL,
         "help": curses.A_DIM,
         "status": curses.A_DIM,
     }

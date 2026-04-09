@@ -11,6 +11,7 @@ from erza.local_server import SubmitResult
 from erza.model import AsciiAnimation, Button, Form, Input, Link, Screen, Section, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
+    EditState,
     InputControl,
     StaticScreenApp,
     SubmitControl,
@@ -377,6 +378,38 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertEqual(session.mode, "section")
         self.assertEqual(session.form_values["form:0"]["email"], "seed@example.com")
+
+    def test_edit_mode_uses_block_cursor_segment_instead_of_pipe_character(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[
+                        Form(
+                            action="/auth/login",
+                            submit_button_text="Sign in",
+                            children=[Input(name="email", value="demo@erza.dev")],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        plan = build_render_plan(
+            screen,
+            form_values={"form:0": {"email": "demo@erza.dev"}},
+            edit_state=EditState(
+                form_key="form:0",
+                input_name="email",
+                cursor_index=4,
+                original_value="demo@erza.dev",
+            ),
+        )
+        input_line = plan.sections[0].block.lines[1]
+
+        self.assertTrue(any(segment.style == "cursor" for segment in input_line))
+        self.assertFalse(any(segment.text == "|" for segment in input_line))
 
     def test_go_back_from_section_mode_returns_to_page_mode(self) -> None:
         screen = Screen(
