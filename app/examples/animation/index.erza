@@ -33,7 +33,7 @@
 
   <Section title="Controls">
     <Text>Header mode uses a horizontal strip of section headers. h and k move to the previous header. j and l move to the next header. Press Enter to focus the current section.</Text>
-    <Text>Section mode uses j/k line by line, and Ctrl+J/Ctrl+K for half-page moves.</Text>
+    <Text>Section mode uses j/k line by line, and Ctrl+D/Ctrl+U for half-page moves.</Text>
     <Text>gg and G jump to the first or last section or line. Esc returns to the header strip. Backspace goes back. ? shows shortcuts. q exits cleanly.</Text>
   </Section>
 </Screen>

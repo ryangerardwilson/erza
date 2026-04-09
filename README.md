@@ -34,7 +34,7 @@ prototype still renders many screens as sectional panels.
 - `Enter` focuses the current section body.
 - `gg` jumps to the first section and `G` jumps to the last.
 - Section mode uses `j` and `k` line by line.
-- Section mode uses `Ctrl+J` and `Ctrl+K` to move by half a page.
+- Section mode uses `Ctrl+D` and `Ctrl+U` to move by half a page.
 - `Esc` exits section mode and returns focus to the header strip.
 - Section mode uses `Enter` to open the current link or fire the current action.
 - `Backspace` goes back one page.
@@ -196,7 +196,7 @@ the full loop:
 - jump directly to the bounds with `gg` and `G`
 - enter the current section with `Enter`
 - move through the current section line by line with `j` and `k`
-- move faster through the current section with `Ctrl+J` and `Ctrl+K`
+- move faster through the current section with `Ctrl+D` and `Ctrl+U`
 - enter edit mode on inputs and submit forms to backend URLs
 - play declarative ASCII frame animations inside the runtime
 - use `Esc` to return to the header strip, `Backspace` to move back in page history, and `Enter` to open links or dispatch actions inside section mode

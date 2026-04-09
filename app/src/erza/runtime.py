@@ -15,8 +15,8 @@ from erza.source import SourceResolutionError, resolve_local_source_path, resolv
 from erza.template import render_template
 
 
-CTRL_J = 10
-CTRL_K = 11
+CTRL_D = 4
+CTRL_U = 21
 DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
@@ -31,7 +31,7 @@ HELP_SHORTCUTS = [
     ("Header gg / G", "Jump to the first or last section."),
     ("Backspace", "Go back one page."),
     ("Section j / k", "Move line by line inside the current section."),
-    ("Section Ctrl+J / Ctrl+K", "Move by half a page."),
+    ("Section Ctrl+D / Ctrl+U", "Move by half a page."),
     ("Section Enter", "Edit the current input or open the current link/action."),
     ("Edit type", "Insert text into the current input."),
     ("Edit Enter", "Commit the current input edit."),
@@ -714,10 +714,10 @@ class _RuntimeSession:
                 if self.mode == "section":
                     self._move_section_line(plan, -1)
                 continue
-            if key == CTRL_J and self.mode == "section":
+            if key == CTRL_D and self.mode == "section":
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], 1)
                 continue
-            if key == CTRL_K and self.mode == "section":
+            if key == CTRL_U and self.mode == "section":
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], -1)
                 continue
             if key in {curses.KEY_ENTER, ord("\n"), ord("\r")} and self.mode == "section":
