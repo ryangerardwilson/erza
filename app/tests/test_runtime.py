@@ -56,8 +56,8 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(len(plan.sections[0].actionables), 1)
         self.assertEqual(len(plan.sections[1].actionables), 1)
         self.assertLess(plan.sections[0].y, plan.sections[1].y)
-        self.assertEqual(plan.sections[0].width, 79)
-        self.assertEqual(plan.sections[1].width, 79)
+        self.assertEqual(plan.sections[0].width, 77)
+        self.assertEqual(plan.sections[1].width, 77)
         self.assertTrue(plan.sections[0].title_text.startswith("+-[ Open ]"))
         self.assertTrue(
             plan.lines[plan.sections[0].y + plan.sections[0].height - 1][0].text.startswith("+---")

@@ -18,7 +18,7 @@ from erza.template import render_template
 CTRL_D = 4
 CTRL_U = 21
 DISPLAY_WIDTH = 79
-TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 4
+TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 6
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
 MIN_ANIMATION_INTERVAL_MS = 50
 HELP_MODAL_MAX_WIDTH = 67
@@ -570,7 +570,7 @@ def _draw_section_body(
                 _segment_style(styles, segment.style, active_content_line=active_content_line),
             )
         if active_content_line:
-            _safe_addnstr(stdscr, screen_y, block_x + 1, ">", 1, styles["selection_marker"])
+            _safe_addnstr(stdscr, screen_y, max(block_x - 1, 0), ">", 1, styles["selection_marker"])
 
 
 class _RuntimeSession:
