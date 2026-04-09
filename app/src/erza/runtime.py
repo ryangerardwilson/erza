@@ -1592,7 +1592,7 @@ def _render_input_line(
 ) -> tuple[str, list[Segment]]:
     label = (input_component.label.strip() or _input_label(input_component.name)).strip()
     if input_component.required:
-        label = f"* {label}"
+        label = f"*{label}"
     label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
     prefix = f"{label_text} "
     field_width = max(max_width - len(prefix), 8)

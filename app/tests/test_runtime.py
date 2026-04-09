@@ -309,7 +309,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertIsInstance(targets[2].actionable, SubmitControl)
         self.assertEqual(targets[2].label_text, "[ Sign in ]")
         first_input_line = "".join(segment.text for segment in plan.sections[0].block.lines[1])
-        self.assertIn("* Email:", first_input_line)
+        self.assertIn("*Email:", first_input_line)
         self.assertNotIn("[ ", first_input_line)
         self.assertEqual(targets[0].x, 6)
         self.assertEqual(targets[1].x, 6)
