@@ -9,14 +9,14 @@
         name="email"
         type="text"
         label="Email"
-        placeholder="demo@erza.dev"
+        required="mandatory"
         value="<?= email ?>"
       />
       <Input
         name="password"
         type="password"
         label="Password"
-        placeholder="terminal"
+        required="mandatory"
       />
     </Form>
   </Section>

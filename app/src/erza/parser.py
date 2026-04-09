@@ -132,13 +132,15 @@ def _convert_element(element: Element, *, inside_form: bool = False) -> Componen
         name = element.attrs.get("name", "").strip()
         if not name:
             raise ParseError("<Input> requires a name")
+        if "placeholder" in element.attrs:
+            raise ParseError("<Input> placeholder is not supported")
         input_type = _parse_input_type(element)
         return Input(
             name=name,
             type=input_type,
             value=element.attrs.get("value", ""),
-            placeholder=element.attrs.get("placeholder", ""),
             label=element.attrs.get("label", ""),
+            required=_parse_input_required(element),
         )
     if tag == "text":
         return Text(content=_collect_text(element))
@@ -260,6 +262,18 @@ def _parse_input_type(element: Element) -> str:
     if input_type not in {"text", "password"}:
         raise ParseError("<Input> type must be text or password in v1")
     return input_type
+
+
+def _parse_input_required(element: Element) -> bool:
+    raw = element.attrs.get("required")
+    if raw is None:
+        return False
+    normalized = raw.strip().lower()
+    if normalized in {"", "mandatory", "true"}:
+        return True
+    if normalized in {"optional", "false"}:
+        return False
+    raise ParseError('<Input> required must be "mandatory" or "optional"')
 
 
 def _normalize_param_name(name: str) -> str:

@@ -40,8 +40,8 @@ The intended v1 syntax is:
 <Screen title="Sign In">
   <Section title="Account">
     <Form action="/auth/login" submit-button-text="Sign in">
-      <Input name="email" type="text" placeholder="Email" />
-      <Input name="password" type="password" placeholder="Password" />
+      <Input name="email" type="text" label="Email" required="mandatory" />
+      <Input name="password" type="password" label="Password" required="mandatory" />
     </Form>
   </Section>
 </Screen>
@@ -80,13 +80,15 @@ Optional attributes:
 
 - `type`
 - `value`
-- `placeholder`
 - `label`
+- `required`
 
 Rules:
 
 - `type` defaults to `text`
 - v1 supports only `text` and `password`
+- `required` defaults to `optional`
+- `required="mandatory"` marks the field with a leading `*` and blocks empty submit
 - all submitted values are strings
 - `<Input>` is only valid inside `<Form>`
 
@@ -263,7 +265,7 @@ Rules:
 
 - inputs should render on one line
 - password inputs should mask displayed characters
-- placeholders should be visible only when the value is empty
+- placeholder text is intentionally not part of the form model
 - focused inputs should show a visible cursor or insertion point
 
 ## Parser Rules

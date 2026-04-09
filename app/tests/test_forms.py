@@ -26,8 +26,8 @@ class FormFlowTests(unittest.TestCase):
                       <Section title="Account">
                         <Text><?= status ?></Text>
                         <Form action="/auth/login" submit-button-text="Sign in">
-                          <Input name="email" type="text" value="<?= email ?>" />
-                          <Input name="password" type="password" />
+                          <Input name="email" type="text" label="Email" required="mandatory" value="<?= email ?>" />
+                          <Input name="password" type="password" label="Password" required="mandatory" />
                         </Form>
                       </Section>
                     </Screen>

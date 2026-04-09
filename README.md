@@ -177,8 +177,8 @@ Local forms use backend routes in `backend.py`:
   <Section title="Account">
     <Text><?= status ?></Text>
     <Form action="/auth/login" submit-button-text="Sign in">
-      <Input name="email" type="text" label="Email" value="<?= email ?>" />
-      <Input name="password" type="password" label="Password" />
+      <Input name="email" type="text" label="Email" required="mandatory" value="<?= email ?>" />
+      <Input name="password" type="password" label="Password" required="mandatory" />
     </Form>
   </Section>
 </Screen>

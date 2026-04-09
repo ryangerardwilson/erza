@@ -86,6 +86,7 @@ class RenderPlan:
     lines: list[list[Segment]]
     sections: list[SectionTarget]
     form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
+    form_requirements: dict[str, dict[str, str]] = field(default_factory=dict)
     animation_interval_ms: int | None = None
 
 
@@ -124,6 +125,7 @@ class RenderState:
     edit_state: EditState | None = None
     next_form_index: int = 0
     form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
+    form_requirements: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class ErzaApp:
@@ -274,6 +276,7 @@ def build_render_plan(
         lines=lines,
         sections=section_targets,
         form_defaults=render_state.form_defaults,
+        form_requirements=render_state.form_requirements,
         animation_interval_ms=animation_interval_ms,
     )
 
@@ -993,6 +996,14 @@ class _RuntimeSession:
 
         values = dict(plan.form_defaults.get(target.form_key, {}))
         values.update(self.form_values.get(target.form_key, {}))
+        missing_labels = [
+            label
+            for name, label in plan.form_requirements.get(target.form_key, {}).items()
+            if not str(values.get(name, "")).strip()
+        ]
+        if missing_labels:
+            self.status = "missing required fields: " + ", ".join(missing_labels)
+            return
 
         try:
             result = self.app.submit_form(target.action, values)
@@ -1406,6 +1417,10 @@ def _build_input_block(
     render_state: RenderState,
 ) -> Block:
     render_state.form_defaults.setdefault(form_key, {})[input_component.name] = input_component.value
+    if input_component.required:
+        render_state.form_requirements.setdefault(form_key, {})[input_component.name] = (
+            input_component.label.strip() or _input_label(input_component.name)
+        )
     current_value = _current_input_value(form_key, input_component, render_state.form_values)
     is_editing = (
         render_state.edit_state is not None
@@ -1576,14 +1591,14 @@ def _render_input_line(
     edit_state: EditState | None,
 ) -> tuple[str, list[Segment]]:
     label = (input_component.label.strip() or _input_label(input_component.name)).strip()
+    if input_component.required:
+        label = f"* {label}"
     label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
     prefix = f"{label_text} "
     field_width = max(max_width - len(prefix), 8)
     display_value = "*" * len(current_value) if input_component.type == "password" else current_value
 
     plain_field = display_value
-    if not plain_field and input_component.placeholder:
-        plain_field = input_component.placeholder
 
     if edit_state is None:
         field_text = _truncate_text(plain_field, field_width)

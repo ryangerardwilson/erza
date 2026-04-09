@@ -291,8 +291,8 @@ class RuntimeTests(unittest.TestCase):
                             action="/auth/login",
                             submit_button_text="Sign in",
                             children=[
-                                Input(name="email", placeholder="Email"),
-                                Input(name="password", type="password"),
+                                Input(name="email", label="Email", required=True),
+                                Input(name="password", type="password", label="Password", required=True),
                             ],
                         )
                     ],
@@ -309,7 +309,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertIsInstance(targets[2].actionable, SubmitControl)
         self.assertEqual(targets[2].label_text, "[ Sign in ]")
         first_input_line = "".join(segment.text for segment in plan.sections[0].block.lines[1])
-        self.assertIn("Email: Email", first_input_line)
+        self.assertIn("* Email:", first_input_line)
         self.assertNotIn("[ ", first_input_line)
         self.assertEqual(targets[0].x, 6)
         self.assertEqual(targets[1].x, 6)
@@ -327,7 +327,7 @@ class RuntimeTests(unittest.TestCase):
                         Form(
                             action="/auth/login",
                             submit_button_text="Sign in",
-                            children=[Input(name="email", placeholder="Email")],
+                            children=[Input(name="email", label="Email")],
                         )
                     ],
                 )
@@ -386,6 +386,34 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertEqual(session.mode, "section")
         self.assertEqual(session.form_values["form:0"]["email"], "seed@example.com")
+
+    def test_mandatory_inputs_block_submit_when_empty(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[
+                        Form(
+                            action="/auth/login",
+                            submit_button_text="Sign in",
+                            children=[Input(name="email", label="Email", required=True)],
+                        )
+                    ],
+                )
+            ],
+        )
+        app = _SubmittingApp(screen, SubmitResult(type="refresh"))
+        session = _RuntimeSession(app)
+
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[0].block.actionables[-1].y - 1
+        session._activate(plan)
+
+        self.assertEqual(app.submissions, [])
+        self.assertEqual(session.status, "missing required fields: Email")
 
     def test_edit_mode_uses_block_cursor_segment_instead_of_pipe_character(self) -> None:
         screen = Screen(

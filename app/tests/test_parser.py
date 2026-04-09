@@ -79,7 +79,7 @@ oo
 <Screen title="Sign In">
   <Section title="Account">
     <Form action="/auth/login" submit-button-text="Sign in">
-      <Input name="email" type="text" placeholder="Email" />
+      <Input name="email" type="text" label="Email" required="mandatory" />
       <Input name="password" type="password" />
     </Form>
   </Section>
@@ -95,9 +95,24 @@ oo
         self.assertEqual(form.method, "post")
         self.assertIsInstance(form.children[0], Input)
         self.assertEqual(form.children[0].name, "email")
-        self.assertEqual(form.children[0].placeholder, "Email")
+        self.assertEqual(form.children[0].label, "Email")
+        self.assertTrue(form.children[0].required)
         self.assertIsInstance(form.children[1], Input)
         self.assertEqual(form.children[1].type, "password")
+
+    def test_placeholder_attribute_is_rejected(self) -> None:
+        markup = """
+<Screen title="Sign In">
+  <Section title="Account">
+    <Form action="/auth/login">
+      <Input name="email" placeholder="Email" />
+    </Form>
+  </Section>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
 
     def test_input_outside_form_is_rejected(self) -> None:
         markup = """

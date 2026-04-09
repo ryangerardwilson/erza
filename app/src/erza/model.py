@@ -24,8 +24,8 @@ class Input:
     name: str
     type: str = "text"
     value: str = ""
-    placeholder: str = ""
     label: str = ""
+    required: bool = False
 
 
 @dataclass(slots=True)
