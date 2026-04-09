@@ -16,7 +16,9 @@ from erza.template import render_template
 
 
 CTRL_D = 4
+CTRL_E = 5
 CTRL_U = 21
+CTRL_A = 1
 CTRL_W = 23
 ALT_B = -1001
 ALT_F = -1002
@@ -39,6 +41,7 @@ HELP_SHORTCUTS = [
     ("Section Ctrl+D / Ctrl+U", "Move by half a page."),
     ("Section Enter", "Edit the current input or open the current link/action."),
     ("Edit type", "Insert text into the current input."),
+    ("Edit Ctrl+A / Ctrl+E", "Move to the start or end of the field."),
     ("Edit Ctrl+W", "Delete the previous word."),
     ("Edit Alt+B / Alt+F", "Move backward or forward by word."),
     ("Edit Enter", "Commit the current input edit."),
@@ -1021,9 +1024,9 @@ class _RuntimeSession:
             cursor = max(cursor - 1, 0)
         elif key in {curses.KEY_RIGHT}:
             cursor = min(cursor + 1, len(value))
-        elif key in {curses.KEY_HOME}:
+        elif key in {CTRL_A, curses.KEY_HOME}:
             cursor = 0
-        elif key in {curses.KEY_END}:
+        elif key in {CTRL_E, curses.KEY_END}:
             cursor = len(value)
         elif 32 <= key <= 126:
             value = value[:cursor] + chr(key) + value[cursor:]

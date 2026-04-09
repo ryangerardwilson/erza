@@ -13,6 +13,8 @@ from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
     ALT_F,
+    CTRL_A,
+    CTRL_E,
     CTRL_W,
     EditState,
     InputControl,
@@ -503,6 +505,31 @@ class RuntimeTests(unittest.TestCase):
 
         session._handle_edit_key(ALT_B)
         self.assertEqual(session.edit_state.cursor_index, len("demo "))
+
+    def test_edit_mode_ctrl_a_and_ctrl_e_jump_to_bounds(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[Form(action="/auth/login", children=[Input(name="email", value="demo user test")])],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.edit_state = EditState(
+            form_key="form:0",
+            input_name="email",
+            cursor_index=5,
+            original_value="demo user test",
+        )
+        session.form_values = {"form:0": {"email": "demo user test"}}
+
+        session._handle_edit_key(CTRL_A)
+        self.assertEqual(session.edit_state.cursor_index, 0)
+
+        session._handle_edit_key(CTRL_E)
+        self.assertEqual(session.edit_state.cursor_index, len("demo user test"))
 
     def test_escape_prefixed_alt_sequences_decode_in_edit_mode(self) -> None:
         self.assertEqual(_decode_edit_key(_FakeWindow([ord("b")]), 27), ALT_B)
