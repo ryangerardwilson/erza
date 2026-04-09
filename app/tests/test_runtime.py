@@ -410,7 +410,7 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertTrue(any(segment.style == "cursor" for segment in input_line))
         self.assertFalse(any(segment.text == "|" for segment in input_line))
-        self.assertTrue(any(segment.style == "cursor" and segment.text == " " for segment in input_line))
+        self.assertTrue(any(segment.style == "cursor" and segment.text == "█" for segment in input_line))
 
     def test_go_back_from_section_mode_returns_to_page_mode(self) -> None:
         screen = Screen(
