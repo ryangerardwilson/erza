@@ -17,6 +17,10 @@ from erza.template import render_template
 
 CTRL_D = 4
 CTRL_U = 21
+CTRL_W = 23
+ALT_B = -1001
+ALT_F = -1002
+EDIT_ESCAPE_SEQUENCE_TIMEOUT_MS = 25
 DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 6
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
@@ -35,6 +39,8 @@ HELP_SHORTCUTS = [
     ("Section Ctrl+D / Ctrl+U", "Move by half a page."),
     ("Section Enter", "Edit the current input or open the current link/action."),
     ("Edit type", "Insert text into the current input."),
+    ("Edit Ctrl+W", "Delete the previous word."),
+    ("Edit Alt+B / Alt+F", "Move backward or forward by word."),
     ("Edit Enter", "Commit the current input edit."),
     ("Edit Esc", "Cancel the current input edit."),
     ("Esc", "Leave section mode and return to the header."),
@@ -285,6 +291,37 @@ def next_section_index(plan: RenderPlan, current_index: int, delta: int) -> int:
     if not plan.sections:
         return 0
     return min(max(current_index + delta, 0), len(plan.sections) - 1)
+
+
+def _decode_edit_key(stdscr: curses.window, key: int) -> int:
+    if key != 27:
+        return key
+
+    stdscr.timeout(EDIT_ESCAPE_SEQUENCE_TIMEOUT_MS)
+    next_key = stdscr.getch()
+    if next_key in {ord("b"), ord("B")}:
+        return ALT_B
+    if next_key in {ord("f"), ord("F")}:
+        return ALT_F
+    return key
+
+
+def _move_cursor_backward_word(value: str, cursor: int) -> int:
+    cursor = min(max(cursor, 0), len(value))
+    while cursor > 0 and value[cursor - 1].isspace():
+        cursor -= 1
+    while cursor > 0 and not value[cursor - 1].isspace():
+        cursor -= 1
+    return cursor
+
+
+def _move_cursor_forward_word(value: str, cursor: int) -> int:
+    cursor = min(max(cursor, 0), len(value))
+    while cursor < len(value) and value[cursor].isspace():
+        cursor += 1
+    while cursor < len(value) and not value[cursor].isspace():
+        cursor += 1
+    return cursor
 
 
 def next_section_line_index(section: SectionTarget, current_index: int, delta: int) -> int:
@@ -647,6 +684,7 @@ class _RuntimeSession:
                 continue
             if self.mode == "edit":
                 self.pending_g = False
+                key = _decode_edit_key(stdscr, key)
                 self._handle_edit_key(key)
                 continue
             if key == ord("q"):
@@ -967,7 +1005,15 @@ class _RuntimeSession:
             self.mode = "section"
             self.status = ""
             return
-        if key in {curses.KEY_BACKSPACE, 127, 8}:
+        if key == CTRL_W:
+            new_cursor = _move_cursor_backward_word(value, cursor)
+            value = value[:new_cursor] + value[cursor:]
+            cursor = new_cursor
+        elif key == ALT_B:
+            cursor = _move_cursor_backward_word(value, cursor)
+        elif key == ALT_F:
+            cursor = _move_cursor_forward_word(value, cursor)
+        elif key in {curses.KEY_BACKSPACE, 127, 8}:
             if cursor > 0:
                 value = value[: cursor - 1] + value[cursor:]
                 cursor -= 1

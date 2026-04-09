@@ -11,11 +11,15 @@ from erza.local_server import SubmitResult
 from erza.model import AsciiAnimation, Button, Form, Input, Link, Screen, Section, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
+    ALT_B,
+    ALT_F,
+    CTRL_W,
     EditState,
     InputControl,
     StaticScreenApp,
     SubmitControl,
     _RuntimeSession,
+    _decode_edit_key,
     _display_origin_x,
     _header_grid_layout,
     _help_modal_lines,
@@ -448,6 +452,63 @@ class RuntimeTests(unittest.TestCase):
         self.assertFalse(any(segment.text == "|" for segment in input_line))
         self.assertTrue(any(segment.style == "cursor" and segment.text == "█" for segment in input_line))
 
+    def test_edit_mode_ctrl_w_deletes_previous_word(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[Form(action="/auth/login", children=[Input(name="email", value="demo user")])],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.edit_state = EditState(
+            form_key="form:0",
+            input_name="email",
+            cursor_index=len("demo user"),
+            original_value="demo user",
+        )
+        session.form_values = {"form:0": {"email": "demo user"}}
+
+        session._handle_edit_key(CTRL_W)
+
+        self.assertEqual(session.form_values["form:0"]["email"], "demo ")
+        self.assertEqual(session.edit_state.cursor_index, len("demo "))
+
+    def test_edit_mode_alt_word_motion_moves_cursor_by_word(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[Form(action="/auth/login", children=[Input(name="email", value="demo user test")])],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.edit_state = EditState(
+            form_key="form:0",
+            input_name="email",
+            cursor_index=0,
+            original_value="demo user test",
+        )
+        session.form_values = {"form:0": {"email": "demo user test"}}
+
+        session._handle_edit_key(ALT_F)
+        self.assertEqual(session.edit_state.cursor_index, len("demo"))
+
+        session._handle_edit_key(ALT_F)
+        self.assertEqual(session.edit_state.cursor_index, len("demo user"))
+
+        session._handle_edit_key(ALT_B)
+        self.assertEqual(session.edit_state.cursor_index, len("demo "))
+
+    def test_escape_prefixed_alt_sequences_decode_in_edit_mode(self) -> None:
+        self.assertEqual(_decode_edit_key(_FakeWindow([ord("b")]), 27), ALT_B)
+        self.assertEqual(_decode_edit_key(_FakeWindow([ord("f")]), 27), ALT_F)
+        self.assertEqual(_decode_edit_key(_FakeWindow([-1]), 27), 27)
+
     def test_go_back_from_section_mode_returns_to_page_mode(self) -> None:
         screen = Screen(
             title="Docs",
@@ -573,6 +634,20 @@ class _SubmittingApp(_CountingApp):
     def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
         self.submissions.append((action, values))
         return self.result
+
+
+class _FakeWindow:
+    def __init__(self, keys: list[int]) -> None:
+        self.keys = list(keys)
+        self.timeouts: list[int] = []
+
+    def timeout(self, value: int) -> None:
+        self.timeouts.append(value)
+
+    def getch(self) -> int:
+        if self.keys:
+            return self.keys.pop(0)
+        return -1
 
 
 if __name__ == "__main__":
