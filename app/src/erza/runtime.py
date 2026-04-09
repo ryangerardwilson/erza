@@ -1622,7 +1622,7 @@ def _render_input_line(
     padded_window[relative_cursor] = ""
     before_cursor = "".join(padded_window[:relative_cursor])
     after_cursor = "".join(padded_window[relative_cursor + 1 :])
-    plain_window = before_cursor + cursor_char + after_cursor
+    plain_window = before_cursor + " " + after_cursor
     line_text = f"{prefix}{plain_window}{suffix}"
 
     segments = [Segment(x=0, text=prefix, style="text")]
@@ -1630,7 +1630,7 @@ def _render_input_line(
     if before_cursor:
         segments.append(Segment(x=cursor_x, text=before_cursor, style="text"))
         cursor_x += len(before_cursor)
-    segments.append(Segment(x=cursor_x, text=cursor_char or " ", style="cursor"))
+    segments.append(Segment(x=cursor_x, text=" ", style="cursor"))
     cursor_x += 1
     if after_cursor:
         segments.append(Segment(x=cursor_x, text=after_cursor, style="text"))
@@ -1731,7 +1731,7 @@ def _segment_style(
     active_content_line: bool = False,
 ) -> int:
     if style_name == "cursor":
-        return styles["cursor"] if active_content_line else styles["cursor"] | curses.A_REVERSE
+        return styles["cursor"]
     style = styles[style_name]
     if active_content_line and style_name not in {"section_border", "section_title", "animation_title"}:
         return style | curses.A_REVERSE
