@@ -1577,43 +1577,40 @@ def _render_input_line(
     label = (input_component.label.strip() or _input_label(input_component.name)).strip()
     label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
     label_width = min(max(len(label_text), 8), 18)
-    box_width = max(max_width - label_width - 5, 8)
+    field_width = max(max_width - label_width - 1, 8)
     display_value = "*" * len(current_value) if input_component.type == "password" else current_value
 
-    prefix = f"{label_text:<{label_width}} [ "
-    suffix = " ]"
+    prefix = f"{label_text:<{label_width}} "
     plain_field = display_value
     if not plain_field and input_component.placeholder:
         plain_field = input_component.placeholder
 
     if edit_state is None:
-        field_text = _truncate_text(plain_field, box_width)
-        padded_field = f"{field_text:<{box_width}}"
-        line_text = f"{prefix}{padded_field}{suffix}"
+        field_text = _truncate_text(plain_field, field_width)
+        padded_field = f"{field_text:<{field_width}}"
+        line_text = f"{prefix}{padded_field}"
         return (
             line_text,
             [
                 Segment(x=0, text=prefix, style="text"),
                 Segment(x=len(prefix), text=padded_field, style="text"),
-                Segment(x=len(prefix) + len(padded_field), text=suffix, style="text"),
             ],
         )
 
     cursor_index = min(max(edit_state.cursor_index, 0), len(display_value))
-    if len(display_value) <= box_width:
+    if len(display_value) <= field_width:
         window_start = 0
     else:
-        max_start = max(len(display_value) - box_width, 0)
-        window_start = min(max(cursor_index - box_width + 1, 0), max_start)
-    visible_window = display_value[window_start : window_start + box_width]
-    relative_cursor = max(min(cursor_index - window_start, box_width - 1), 0)
-    padded_window = list(f"{visible_window:<{box_width}}")
-    cursor_char = padded_window[relative_cursor]
+        max_start = max(len(display_value) - field_width, 0)
+        window_start = min(max(cursor_index - field_width + 1, 0), max_start)
+    visible_window = display_value[window_start : window_start + field_width]
+    relative_cursor = max(min(cursor_index - window_start, field_width - 1), 0)
+    padded_window = list(f"{visible_window:<{field_width}}")
     padded_window[relative_cursor] = ""
     before_cursor = "".join(padded_window[:relative_cursor])
     after_cursor = "".join(padded_window[relative_cursor + 1 :])
     plain_window = before_cursor + " " + after_cursor
-    line_text = f"{prefix}{plain_window}{suffix}"
+    line_text = f"{prefix}{plain_window}"
 
     segments = [Segment(x=0, text=prefix, style="text")]
     cursor_x = len(prefix)
@@ -1624,7 +1621,6 @@ def _render_input_line(
     cursor_x += 1
     if after_cursor:
         segments.append(Segment(x=cursor_x, text=after_cursor, style="text"))
-    segments.append(Segment(x=len(prefix) + box_width, text=suffix, style="text"))
     return line_text, segments
 
 
