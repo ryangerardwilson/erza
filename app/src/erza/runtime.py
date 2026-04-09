@@ -1576,11 +1576,10 @@ def _render_input_line(
 ) -> tuple[str, list[Segment]]:
     label = (input_component.label.strip() or _input_label(input_component.name)).strip()
     label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
-    label_width = min(max(len(label_text), 8), 18)
-    field_width = max(max_width - label_width - 1, 8)
+    prefix = f"{label_text} "
+    field_width = max(max_width - len(prefix), 8)
     display_value = "*" * len(current_value) if input_component.type == "password" else current_value
 
-    prefix = f"{label_text:<{label_width}} "
     plain_field = display_value
     if not plain_field and input_component.placeholder:
         plain_field = input_component.placeholder

@@ -309,7 +309,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertIsInstance(targets[2].actionable, SubmitControl)
         self.assertEqual(targets[2].label_text, "[ Sign in ]")
         first_input_line = "".join(segment.text for segment in plan.sections[0].block.lines[1])
-        self.assertIn("Email:", first_input_line)
+        self.assertIn("Email: Email", first_input_line)
         self.assertNotIn("[ ", first_input_line)
 
     def test_form_input_activation_enters_edit_mode_and_submits(self) -> None:
