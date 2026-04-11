@@ -1,0 +1,89 @@
+<Screen title="Koinonia">
+  <? status = backend("ui.status") ?>
+  <? overview = backend("network.overview") ?>
+  <? timeline = backend("feed.timeline") ?>
+  <? circles = backend("circles.list") ?>
+  <? people = backend("people.suggested") ?>
+  <? signals = backend("signals.list") ?>
+
+  <Section title="Feed">
+    <Header>Koinonia is a terminal-native social commons for erza.</Header>
+    <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> resident builders.</Text>
+    <Text><?= status ?></Text>
+
+    <? for post in timeline ?>
+      <Text><?= post.author ?> @<?= post.handle ?> in <?= post.circle ?></Text>
+      <Text><?= post.body ?></Text>
+      <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+      <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
+      <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
+      <Link href="<?= post.thread_link ?>">Open thread</Link>
+      <Link href="<?= post.profile_link ?>">Open profile</Link>
+    <? endfor ?>
+  </Section>
+
+  <Section title="Compose">
+    <Header>Publish directly from the terminal surface.</Header>
+    <Text>Inputs are intentionally simple right now: one line, one dispatch, no browser ceremony.</Text>
+    <Form action="/posts" submit-button-text="Send dispatch">
+      <Input name="author" type="text" label="Display name" required="mandatory" />
+      <Input name="handle" type="text" label="Handle" required="mandatory" />
+      <Input name="body" type="text" label="Dispatch" required="mandatory" />
+    </Form>
+  </Section>
+
+  <Section title="Circles">
+    <Header>Rooms with purpose, not endless channels.</Header>
+    <? for circle in circles ?>
+      <Text><?= circle.name ?></Text>
+      <Text><?= circle.rhythm ?></Text>
+    <? endfor ?>
+    <Link href="manifesto.erza">Open the Koinonia brief</Link>
+  </Section>
+
+  <Section title="Residents">
+    <Header>Builders already shaping the network.</Header>
+    <? for person in people ?>
+      <Text><?= person.name ?> @<?= person.handle ?></Text>
+      <Text><?= person.bio ?></Text>
+      <Text>Primary circle: <?= person.primary_circle ?></Text>
+      <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
+      <Link href="<?= person.profile_link ?>">Open resident profile</Link>
+    <? endfor ?>
+  </Section>
+
+  <Section title="Pulse">
+    <Header>Signal moves as text, links, actions, and forms.</Header>
+    <AsciiAnimation fps="3" label="Network pulse">
+      <Frame>
+        .   o   .
+         \  |  /
+          \ | /
+        o-- * --o
+          / | \
+         /  |  \
+        .   o   .
+      </Frame>
+      <Frame>
+        o   .   o
+         \  |  /
+          \ | /
+        .-- * --.
+          / | \
+         /  |  \
+        o   .   o
+      </Frame>
+      <Frame>
+        . o . o .
+          \| |/
+        o-- * --o
+          /| |\
+        . o . o .
+      </Frame>
+    </AsciiAnimation>
+
+    <? for signal in signals ?>
+      <Text>#<?= signal.tag ?> is surfacing in <?= signal.count ?> live dispatches.</Text>
+    <? endfor ?>
+  </Section>
+</Screen>

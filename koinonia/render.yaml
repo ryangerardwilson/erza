@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: koinonia
+    runtime: python
+    rootDir: koinonia
+    plan: free
+    buildCommand: python -m compileall .
+    startCommand: python render_service.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: KOINONIA_SUPABASE_URL
+        sync: false
+      - key: KOINONIA_SUPABASE_SERVICE_ROLE_KEY
+        sync: false

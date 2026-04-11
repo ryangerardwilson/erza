@@ -1,0 +1,39 @@
+<Screen title="Pattern Thread">
+  <? status = backend("ui.status") ?>
+  <? thread = backend("threads.by_slug", slug="pattern-language") ?>
+
+  <Section title="Origin">
+    <Header><?= thread.author ?> @<?= thread.handle ?></Header>
+    <Text><?= thread.body ?></Text>
+    <Text><?= thread.likes ?> signals | <?= thread.boosts ?> boosts | <?= thread.reply_count ?> replies</Text>
+    <Text><?= status ?></Text>
+    <Action on:press="feed.like" post:id="<?= thread.id ?>">Signal origin</Action>
+    <Action on:press="feed.boost" post:id="<?= thread.id ?>">Boost origin</Action>
+    <Link href="<?= thread.profile_link ?>">Open resident profile</Link>
+  </Section>
+
+  <Section title="Replies">
+    <? if thread.replies ?>
+      <? for reply in thread.replies ?>
+        <Text><?= reply.author ?> @<?= reply.handle ?></Text>
+        <Text><?= reply.body ?></Text>
+      <? endfor ?>
+    <? else ?>
+      <Text>No replies yet. Add the first pattern note.</Text>
+    <? endif ?>
+  </Section>
+
+  <Section title="Reply">
+    <Form action="/threads/pattern-language/reply" submit-button-text="Reply">
+      <Input name="author" type="text" label="Display name" required="mandatory" />
+      <Input name="handle" type="text" label="Handle" required="mandatory" />
+      <Input name="body" type="text" label="Reply" required="mandatory" />
+    </Form>
+  </Section>
+
+  <Section title="Adjacent">
+    <Link href="index.erza">Return to feed</Link>
+    <Link href="profile-noor.erza">Open Noor's profile</Link>
+    <Link href="manifesto.erza">Open the project brief</Link>
+  </Section>
+</Screen>
