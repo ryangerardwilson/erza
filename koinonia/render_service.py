@@ -27,16 +27,6 @@ SESSION_COOKIE = "koinonia_sid"
 ROUTES = {
     "/": "index.erza",
     "/index.erza": "index.erza",
-    "/manifesto": "manifesto.erza",
-    "/manifesto.erza": "manifesto.erza",
-    "/thread-launch": "thread-launch.erza",
-    "/thread-launch.erza": "thread-launch.erza",
-    "/thread-patterns": "thread-patterns.erza",
-    "/thread-patterns.erza": "thread-patterns.erza",
-    "/profile-alina": "profile-alina.erza",
-    "/profile-alina.erza": "profile-alina.erza",
-    "/profile-noor": "profile-noor.erza",
-    "/profile-noor.erza": "profile-noor.erza",
 }
 
 
@@ -158,7 +148,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _landing_page(self) -> str:
         routes = "\n".join(
             f'<li><a href="{path}">{path}</a></li>'
-            for path in ("/", "/thread-launch", "/thread-patterns", "/profile-alina", "/profile-noor", "/manifesto")
+            for path in ("/", "/index.erza")
         )
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -181,9 +171,9 @@ class _Handler(BaseHTTPRequestHandler):
   </head>
   <body>
     <h1>Koinonia</h1>
-    <p>This host serves terminal-native <code>.erza</code> pages for the social prototype.</p>
+    <p>This host serves a single terminal-native <code>index.erza</code> app for the social prototype.</p>
     <p>Use <code>erza run {self.headers.get("Host", "your-render-host")}</code> to open it from the terminal client.</p>
-    <p>Available routes:</p>
+    <p>Available entry paths:</p>
     <ul>
       {routes}
     </ul>

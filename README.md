@@ -28,6 +28,8 @@ The language is moving toward a component-first model, even though the current
 prototype still renders many screens as sectional panels.
 
 - A screen is composed from terminal components rather than browser pages.
+- For app-style surfaces, prefer a single `index.erza` entry file.
+- Top-level sections act like tabs; pressing `Enter` opens the selected tab as the active page.
 - The current runtime uses titled panels as a neat default presentation.
 - Header mode uses a single horizontal strip of section headers.
 - `h` and `k` move to the previous header. `j` and `l` move to the next header.
@@ -120,7 +122,9 @@ Release helper from the repo root:
 
 `erza` automatically loads `backend.py` from the same directory as the `.erza`
 entry file unless `--backend` is provided explicitly. If you pass a directory,
-`erza` looks for `index.erza` inside it. If you omit the source entirely,
+`erza` looks for `index.erza` inside it. That single `index.erza` file is the
+preferred app shape for stateful surfaces; dynamic tabs should usually come
+from conditional top-level sections inside that one screen. If you omit the source entirely,
 `erza run` defaults to the current directory. If you pass an `http(s)` URL or a
 bare domain, `erza` now first looks for a same-host `.erza` endpoint and falls
 back to HTML rendering only when the host does not expose terminal-native
@@ -193,7 +197,7 @@ The bundled examples in [`app/examples/tasks/app.erza`](app/examples/tasks/app.e
 the full loop:
 
 - load backend data during template expansion
-- render named sections as the primary screen structure
+- render named sections as the primary tab/page structure
 - move across the header strip with `h`, `j`, `k`, and `l`
 - jump directly to the bounds with `gg` and `G`
 - enter the current section with `Enter`

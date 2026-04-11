@@ -28,10 +28,10 @@ Each screen should be readable as a small set of named regions and components:
 
 That shape lets the runtime provide a simple navigation contract:
 
-- header mode uses a single horizontal strip of section headers
+- header mode uses a single horizontal strip of tab-like section headers
 - `h` and `k` move to the previous header; `j` and `l` move to the next header
 - left/up and right/down arrow keys mirror those header moves
-- `Enter` focuses the current section body
+- `Enter` opens the current tab/page body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move inside the current section line by line
 - up/down arrow keys mirror those section moves
@@ -46,7 +46,7 @@ This is the default interaction identity for `erza`.
 ## Goals
 
 - Make TUI authoring feel close to component-based UI development
-- Keep structure, content, and interaction readable in one file
+- Keep structure, content, and interaction readable in one `index.erza` file
 - Bias screen design toward calm, sectional composition instead of widget sprawl
 - Make keyboard movement predictable and inspectable
 - Preserve the user's terminal look by default with transparent/no-color
@@ -70,10 +70,15 @@ This is the default interaction identity for `erza`.
 The root is always a screen. Inside the screen, the language should prefer
 explicit components over raw layout soup.
 
+For app-style surfaces, the preferred entrypoint is a single `index.erza`
+file. Top-level sections should read like tabs, and entering a section should
+feel like opening the current page inside that app rather than navigating to a
+different document.
+
 Current component direction:
 
 - `<Screen>` defines the page shell
-- `<Section>` defines the current boxed region primitive
+- `<Section>` defines the current boxed region primitive and, at the top level, the default tab/page primitive
 - `<Text>` renders copy or values
 - `<Action>` dispatches a backend event
 - `<Link>` opens another page
@@ -134,9 +139,9 @@ must remain terminal-native in both behavior and constraints.
 
 Default interaction rules:
 
-- header mode uses a single horizontal strip of section headers
+- header mode uses a single horizontal strip of tab-like section headers
 - `h` and `k` move to the previous header; `j` and `l` move to the next header
-- `Enter` focuses the current section body
+- `Enter` opens the current tab/page body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move across rendered lines inside the active section
 - section mode `Ctrl+D` and `Ctrl+U` move by half a page

@@ -2,109 +2,93 @@
   <? auth = backend("auth.viewer") ?>
   <? status = backend("ui.status") ?>
   <? overview = backend("network.overview") ?>
-  <? timeline = backend("feed.timeline") ?>
-  <? circles = backend("circles.list") ?>
-  <? people = backend("people.suggested") ?>
-  <? signals = backend("signals.list") ?>
+  <? highlights = backend("mission.highlights") ?>
 
-  <Section title="Feed">
-    <Header>Koinonia is a terminal-native social commons for erza.</Header>
-    <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> resident builders.</Text>
-    <Text><?= status ?></Text>
+  <? if auth.logged_in ?>
+    <? profile = backend("profiles.current") ?>
+    <? timeline = backend("feed.timeline") ?>
+    <? people = backend("people.suggested") ?>
 
-    <? for post in timeline ?>
-      <Text><?= post.author ?> @<?= post.handle ?> in <?= post.circle ?></Text>
-      <Text><?= post.body ?></Text>
-      <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
-      <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
-      <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
-      <Link href="<?= post.thread_link ?>">Open thread</Link>
-      <Link href="<?= post.profile_link ?>">Open profile</Link>
-    <? endfor ?>
-  </Section>
+    <Section title="Feed">
+      <Header>Feed for @<?= auth.handle ?></Header>
+      <Text><?= status ?></Text>
+      <Form action="/posts" submit-button-text="Post to feed">
+        <Input name="body" type="text" label="Post" required="mandatory" />
+      </Form>
+      <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> builders.</Text>
 
-  <Section title="Account">
-    <? if auth.logged_in ?>
-      <Header>Signed in as @<?= auth.handle ?></Header>
-      <Text>This account is yours as long as you keep the same password.</Text>
-      <Text>Posting identity: <?= auth.display_name ?></Text>
+      <? for post in timeline ?>
+        <Text><?= post.author ?> @<?= post.handle ?> in <?= post.circle ?></Text>
+        <Text><?= post.body ?></Text>
+        <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+        <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
+        <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
+      <? endfor ?>
+
+      <Header>Builders near the feed</Header>
+      <? for person in people ?>
+        <Text><?= person.name ?> @<?= person.handle ?></Text>
+        <Text><?= person.bio ?></Text>
+        <Text>Primary circle: <?= person.primary_circle ?></Text>
+        <? if person.can_follow ?>
+          <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
+        <? endif ?>
+      <? endfor ?>
+    </Section>
+
+    <Section title="Profile">
+      <Header><?= profile.name ?> @<?= profile.handle ?></Header>
+      <Text><?= status ?></Text>
+      <Form action="/posts" submit-button-text="Post from profile">
+        <Input name="body" type="text" label="Post" required="mandatory" />
+      </Form>
+      <Text><?= profile.bio ?></Text>
+      <Text>Primary circle: <?= profile.primary_circle ?></Text>
+      <Text><?= profile.followers ?> followers</Text>
       <Action on:press="auth.logout">Log out</Action>
-    <? else ?>
+
+      <? if profile.posts ?>
+        <? for post in profile.posts ?>
+          <Text><?= post.body ?></Text>
+          <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+        <? endfor ?>
+      <? else ?>
+        <Text>No posts yet. Use the form above to start your profile stream.</Text>
+      <? endif ?>
+    </Section>
+  <? else ?>
+    <? circles = backend("circles.list") ?>
+    <? signals = backend("signals.list") ?>
+
+    <Section title="Why Koinonia">
+      <Header>Koinonia is a terminal-native social commons for erza.</Header>
+      <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> resident builders.</Text>
+
+      <? for highlight in highlights ?>
+        <Text><?= highlight.title ?></Text>
+        <Text><?= highlight.body ?></Text>
+      <? endfor ?>
+
+      <Header>Circles already live here</Header>
+      <? for circle in circles ?>
+        <Text><?= circle.name ?></Text>
+        <Text><?= circle.rhythm ?></Text>
+      <? endfor ?>
+
+      <? for signal in signals ?>
+        <Text>#<?= signal.tag ?> is surfacing in <?= signal.count ?> live dispatches.</Text>
+      <? endfor ?>
+    </Section>
+
+    <Section title="Login / Sign Up">
       <Header>Claim or reopen a username.</Header>
-      <Text>Enter any username and password. If the username is unclaimed, this form claims it. If it already exists, the same password signs you back in.</Text>
+      <Text><?= status ?></Text>
+      <Text>One form does both jobs. Enter a username and password. If the username is unclaimed, it becomes yours. If it already exists, the same password gets you back in.</Text>
       <Form action="/auth/access" submit-button-text="Enter Koinonia">
         <Input name="username" type="text" label="Username" required="mandatory" />
         <Input name="password" type="password" label="Password" required="mandatory" />
       </Form>
-    <? endif ?>
-  </Section>
-
-  <Section title="Compose">
-    <Header>Publish directly from the terminal surface.</Header>
-    <? if auth.logged_in ?>
-      <Text>Posting as @<?= auth.handle ?>. Inputs stay intentionally simple: one line, one dispatch, no browser ceremony.</Text>
-      <Form action="/posts" submit-button-text="Send dispatch">
-        <Input name="body" type="text" label="Dispatch" required="mandatory" />
-      </Form>
-    <? else ?>
-      <Text>Sign in first, then your dispatches publish under the claimed username in your session.</Text>
-    <? endif ?>
-  </Section>
-
-  <Section title="Circles">
-    <Header>Rooms with purpose, not endless channels.</Header>
-    <? for circle in circles ?>
-      <Text><?= circle.name ?></Text>
-      <Text><?= circle.rhythm ?></Text>
-    <? endfor ?>
-    <Link href="manifesto.erza">Open the Koinonia brief</Link>
-  </Section>
-
-  <Section title="Residents">
-    <Header>Builders already shaping the network.</Header>
-    <? for person in people ?>
-      <Text><?= person.name ?> @<?= person.handle ?></Text>
-      <Text><?= person.bio ?></Text>
-      <Text>Primary circle: <?= person.primary_circle ?></Text>
-      <? if person.can_follow ?>
-        <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
-      <? endif ?>
-      <Link href="<?= person.profile_link ?>">Open resident profile</Link>
-    <? endfor ?>
-  </Section>
-
-  <Section title="Pulse">
-    <Header>Signal moves as text, links, actions, and forms.</Header>
-    <AsciiAnimation fps="3" label="Network pulse">
-      <Frame>
-        .   o   .
-         \  |  /
-          \ | /
-        o-- * --o
-          / | \
-         /  |  \
-        .   o   .
-      </Frame>
-      <Frame>
-        o   .   o
-         \  |  /
-          \ | /
-        .-- * --.
-          / | \
-         /  |  \
-        o   .   o
-      </Frame>
-      <Frame>
-        . o . o .
-          \| |/
-        o-- * --o
-          /| |\
-        . o . o .
-      </Frame>
-    </AsciiAnimation>
-
-    <? for signal in signals ?>
-      <Text>#<?= signal.tag ?> is surfacing in <?= signal.count ?> live dispatches.</Text>
-    <? endfor ?>
-  </Section>
+      <Text>After you enter, the tabs switch to Feed and Profile and both pages let you post immediately.</Text>
+    </Section>
+  <? endif ?>
 </Screen>

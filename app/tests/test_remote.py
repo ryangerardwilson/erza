@@ -15,6 +15,7 @@ ensure_test_paths()
 from erza.remote import (
     _resolve_hostname_via_doh,
     RemoteApp,
+    RemoteError,
     fetch_remote_document,
     remote_document_to_screen,
 )
@@ -64,6 +65,13 @@ class RemoteTests(unittest.TestCase):
             resolved = _resolve_hostname_via_doh("erza.example.com")
 
         self.assertEqual(resolved, ["203.0.113.10"])
+
+    def test_fetch_remote_document_wraps_timeout_as_remote_error(self) -> None:
+        with patch("erza.remote._fetch_document_with_dns_fallback", side_effect=TimeoutError("timed out")):
+            with self.assertRaises(RemoteError) as exc:
+                fetch_remote_document("https://example.com")
+
+        self.assertEqual(str(exc.exception), "failed to fetch remote source: https://example.com")
 
     def test_remote_app_supports_cookie_backed_forms_and_actions(self) -> None:
         _RemoteMutationHandler.reset()

@@ -116,18 +116,11 @@ def _normalize_handle(raw: str) -> str:
 
 
 def _profile_link(handle: str) -> str:
-    return {
-        "alina": "profile-alina.erza",
-        "noor": "profile-noor.erza",
-    }.get(handle, "index.erza")
+    return "index.erza"
 
 
 def _thread_link(slug: str) -> str:
-    return {
-        "launch-week": "thread-launch.erza",
-        "pattern-language": "thread-patterns.erza",
-        "render-path": "manifesto.erza",
-    }.get(slug, "index.erza")
+    return "index.erza"
 
 
 def _set_status(message: str) -> None:
@@ -137,7 +130,7 @@ def _set_status(message: str) -> None:
 def _status() -> str:
     return session().get(
         "ui_status",
-        "Claim any unclaimed username, keep the password, and that same account stays yours.",
+        "Koinonia now behaves like a single-screen erza app with tabs that shift around your login state.",
     )
 
 
@@ -304,6 +297,25 @@ def auth_logout() -> None:
         _set_status("No account is currently signed in.")
         return
     _set_status(f"Logged out of @{account['handle']}.")
+
+
+@handler("profiles.current")
+def profiles_current() -> dict[str, Any]:
+    account = _current_account()
+    if account is None:
+        return {
+            "name": "",
+            "handle": "",
+            "bio": "",
+            "primary_circle": "",
+            "followers": 0,
+            "following": False,
+            "can_follow": False,
+            "is_self": False,
+            "follow_action_label": "Follow",
+            "posts": [],
+        }
+    return profiles_by_handle(account["handle"])
 
 
 @handler("network.overview")
@@ -477,16 +489,16 @@ def profiles_by_handle(handle: str) -> dict[str, Any]:
 def mission_highlights() -> list[dict[str, str]]:
     return [
         {
-            "title": "Terminal-native first",
-            "body": "Keep the social loop readable through sections, text, links, actions, and forms instead of web chrome.",
+            "title": "One screen, clear tabs",
+            "body": "Koinonia now stays in one erza file and lets the top tabs shift with the viewer's state instead of hopping between linked pages.",
         },
         {
             "title": "Claimed identities",
             "body": "Any unclaimed username can be claimed once. After that, the same password is required to reopen that account.",
         },
         {
-            "title": "Remote parity",
-            "body": "The hosted endpoint now supports cookie-backed forms and actions, so login works through the deployed erza app.",
+            "title": "Post from where you are",
+            "body": "Both the feed and profile tabs open with a post form so the social loop starts inside the active page, not in a separate compose route.",
         },
     ]
 
@@ -608,15 +620,15 @@ def create_post(body: str = ""):
 
 @route("/threads/launch-week/reply")
 def reply_launch_week(body: str = ""):
-    return _append_reply("launch-week", "thread-launch.erza", body)
+    return _append_reply("launch-week", body)
 
 
 @route("/threads/pattern-language/reply")
 def reply_pattern_language(body: str = ""):
-    return _append_reply("pattern-language", "thread-patterns.erza", body)
+    return _append_reply("pattern-language", body)
 
 
-def _append_reply(slug: str, page: str, body: str):
+def _append_reply(slug: str, body: str):
     account = _current_account()
     if account is None:
         return error("Sign in first to reply.")
@@ -630,4 +642,4 @@ def _append_reply(slug: str, page: str, body: str):
         body=body.strip(),
     )
     _set_status(f"Replied to {slug} as @{account['handle']}.")
-    return redirect(page)
+    return redirect("index.erza")

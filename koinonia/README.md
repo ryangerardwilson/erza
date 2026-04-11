@@ -2,10 +2,12 @@
 
 `koinonia` is a terminal-native social media prototype for `erza`.
 
-It is intentionally small and uses the current `erza` surface as-is:
+It is intentionally small and now follows the single-screen app direction:
 
-- `.erza` files are the primary authoring surface
-- feeds, threads, and profiles are composed from `Screen`, `Section`, `Text`, `Link`, `Action`, `Form`, `Input`, and `AsciiAnimation`
+- one `index.erza` file is the whole app surface
+- top-level sections act like tabs that change with login state
+- logged-out viewers see `Why Koinonia` and `Login / Sign Up`
+- logged-in viewers see `Feed` and `Profile`, and both tabs open with a post form
 - state is stored in Supabase and accessed through a compact Python backend so the language shape can keep moving
 
 ## Local Run
@@ -29,7 +31,7 @@ This directory includes a Render Blueprint at [`render.yaml`](/home/ryan/Infra/e
 
 The service entrypoint is [`render_service.py`](/home/ryan/Infra/erza/koinonia/render_service.py), which:
 
-- serves `/.well-known/erza?path=...` for the terminal client
+- serves one `index.erza` app through `/.well-known/erza?path=...`
 - exposes the existing backend form routes over HTTP
 - keeps a small in-memory session per browser/client cookie
 - reads and writes persistent social state through Supabase
@@ -53,10 +55,3 @@ Before the first deploy, set these Render environment variables:
 - `KOINONIA_SUPABASE_SERVICE_ROLE_KEY`
 
 Schema bootstrap for the Supabase project lives in [`supabase_schema.sql`](/home/ryan/Infra/erza/koinonia/supabase_schema.sql).
-
-## Data Direction
-
-Current caveat:
-
-- The local app now persists through Supabase.
-- The hosted endpoint serves the same authored screens and backend routes, but the current remote `erza` client still treats local apps as the main mutation path for actions and forms.

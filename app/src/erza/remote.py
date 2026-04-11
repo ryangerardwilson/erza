@@ -21,6 +21,7 @@ from erza.parser import ParseError, compile_markup
 REMOTE_WRAP_WIDTH = 72
 REMOTE_USER_AGENT = "erza/0.0.1"
 REMOTE_ERZA_CONTENT_TYPES = {"application/erza", "text/erza"}
+REMOTE_REQUEST_TIMEOUT_SECONDS = 60.0
 REMOTE_SCHEME_RE = re.compile(r"^https?://", re.IGNORECASE)
 DOMAIN_RE = re.compile(r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?:/[^\s]*)?$")
 
@@ -72,8 +73,12 @@ class RemoteApp:
             method="POST",
         )
         try:
-            document = _fetch_document_with_dns_fallback(request, timeout=10.0, opener=self._opener)
-        except (HTTPError, URLError) as exc:
+            document = _fetch_document_with_dns_fallback(
+                request,
+                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                opener=self._opener,
+            )
+        except (HTTPError, URLError, OSError, TimeoutError) as exc:
             raise RemoteError(f"failed to submit remote form: {action}") from exc
         if document is None:
             raise RemoteError(f"failed to submit remote form: {action}")
@@ -101,8 +106,12 @@ class RemoteApp:
             method="POST",
         )
         try:
-            document = _fetch_document_with_dns_fallback(request, timeout=10.0, opener=self._opener)
-        except (HTTPError, URLError) as exc:
+            document = _fetch_document_with_dns_fallback(
+                request,
+                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                opener=self._opener,
+            )
+        except (HTTPError, URLError, OSError, TimeoutError) as exc:
             raise RemoteError(f"failed to dispatch remote action: {action}") from exc
         if document is None:
             raise RemoteError(f"failed to dispatch remote action: {action}")
@@ -134,7 +143,7 @@ def normalize_remote_url(value: str) -> str:
 def fetch_remote_document(
     url: str,
     *,
-    timeout: float = 10.0,
+    timeout: float = REMOTE_REQUEST_TIMEOUT_SECONDS,
     opener: OpenerDirector | None = None,
 ) -> RemoteDocument:
     erza_request = Request(
@@ -151,7 +160,7 @@ def fetch_remote_document(
             allow_http_statuses={404},
             opener=opener,
         )
-    except (HTTPError, URLError) as exc:
+    except (HTTPError, URLError, OSError, TimeoutError) as exc:
         raise RemoteError(f"failed to fetch remote source: {url}") from exc
 
     if erza_document is not None and _is_erza_document(erza_document):
@@ -166,7 +175,7 @@ def fetch_remote_document(
     )
     try:
         document = _fetch_document_with_dns_fallback(request, timeout=timeout, opener=opener)
-    except (HTTPError, URLError) as exc:
+    except (HTTPError, URLError, OSError, TimeoutError) as exc:
         raise RemoteError(f"failed to fetch remote source: {url}") from exc
 
     if document is None:
