@@ -534,8 +534,7 @@ def people_toggle_follow(handle: str) -> None:
     _set_status(f"{'Following' if state else 'Stopped following'} @{normalized}.")
 
 
-@route("/auth/signup")
-def auth_signup(username: str = "", password: str = ""):
+def _access_account(username: str = "", password: str = ""):
     raw_username = username.strip()
     normalized = _normalize_handle(raw_username)
     password = password.strip()
@@ -543,8 +542,14 @@ def auth_signup(username: str = "", password: str = ""):
         return error("Username is required.")
     if len(password) < 4:
         return error("Password must be at least 4 characters.")
-    if _account_row(normalized) is not None:
-        return error("That username is already claimed.")
+
+    existing_account = _account_row(normalized)
+    if existing_account is not None:
+        if not _verify_password(password, str(existing_account["password_hash"])):
+            return error("Invalid password for that username.")
+        _login_session(normalized)
+        _set_status(f"Signed in as @{normalized}.")
+        return redirect("index.erza")
 
     _rpc(
         "ensure_koinonia_profile",
@@ -569,21 +574,19 @@ def auth_signup(username: str = "", password: str = ""):
     return redirect("index.erza")
 
 
+@route("/auth/access")
+def auth_access(username: str = "", password: str = ""):
+    return _access_account(username, password)
+
+
+@route("/auth/signup")
+def auth_signup(username: str = "", password: str = ""):
+    return _access_account(username, password)
+
+
 @route("/auth/login")
 def auth_login(username: str = "", password: str = ""):
-    raw_username = username.strip()
-    normalized = _normalize_handle(raw_username)
-    password = password.strip()
-    if not raw_username or not password:
-        return error("Username and password are required.")
-
-    account = _account_row(normalized)
-    if account is None or not _verify_password(password, str(account["password_hash"])):
-        return error("Invalid username or password.")
-
-    _login_session(normalized)
-    _set_status(f"Signed in as @{normalized}.")
-    return redirect("index.erza")
+    return _access_account(username, password)
 
 
 @route("/posts")

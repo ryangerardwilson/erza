@@ -31,12 +31,8 @@
       <Action on:press="auth.logout">Log out</Action>
     <? else ?>
       <Header>Claim or reopen a username.</Header>
-      <Text>Usernames are unique. Claim one once, then use the same password to get back into that account.</Text>
-      <Form action="/auth/signup" submit-button-text="Claim username">
-        <Input name="username" type="text" label="Username" required="mandatory" />
-        <Input name="password" type="password" label="Password" required="mandatory" />
-      </Form>
-      <Form action="/auth/login" submit-button-text="Log in">
+      <Text>Enter any username and password. If the username is unclaimed, this form claims it. If it already exists, the same password signs you back in.</Text>
+      <Form action="/auth/access" submit-button-text="Enter Koinonia">
         <Input name="username" type="text" label="Username" required="mandatory" />
         <Input name="password" type="password" label="Password" required="mandatory" />
       </Form>
