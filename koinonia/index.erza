@@ -1,4 +1,5 @@
 <Screen title="Koinonia">
+  <? auth = backend("auth.viewer") ?>
   <? status = backend("ui.status") ?>
   <? overview = backend("network.overview") ?>
   <? timeline = backend("feed.timeline") ?>
@@ -22,14 +23,36 @@
     <? endfor ?>
   </Section>
 
+  <Section title="Account">
+    <? if auth.logged_in ?>
+      <Header>Signed in as @<?= auth.handle ?></Header>
+      <Text>This account is yours as long as you keep the same password.</Text>
+      <Text>Posting identity: <?= auth.display_name ?></Text>
+      <Action on:press="auth.logout">Log out</Action>
+    <? else ?>
+      <Header>Claim or reopen a username.</Header>
+      <Text>Usernames are unique. Claim one once, then use the same password to get back into that account.</Text>
+      <Form action="/auth/signup" submit-button-text="Claim username">
+        <Input name="username" type="text" label="Username" required="mandatory" />
+        <Input name="password" type="password" label="Password" required="mandatory" />
+      </Form>
+      <Form action="/auth/login" submit-button-text="Log in">
+        <Input name="username" type="text" label="Username" required="mandatory" />
+        <Input name="password" type="password" label="Password" required="mandatory" />
+      </Form>
+    <? endif ?>
+  </Section>
+
   <Section title="Compose">
     <Header>Publish directly from the terminal surface.</Header>
-    <Text>Inputs are intentionally simple right now: one line, one dispatch, no browser ceremony.</Text>
-    <Form action="/posts" submit-button-text="Send dispatch">
-      <Input name="author" type="text" label="Display name" required="mandatory" />
-      <Input name="handle" type="text" label="Handle" required="mandatory" />
-      <Input name="body" type="text" label="Dispatch" required="mandatory" />
-    </Form>
+    <? if auth.logged_in ?>
+      <Text>Posting as @<?= auth.handle ?>. Inputs stay intentionally simple: one line, one dispatch, no browser ceremony.</Text>
+      <Form action="/posts" submit-button-text="Send dispatch">
+        <Input name="body" type="text" label="Dispatch" required="mandatory" />
+      </Form>
+    <? else ?>
+      <Text>Sign in first, then your dispatches publish under the claimed username in your session.</Text>
+    <? endif ?>
   </Section>
 
   <Section title="Circles">
@@ -47,7 +70,9 @@
       <Text><?= person.name ?> @<?= person.handle ?></Text>
       <Text><?= person.bio ?></Text>
       <Text>Primary circle: <?= person.primary_circle ?></Text>
-      <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
+      <? if person.can_follow ?>
+        <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
+      <? endif ?>
       <Link href="<?= person.profile_link ?>">Open resident profile</Link>
     <? endfor ?>
   </Section>

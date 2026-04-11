@@ -624,8 +624,8 @@ class RuntimeTests(unittest.TestCase):
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)
 
-        self.assertTrue(any("Header h / k" in line for line in lines))
-        self.assertTrue(any("Header j / l" in line for line in lines))
+        self.assertTrue(any("Header h / k / arrows" in line for line in lines))
+        self.assertTrue(any("Section j / k / arrows" in line for line in lines))
         self.assertTrue(any("?              Toggle the shortcuts modal." in line for line in lines))
 
 

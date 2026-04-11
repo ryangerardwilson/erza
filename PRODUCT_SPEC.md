@@ -30,9 +30,11 @@ That shape lets the runtime provide a simple navigation contract:
 
 - header mode uses a single horizontal strip of section headers
 - `h` and `k` move to the previous header; `j` and `l` move to the next header
+- left/up and right/down arrow keys mirror those header moves
 - `Enter` focuses the current section body
 - `gg` jumps to the first section and `G` jumps to the last
 - section mode `j` and `k` move inside the current section line by line
+- up/down arrow keys mirror those section moves
 - section mode `Ctrl+D` and `Ctrl+U` move by half a page
 - `Esc` exits section mode and returns to the header strip
 - section mode `Enter` opens the selected link or activates the selected action

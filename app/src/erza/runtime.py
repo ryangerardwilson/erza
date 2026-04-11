@@ -32,12 +32,11 @@ HELP_MODAL_MAX_WIDTH = 67
 HEADER_CELL_GAP = 2
 HEADER_CELL_ROW_HEIGHT = 3
 HELP_SHORTCUTS = [
-    ("Header h / k", "Move to the previous section header."),
-    ("Header j / l", "Move to the next section header."),
+    ("Header h / k / arrows", "Move across the header strip with hjkl or the arrow keys."),
     ("Enter", "Focus the current section body."),
     ("Header gg / G", "Jump to the first or last section."),
     ("Backspace", "Go back one page."),
-    ("Section j / k", "Move line by line inside the current section."),
+    ("Section j / k / arrows", "Move line by line inside the current section."),
     ("Section Ctrl+D / Ctrl+U", "Move by half a page."),
     ("Section Enter", "Edit the current input or open the current link/action."),
     ("Edit type", "Insert text into the current input."),
@@ -944,10 +943,14 @@ class _RuntimeSession:
             self._submit_form(plan, actionable)
             return
         if isinstance(actionable, Button):
-            if hasattr(self.app, "dispatch_action"):
-                self.app.dispatch_action(actionable.action, actionable.params)
-            else:
-                self.app.backend.call(actionable.action, **actionable.params)
+            try:
+                if hasattr(self.app, "dispatch_action"):
+                    self.app.dispatch_action(actionable.action, actionable.params)
+                else:
+                    self.app.backend.call(actionable.action, **actionable.params)
+            except RuntimeError as exc:
+                self.status = str(exc)
+                return
             self._invalidate_screen(reset_animation=True)
             self.status = f"ran {actionable.action}"
             return

@@ -8,7 +8,12 @@
     <Text>Primary circle: <?= profile.primary_circle ?></Text>
     <Text><?= profile.followers ?> followers</Text>
     <Text><?= status ?></Text>
-    <Action on:press="people.toggle_follow" handle="<?= profile.handle ?>"><?= profile.follow_action_label ?></Action>
+    <? if profile.can_follow ?>
+      <Action on:press="people.toggle_follow" handle="<?= profile.handle ?>"><?= profile.follow_action_label ?></Action>
+    <? endif ?>
+    <? if profile.is_self ?>
+      <Text>This is your claimed account.</Text>
+    <? endif ?>
   </Section>
 
   <Section title="Dispatches">

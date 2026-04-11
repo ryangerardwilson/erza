@@ -19,7 +19,7 @@ This repository includes a runnable Python prototype with:
 - HTML-like tags with PHP-style template blocks
 - component-oriented screen composition rendered as bordered terminal panels
 - terminal-native rendering through `curses`
-- keyboard-first navigation with `h`, `j`, `k`, `l`, `Enter`, `Esc`, `gg`, `G`, and `?`
+- keyboard-first navigation with `h`, `j`, `k`, `l`, arrow-key alternatives, `Enter`, `Esc`, `gg`, `G`, and `?`
 - transparent/default terminal backgrounds and host terminal typography
 
 ## Direction
@@ -31,9 +31,11 @@ prototype still renders many screens as sectional panels.
 - The current runtime uses titled panels as a neat default presentation.
 - Header mode uses a single horizontal strip of section headers.
 - `h` and `k` move to the previous header. `j` and `l` move to the next header.
+- Left/up and right/down arrow keys mirror those header moves.
 - `Enter` focuses the current section body.
 - `gg` jumps to the first section and `G` jumps to the last.
 - Section mode uses `j` and `k` line by line.
+- Up/down arrow keys mirror those section moves.
 - Section mode uses `Ctrl+D` and `Ctrl+U` to move by half a page.
 - `Esc` exits section mode and returns focus to the header strip.
 - Section mode uses `Enter` to open the current link or fire the current action.

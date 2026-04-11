@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from http.cookiejar import CookieJar
 import json
 import socket
 import textwrap
@@ -10,9 +11,10 @@ import re
 from typing import Literal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPCookieProcessor, OpenerDirector, Request, build_opener, urlopen
 
 from erza.model import Component, Link, Screen, Section, Text
+from erza.local_server import SubmitResult
 from erza.parser import ParseError, compile_markup
 
 
@@ -42,19 +44,77 @@ class _Block:
 
 
 class RemoteApp:
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, *, opener: OpenerDirector | None = None) -> None:
         self.current_url = normalize_remote_url(url)
+        self._opener = opener or _build_remote_opener()
 
     @property
     def backend(self):
         return None
 
     def build_screen(self) -> Screen:
-        document = fetch_remote_document(self.current_url)
+        document = fetch_remote_document(self.current_url, opener=self._opener)
         return remote_document_to_screen(document)
 
     def follow_link(self, href: str) -> "RemoteApp":
-        return RemoteApp(urljoin(self.current_url, href))
+        return RemoteApp(urljoin(self.current_url, href), opener=self._opener)
+
+    def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
+        target_url = urljoin(self.current_url, action)
+        request = Request(
+            target_url,
+            data=json.dumps(values).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": REMOTE_USER_AGENT,
+            },
+            method="POST",
+        )
+        try:
+            document = _fetch_document_with_dns_fallback(request, timeout=10.0, opener=self._opener)
+        except (HTTPError, URLError) as exc:
+            raise RemoteError(f"failed to submit remote form: {action}") from exc
+        if document is None:
+            raise RemoteError(f"failed to submit remote form: {action}")
+
+        try:
+            payload = json.loads(document.body)
+        except json.JSONDecodeError as exc:
+            raise RemoteError("remote form submit returned invalid JSON") from exc
+
+        return SubmitResult(
+            type=str(payload.get("type", "refresh")),
+            href=_optional_string(payload.get("href")),
+            message=_optional_string(payload.get("message")),
+        )
+
+    def dispatch_action(self, action: str, params: dict[str, object]) -> object:
+        request = Request(
+            _erza_action_url(self.current_url),
+            data=json.dumps({"action": action, "params": params}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": REMOTE_USER_AGENT,
+            },
+            method="POST",
+        )
+        try:
+            document = _fetch_document_with_dns_fallback(request, timeout=10.0, opener=self._opener)
+        except (HTTPError, URLError) as exc:
+            raise RemoteError(f"failed to dispatch remote action: {action}") from exc
+        if document is None:
+            raise RemoteError(f"failed to dispatch remote action: {action}")
+
+        try:
+            payload = json.loads(document.body)
+        except json.JSONDecodeError as exc:
+            raise RemoteError("remote action returned invalid JSON") from exc
+
+        if str(payload.get("type", "refresh")) == "error":
+            raise RemoteError(str(payload.get("message", "remote action failed")))
+        return payload
 
 
 def is_remote_source(value: str) -> bool:
@@ -71,7 +131,12 @@ def normalize_remote_url(value: str) -> str:
     raise RemoteError(f"invalid remote source: {value}")
 
 
-def fetch_remote_document(url: str, *, timeout: float = 10.0) -> RemoteDocument:
+def fetch_remote_document(
+    url: str,
+    *,
+    timeout: float = 10.0,
+    opener: OpenerDirector | None = None,
+) -> RemoteDocument:
     erza_request = Request(
         _erza_endpoint_url(url),
         headers={
@@ -84,6 +149,7 @@ def fetch_remote_document(url: str, *, timeout: float = 10.0) -> RemoteDocument:
             erza_request,
             timeout=timeout,
             allow_http_statuses={404},
+            opener=opener,
         )
     except (HTTPError, URLError) as exc:
         raise RemoteError(f"failed to fetch remote source: {url}") from exc
@@ -99,7 +165,7 @@ def fetch_remote_document(url: str, *, timeout: float = 10.0) -> RemoteDocument:
         },
     )
     try:
-        document = _fetch_document_with_dns_fallback(request, timeout=timeout)
+        document = _fetch_document_with_dns_fallback(request, timeout=timeout, opener=opener)
     except (HTTPError, URLError) as exc:
         raise RemoteError(f"failed to fetch remote source: {url}") from exc
 
@@ -159,6 +225,17 @@ def _erza_endpoint_url(url: str) -> str:
     ).geturl()
 
 
+def _erza_action_url(url: str) -> str:
+    parsed = urlparse(url)
+    request_path = parsed.path or "/"
+    return parsed._replace(
+        path="/.well-known/erza/action",
+        params="",
+        query=urlencode({"path": request_path}),
+        fragment="",
+    ).geturl()
+
+
 def _is_erza_document(document: RemoteDocument) -> bool:
     if document.content_type in REMOTE_ERZA_CONTENT_TYPES:
         return True
@@ -170,10 +247,11 @@ def _fetch_document_with_dns_fallback(
     *,
     timeout: float,
     allow_http_statuses: set[int] | None = None,
+    opener: OpenerDirector | None = None,
 ) -> RemoteDocument | None:
     allow_http_statuses = allow_http_statuses or set()
     try:
-        return _fetch_document(request, timeout=timeout)
+        return _fetch_document(request, timeout=timeout, opener=opener)
     except HTTPError as exc:
         if exc.code in allow_http_statuses:
             exc.close()
@@ -193,7 +271,7 @@ def _fetch_document_with_dns_fallback(
 
         with _temporary_host_resolution(hostname, resolved_ips):
             try:
-                return _fetch_document(request, timeout=timeout)
+                return _fetch_document(request, timeout=timeout, opener=opener)
             except HTTPError as retry_exc:
                 if retry_exc.code in allow_http_statuses:
                     retry_exc.close()
@@ -201,8 +279,14 @@ def _fetch_document_with_dns_fallback(
                 raise
 
 
-def _fetch_document(request: Request, *, timeout: float) -> RemoteDocument:
-    with urlopen(request, timeout=timeout) as response:
+def _fetch_document(
+    request: Request,
+    *,
+    timeout: float,
+    opener: OpenerDirector | None = None,
+) -> RemoteDocument:
+    open_fn = opener.open if opener is not None else urlopen
+    with open_fn(request, timeout=timeout) as response:
         charset = response.headers.get_content_charset("utf-8")
         content_type = response.headers.get_content_type()
         body = response.read().decode(charset, errors="replace")
@@ -243,6 +327,17 @@ def _query_dns_records(hostname: str, record_type: str) -> list[str]:
 
     answers = payload.get("Answer", [])
     return [answer["data"] for answer in answers if "data" in answer]
+
+
+def _build_remote_opener() -> OpenerDirector:
+    jar = CookieJar()
+    return build_opener(HTTPCookieProcessor(jar))
+
+
+def _optional_string(value: object) -> str | None:
+    if value is None:
+        return None
+    return str(value)
 
 
 @contextmanager

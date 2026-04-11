@@ -1,4 +1,5 @@
 <Screen title="Pattern Thread">
+  <? auth = backend("auth.viewer") ?>
   <? status = backend("ui.status") ?>
   <? thread = backend("threads.by_slug", slug="pattern-language") ?>
 
@@ -24,11 +25,15 @@
   </Section>
 
   <Section title="Reply">
-    <Form action="/threads/pattern-language/reply" submit-button-text="Reply">
-      <Input name="author" type="text" label="Display name" required="mandatory" />
-      <Input name="handle" type="text" label="Handle" required="mandatory" />
-      <Input name="body" type="text" label="Reply" required="mandatory" />
-    </Form>
+    <? if auth.logged_in ?>
+      <Header>Reply as @<?= auth.handle ?></Header>
+      <Form action="/threads/pattern-language/reply" submit-button-text="Reply">
+        <Input name="body" type="text" label="Reply" required="mandatory" />
+      </Form>
+    <? else ?>
+      <Header>Replying requires a claimed username.</Header>
+      <Text>Return to the feed, claim a username, then come back here to reply.</Text>
+    <? endif ?>
   </Section>
 
   <Section title="Adjacent">
