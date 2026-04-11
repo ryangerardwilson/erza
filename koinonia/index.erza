@@ -45,7 +45,6 @@
       <Text><?= profile.bio ?></Text>
       <Text>Primary circle: <?= profile.primary_circle ?></Text>
       <Text><?= profile.followers ?> followers</Text>
-      <Action on:press="auth.logout">Log out</Action>
 
       <? if profile.posts ?>
         <? for post in profile.posts ?>
@@ -55,6 +54,10 @@
       <? else ?>
         <Text>No posts yet. Use the form above to start your profile stream.</Text>
       <? endif ?>
+    </Section>
+
+    <Section title="Logout">
+      <Action on:press="auth.logout">Log out</Action>
     </Section>
   <? else ?>
     <? circles = backend("circles.list") ?>

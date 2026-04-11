@@ -357,13 +357,46 @@ class RuntimeTests(unittest.TestCase):
 
         session._handle_edit_key(ord("\n"))
         self.assertEqual(session.mode, "section")
-
         plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
-        session.section_line_index = plan.sections[0].block.actionables[-1].y - 1
+        self.assertEqual(session.section_line_index, plan.sections[0].block.actionables[-1].y - 1)
+
         session._activate(plan)
 
         self.assertEqual(app.submissions, [("/auth/login", {"email": "a@b"})])
         self.assertEqual(session.status, "Invalid email")
+
+    def test_edit_mode_enter_advances_to_next_input_line(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[
+                        Form(
+                            action="/auth/login",
+                            submit_button_text="Sign in",
+                            children=[
+                                Input(name="username", label="Username"),
+                                Input(name="password", label="Password"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[0].block.actionables[0].y - 1
+        session._activate(plan)
+        session._handle_edit_key(ord("a"))
+        session._handle_edit_key(ord("\n"))
+
+        next_plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+
+        self.assertEqual(session.mode, "section")
+        self.assertEqual(session.section_line_index, next_plan.sections[0].block.actionables[1].y - 1)
 
     def test_edit_mode_escape_restores_original_value(self) -> None:
         screen = Screen(
@@ -600,26 +633,44 @@ class RuntimeTests(unittest.TestCase):
             children=[Section(title="Start Here", children=[Text("Intro")])],
         )
         session = _RuntimeSession(RemoteApp("erza.ryangerardwilson.com/first-run"))
-        plan = build_render_plan(screen)
 
         self.assertEqual(
-            session._footer_text(plan),
+            session._footer_text(),
             "https://erza.ryangerardwilson.com/first-run",
         )
 
-    def test_footer_text_shows_route_and_section_in_section_mode(self) -> None:
+    def test_footer_text_stays_route_only_in_section_mode(self) -> None:
         screen = Screen(
             title="Docs",
             children=[Section(title="Start Here", children=[Text("Intro")])],
         )
         session = _RuntimeSession(RemoteApp("erza.ryangerardwilson.com/first-run"))
         session.mode = "section"
-        plan = build_render_plan(screen)
 
         self.assertEqual(
-            session._footer_text(plan),
-            "https://erza.ryangerardwilson.com/first-run -> Start Here",
+            session._footer_text(),
+            "https://erza.ryangerardwilson.com/first-run",
         )
+
+    def test_single_action_section_acts_as_direct_action_tab(self) -> None:
+        screen = Screen(
+            title="Account",
+            children=[
+                Section(
+                    title="Logout",
+                    children=[Button(label="Log out", action="auth.logout")],
+                )
+            ],
+        )
+        app = _ActionApp(screen)
+        session = _RuntimeSession(app)
+        plan = build_render_plan(screen)
+        session._sync_state(plan)
+
+        session._enter_section_mode(plan)
+
+        self.assertEqual(app.actions, [("auth.logout", {})])
+        self.assertEqual(session.mode, "page")
 
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)
@@ -661,6 +712,16 @@ class _SubmittingApp(_CountingApp):
     def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
         self.submissions.append((action, values))
         return self.result
+
+
+class _ActionApp(_CountingApp):
+    def __init__(self, screen: Screen) -> None:
+        super().__init__(screen)
+        self.actions: list[tuple[str, dict[str, object]]] = []
+
+    def dispatch_action(self, action: str, params: dict[str, object]) -> object:
+        self.actions.append((action, params))
+        return None
 
 
 class _FakeWindow:

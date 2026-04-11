@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import curses
 from dataclasses import dataclass, field
 from pathlib import Path
+import threading
 import textwrap
 import time
 
@@ -31,6 +33,27 @@ MIN_ANIMATION_INTERVAL_MS = 50
 HELP_MODAL_MAX_WIDTH = 67
 HEADER_CELL_GAP = 2
 HEADER_CELL_ROW_HEIGHT = 3
+LOADING_MODAL_MAX_WIDTH = 34
+LOADING_FRAME_INTERVAL_MS = 90
+LOADING_DISPLAY_DELAY_SECONDS = 0.12
+LOADING_FRAMES = (
+    "[>      ]",
+    "[>>     ]",
+    "[>>>    ]",
+    "[ >>>   ]",
+    "[  >>>  ]",
+    "[   >>> ]",
+    "[    >>>]",
+    "[     >>]",
+    "[      >]",
+    "[     <<]",
+    "[    <<<]",
+    "[   <<< ]",
+    "[  <<<  ]",
+    "[ <<<   ]",
+    "[<<<    ]",
+    "[<<     ]",
+)
 HELP_SHORTCUTS = [
     ("Header h / k / arrows", "Move across the header strip with hjkl or the arrow keys."),
     ("Enter", "Focus the current section body."),
@@ -491,6 +514,49 @@ def draw_shortcuts_modal(
     stdscr.refresh()
 
 
+def draw_loading_overlay(
+    stdscr: curses.window,
+    *,
+    message: str,
+    frame_index: int,
+) -> None:
+    height, terminal_width = stdscr.getmaxyx()
+    visible_height = _viewport_height(height)
+    display_width = _display_width(terminal_width)
+    origin_x = _display_origin_x(terminal_width)
+    styles = _styles()
+
+    inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 18))
+    width = inner_width + 4
+    title_text = _truncate_text("[ Working ]", inner_width)
+    top_border = "+-" + title_text + "-" * max(inner_width + 1 - len(title_text), 0) + "+"
+    bottom_border = "+" + "-" * (width - 2) + "+"
+    modal_x = origin_x + max((display_width - width) // 2, 0)
+    lines = [
+        _truncate_text(message, inner_width).center(inner_width),
+        LOADING_FRAMES[frame_index % len(LOADING_FRAMES)].center(inner_width),
+    ]
+    modal_height = len(lines) + 2
+    top_y = max((visible_height - modal_height) // 2, 0)
+
+    _safe_addnstr(stdscr, top_y, modal_x, top_border, width, styles["section_title_active"])
+
+    for index, line in enumerate(lines, start=1):
+        screen_y = top_y + index
+        if screen_y >= visible_height:
+            break
+        _safe_addnstr(stdscr, screen_y, modal_x, "| ", 2, styles["section_border"])
+        _safe_addnstr(stdscr, screen_y, modal_x + 2, " " * inner_width, inner_width, styles["section_fill"])
+        _safe_addnstr(stdscr, screen_y, modal_x + width - 2, " |", 2, styles["section_border"])
+        _safe_addnstr(stdscr, screen_y, modal_x + 2, line, inner_width, styles["header"])
+
+    bottom_y = top_y + modal_height - 1
+    if bottom_y < visible_height:
+        _safe_addnstr(stdscr, bottom_y, modal_x, bottom_border, width, styles["section_border"])
+
+    stdscr.refresh()
+
+
 def _draw_header_grid(
     stdscr: curses.window,
     plan: RenderPlan,
@@ -621,6 +687,7 @@ class _RuntimeSession:
         self.app = app
         self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
         self._screen: Screen | None = None
+        self._last_plan: RenderPlan | None = None
         self.mode = "page"
         self.show_help = False
         self.section_index = 0
@@ -645,7 +712,7 @@ class _RuntimeSession:
         stdscr.keypad(True)
 
         while True:
-            screen = self._current_screen()
+            screen = self._current_screen(stdscr)
             animation_time = time.monotonic() - self.animation_epoch
             plan = build_render_plan(
                 screen,
@@ -654,31 +721,8 @@ class _RuntimeSession:
                 edit_state=self.edit_state,
             )
             self._sync_state(plan)
-            footer = self._footer_text(plan)
-            if self.mode in {"section", "edit"} and plan.sections:
-                self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
-                draw_section_page(
-                    stdscr,
-                    plan,
-                    plan.sections[self.section_index],
-                    self.section_index,
-                    self.scroll_offset,
-                    self.section_line_index,
-                    self.section_scroll_offset,
-                    footer,
-                )
-            else:
-                screen_height, terminal_width = stdscr.getmaxyx()
-                self._sync_page_scroll(plan, screen_height, terminal_width)
-                draw_plan(
-                    stdscr,
-                    plan,
-                    self.section_index if plan.sections else None,
-                    self.scroll_offset,
-                    footer,
-                )
-            if self.show_help:
-                draw_shortcuts_modal(stdscr, footer=footer)
+            self._last_plan = plan
+            self._draw_active_view(stdscr, plan, self._footer_text())
 
             stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
             key = stdscr.getch()
@@ -738,7 +782,7 @@ class _RuntimeSession:
                     self._move_header_selection(plan, stdscr.getmaxyx()[1], "up")
                     continue
                 if key in {curses.KEY_ENTER, ord("\n"), ord(" ")}:
-                    self._enter_section_mode(plan)
+                    self._enter_section_mode(plan, stdscr)
                     continue
             if key in {ord("j"), curses.KEY_DOWN}:
                 if self.mode == "section":
@@ -755,13 +799,108 @@ class _RuntimeSession:
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], -1)
                 continue
             if key in {curses.KEY_ENTER, ord("\n"), ord("\r")} and self.mode == "section":
-                self._activate(plan)
+                self._activate(plan, stdscr)
                 continue
 
-    def _current_screen(self) -> Screen:
+    def _draw_active_view(self, stdscr: curses.window, plan: RenderPlan, footer: str) -> None:
+        if self.mode in {"section", "edit"} and plan.sections:
+            self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
+            draw_section_page(
+                stdscr,
+                plan,
+                plan.sections[self.section_index],
+                self.section_index,
+                self.scroll_offset,
+                self.section_line_index,
+                self.section_scroll_offset,
+                footer,
+            )
+        else:
+            screen_height, terminal_width = stdscr.getmaxyx()
+            self._sync_page_scroll(plan, screen_height, terminal_width)
+            draw_plan(
+                stdscr,
+                plan,
+                self.section_index if plan.sections else None,
+                self.scroll_offset,
+                footer,
+            )
+        if self.show_help:
+            draw_shortcuts_modal(stdscr, footer=footer)
+
+    def _current_screen(self, stdscr: curses.window | None = None) -> Screen:
         if self._screen is None:
-            self._screen = self.app.build_screen()
+            if stdscr is None:
+                self._screen = self.app.build_screen()
+            else:
+                self._screen = self._run_with_loading(
+                    stdscr,
+                    lambda: self.app.build_screen(),
+                    message="Loading app",
+                    plan=self._last_plan,
+                )
         return self._screen
+
+    def _run_with_loading(
+        self,
+        stdscr: curses.window | None,
+        operation: Callable[[], object],
+        *,
+        message: str,
+        plan: RenderPlan | None = None,
+    ) -> object:
+        if stdscr is None:
+            return operation()
+
+        outcome: dict[str, object] = {}
+        finished = threading.Event()
+
+        def worker() -> None:
+            try:
+                outcome["result"] = operation()
+            except BaseException as exc:  # noqa: BLE001
+                outcome["error"] = exc
+            finally:
+                finished.set()
+
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+
+        if not finished.wait(LOADING_DISPLAY_DELAY_SECONDS):
+            frame_index = 0
+            self._draw_loading_frame(stdscr, message=message, frame_index=frame_index, plan=plan)
+            while not finished.wait(LOADING_FRAME_INTERVAL_MS / 1000):
+                frame_index = (frame_index + 1) % len(LOADING_FRAMES)
+                self._draw_loading_frame(stdscr, message=message, frame_index=frame_index, plan=plan)
+
+        thread.join()
+
+        error = outcome.get("error")
+        if isinstance(error, BaseException):
+            raise error
+        return outcome.get("result")
+
+    def _draw_loading_frame(
+        self,
+        stdscr: curses.window,
+        *,
+        message: str,
+        frame_index: int,
+        plan: RenderPlan | None,
+    ) -> None:
+        footer = self._footer_text()
+        if plan is not None:
+            self._draw_active_view(stdscr, plan, footer)
+        else:
+            stdscr.erase()
+            height, terminal_width = stdscr.getmaxyx()
+            display_width = _display_width(terminal_width)
+            origin_x = _display_origin_x(terminal_width)
+            styles = _styles()
+            if footer and height > 0:
+                _safe_addnstr(stdscr, height - 1, origin_x, footer, display_width, styles["status"])
+            stdscr.refresh()
+        draw_loading_overlay(stdscr, message=message, frame_index=frame_index)
 
     def _invalidate_screen(self, *, reset_animation: bool = False) -> None:
         self._screen = None
@@ -884,9 +1023,13 @@ class _RuntimeSession:
         self.section_line_index = next_section_line_index(section, self.section_line_index, direction * step)
         self.status = ""
 
-    def _enter_section_mode(self, plan: RenderPlan) -> None:
+    def _enter_section_mode(self, plan: RenderPlan, stdscr: curses.window | None = None) -> None:
         if not plan.sections:
             self.status = "page has no sections"
+            return
+        if self._is_direct_action_section(plan.sections[self.section_index]):
+            self.section_line_index = 0
+            self._activate(plan, stdscr)
             return
         self.mode = "section"
         self.show_help = False
@@ -918,15 +1061,16 @@ class _RuntimeSession:
         self.pending_g = False
         self.status = "went back"
 
-    def _footer_text(self, plan: RenderPlan) -> str:
-        location = _app_location(self.app)
-        if self.mode in {"section", "edit"} and plan.sections:
-            location = f"{location} -> {plan.sections[self.section_index].title}"
-        if self.status:
-            return f"{location} | {self.status}"
-        return location
+    def _footer_text(self) -> str:
+        return _app_location(self.app)
 
-    def _activate(self, plan: RenderPlan) -> None:
+    def _is_direct_action_section(self, section: SectionTarget) -> bool:
+        if _section_content_line_count(section) != 1 or len(section.block.actionables) != 1:
+            return False
+        target = section.block.actionables[0]
+        return target.y == 1 and isinstance(target.actionable, Button)
+
+    def _activate(self, plan: RenderPlan, stdscr: curses.window | None = None) -> None:
         if not plan.sections:
             return
         section = plan.sections[self.section_index]
@@ -940,14 +1084,18 @@ class _RuntimeSession:
             self._begin_edit(plan, actionable)
             return
         if isinstance(actionable, SubmitControl):
-            self._submit_form(plan, actionable)
+            self._submit_form(plan, actionable, stdscr)
             return
         if isinstance(actionable, Button):
             try:
-                if hasattr(self.app, "dispatch_action"):
-                    self.app.dispatch_action(actionable.action, actionable.params)
-                else:
-                    self.app.backend.call(actionable.action, **actionable.params)
+                self._run_with_loading(
+                    stdscr,
+                    lambda: self.app.dispatch_action(actionable.action, actionable.params)
+                    if hasattr(self.app, "dispatch_action")
+                    else self.app.backend.call(actionable.action, **actionable.params),
+                    message="Running action",
+                    plan=plan,
+                )
             except RuntimeError as exc:
                 self.status = str(exc)
                 return
@@ -1009,6 +1157,7 @@ class _RuntimeSession:
             self.form_values[self.edit_state.form_key][self.edit_state.input_name] = value
             self.edit_state = None
             self.mode = "section"
+            self.section_line_index += 1
             self.status = ""
             return
         if key == CTRL_W:
@@ -1041,7 +1190,7 @@ class _RuntimeSession:
         self.edit_state.cursor_index = cursor
         self.status = ""
 
-    def _submit_form(self, plan: RenderPlan, target: SubmitControl) -> None:
+    def _submit_form(self, plan: RenderPlan, target: SubmitControl, stdscr: curses.window | None = None) -> None:
         if not hasattr(self.app, "submit_form"):
             self.status = "forms are not supported for this app"
             return
@@ -1058,7 +1207,12 @@ class _RuntimeSession:
             return
 
         try:
-            result = self.app.submit_form(target.action, values)
+            result = self._run_with_loading(
+                stdscr,
+                lambda: self.app.submit_form(target.action, values),
+                message="Submitting form",
+                plan=plan,
+            )
         except (RuntimeError, LocalServerError) as exc:
             self.status = str(exc)
             return
