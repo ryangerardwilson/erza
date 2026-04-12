@@ -4,6 +4,7 @@ services:
     runtime: python
     rootDir: koinonia
     plan: free
+    region: singapore
     buildCommand: python -m compileall .
     startCommand: python render_service.py
     healthCheckPath: /healthz
