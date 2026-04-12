@@ -2324,8 +2324,8 @@ def _build_button_row(
         )
         for child in row.children
     ]
-    width = 0
-    lines = [[]]
+    content_width = 0
+    content_lines = [[]]
     actionables: list[ActionableTarget] = []
     cursor_x = 0
     animation_interval_ms: int | None = None
@@ -2333,22 +2333,41 @@ def _build_button_row(
     for index, block in enumerate(child_blocks):
         if block.height != 1 or len(block.actionables) != 1:
             raise TypeError("<ButtonRow> only supports single-line actionable children")
-        _merge_block(lines, actionables, block, x=cursor_x, y=0)
+        _merge_block(content_lines, actionables, block, x=cursor_x, y=0)
         cursor_x += block.width
-        width = max(width, cursor_x)
+        content_width = max(content_width, cursor_x)
         animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
         if index != len(child_blocks) - 1:
             cursor_x += row.gap
-            width = max(width, cursor_x)
+            content_width = max(content_width, cursor_x)
+
+    inner_width = max(content_width + 2, 1)
+    width = inner_width + 4
+    content_x = 2 + max((inner_width - content_width) // 2, 0)
+    top_border = "+" + "-" * (width - 2) + "+"
+    lines = [
+        [Segment(x=0, text=top_border, style="section_border")],
+        _boxed_content_line(inner_width),
+        [Segment(x=0, text=top_border, style="section_border")],
+    ]
+
+    for segment in content_lines[0]:
+        lines[1].append(
+            Segment(
+                x=segment.x + content_x,
+                text=segment.text,
+                style=segment.style,
+            )
+        )
 
     return Block(
         width=width,
-        height=1,
+        height=3,
         lines=lines,
         actionables=[
             ActionableTarget(
-                x=item.x,
-                y=item.y,
+                x=item.x + content_x,
+                y=item.y + 1,
                 width=item.width,
                 label_text=item.label_text,
                 actionable=item.actionable,

@@ -199,11 +199,14 @@ class RuntimeTests(unittest.TestCase):
             )
         )
 
+        flattened_lines = ["".join(segment.text for segment in line) for line in plan.sections[0].block.lines]
         line_index = plan.sections[0].block.actionables[0].y - 1
         actionables = [item for item in plan.sections[0].block.actionables if item.y - 1 == line_index]
 
         self.assertEqual(len(actionables), 2)
         self.assertTrue(all(item.action_group == "button_row" for item in actionables))
+        self.assertTrue(any("+----------------" in line for line in flattened_lines))
+        self.assertTrue(any("[ New post ]" in line and "[ Edit description ]" in line for line in flattened_lines))
 
     def test_jump_to_section_boundaries_updates_active_section(self) -> None:
         screen = Screen(
@@ -947,6 +950,7 @@ class RuntimeTests(unittest.TestCase):
         plan = build_render_plan(screen)
         session._sync_state(plan)
         session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[0].block.actionables[0].y - 1
 
         self.assertEqual(session.section_action_index, 0)
 
