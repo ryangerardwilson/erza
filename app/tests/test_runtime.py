@@ -672,6 +672,42 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(app.actions, [("auth.logout", {})])
         self.assertEqual(session.mode, "page")
 
+    def test_redirect_submit_defers_tab_reset_until_new_screen_loads(self) -> None:
+        initial = Screen(
+            title="Auth",
+            children=[
+                Section(title="Why", children=[Text("Why")]),
+                Section(
+                    title="Login",
+                    children=[Form(action="/auth/access", submit_button_text="Enter", children=[])],
+                ),
+            ],
+        )
+        target = Screen(
+            title="App",
+            children=[
+                Section(title="Feed", children=[Text("Feed")]),
+                Section(title="Profile", children=[Text("Profile")]),
+            ],
+        )
+        app = _RedirectingSubmittingApp(initial, target, SubmitResult(type="redirect", href="index.erza"))
+        session = _RuntimeSession(app)
+        session.section_index = 1
+        plan = build_render_plan(initial, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session.section_line_index = plan.sections[1].block.actionables[-1].y - 1
+
+        session._activate(plan)
+
+        self.assertEqual(session.section_index, 1)
+        self.assertIsNone(session._screen)
+
+        next_screen = session._current_screen()
+
+        self.assertEqual(next_screen.title, "App")
+        self.assertEqual(session.section_index, 0)
+
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)
 
@@ -722,6 +758,15 @@ class _ActionApp(_CountingApp):
     def dispatch_action(self, action: str, params: dict[str, object]) -> object:
         self.actions.append((action, params))
         return None
+
+
+class _RedirectingSubmittingApp(_SubmittingApp):
+    def __init__(self, screen: Screen, target: Screen, result: SubmitResult) -> None:
+        super().__init__(screen, result)
+        self.target = target
+
+    def follow_link(self, href: str) -> "_RedirectingSubmittingApp":
+        return _RedirectingSubmittingApp(self.target, self.target, self.result)
 
 
 class _FakeWindow:

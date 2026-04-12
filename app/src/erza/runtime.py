@@ -688,6 +688,7 @@ class _RuntimeSession:
         self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
         self._screen: Screen | None = None
         self._last_plan: RenderPlan | None = None
+        self._pending_section_index: int | None = None
         self.mode = "page"
         self.show_help = False
         self.section_index = 0
@@ -839,7 +840,20 @@ class _RuntimeSession:
                     message="Loading app",
                     plan=self._last_plan,
                 )
+            self._apply_pending_page_reset()
         return self._screen
+
+    def _schedule_page_reset(self, section_index: int = 0) -> None:
+        self._pending_section_index = max(section_index, 0)
+
+    def _apply_pending_page_reset(self) -> None:
+        if self._pending_section_index is None:
+            return
+        self.section_index = self._pending_section_index
+        self.scroll_offset = 0
+        self.section_line_index = 0
+        self.section_scroll_offset = 0
+        self._pending_section_index = None
 
     def _run_with_loading(
         self,
@@ -1114,10 +1128,7 @@ class _RuntimeSession:
         self._invalidate_screen(reset_animation=True)
         self.mode = "page"
         self.show_help = False
-        self.section_index = 0
-        self.scroll_offset = 0
-        self.section_line_index = 0
-        self.section_scroll_offset = 0
+        self._schedule_page_reset(0)
         self.pending_g = False
         self.form_values = {}
         self.edit_state = None
@@ -1231,10 +1242,7 @@ class _RuntimeSession:
             self.app = next_app
             self._invalidate_screen(reset_animation=True)
             self.mode = "page"
-            self.section_index = 0
-            self.scroll_offset = 0
-            self.section_line_index = 0
-            self.section_scroll_offset = 0
+            self._schedule_page_reset(0)
             self.form_values = {}
             self.status = f"opened {result.href}"
             return
