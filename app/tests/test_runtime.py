@@ -19,6 +19,7 @@ from erza.runtime import (
     CTRL_E,
     CTRL_W,
     EditState,
+    INTERACTIVE_MODAL_INNER_WIDTH,
     InputControl,
     StaticScreenApp,
     SubmitControl,
@@ -594,6 +595,46 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(submit_targets[0].y, submit_targets[1].y)
         self.assertTrue(all(item.action_group == "button_row" for item in submit_targets))
         self.assertTrue(all(item.action_align == "right" for item in submit_targets))
+
+    def test_modal_form_action_row_spans_full_width_and_leaves_blank_line_after_inputs(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[
+                        Form(
+                            action="/auth/access",
+                            children=[
+                                Input(name="username", label="Username", required=True),
+                                Input(name="password", type="password", label="Password", required=True),
+                                ButtonRow(
+                                    align="right",
+                                    children=[SubmitButton(label="Enter Koinonia")],
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        modal = plan.modals["auth-access"]
+        input_targets = [item for item in modal.actionables if isinstance(item.actionable, InputControl)]
+        submit_target = next(item for item in modal.actionables if isinstance(item.actionable, SubmitControl))
+
+        self.assertEqual(submit_target.y, input_targets[-1].y + 3)
+        self.assertEqual(len(modal.block.lines[input_targets[-1].y + 1]), 3)
+
+        top_border_segment = next(
+            segment
+            for segment in modal.block.lines[submit_target.y - 1]
+            if segment.text.startswith("+")
+        )
+        self.assertEqual(top_border_segment.x, 2)
+        self.assertEqual(len(top_border_segment.text), INTERACTIVE_MODAL_INNER_WIDTH)
 
     def test_form_input_activation_enters_edit_mode_and_submits(self) -> None:
         screen = Screen(

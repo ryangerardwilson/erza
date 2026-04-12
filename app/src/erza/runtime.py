@@ -2318,6 +2318,7 @@ def _build_form_block(
     form_key = f"form:{render_state.next_form_index}"
     render_state.next_form_index += 1
     content_width = max(max_width - FORM_FIELD_INDENT, 8)
+    field_children, action_children = _split_form_children(form.children)
 
     lines: list[list[Segment]] = []
     actionables: list[ActionableTarget] = []
@@ -2325,9 +2326,9 @@ def _build_form_block(
     cursor_y = 0
     animation_interval_ms: int | None = None
 
-    if form.children:
+    if field_children:
         body = _build_column_like(
-            form.children,
+            field_children,
             gap=0,
             animation_time=animation_time,
             max_width=content_width,
@@ -2340,13 +2341,32 @@ def _build_form_block(
         animation_interval_ms = _merge_animation_interval(animation_interval_ms, body.animation_interval_ms)
         cursor_y += body.height
 
-    if not _form_has_explicit_submit_controls(form.children):
+    if action_children:
+        if cursor_y > 0:
+            cursor_y += 1
+            lines.append([])
+        action_block = _build_column_like(
+            action_children,
+            gap=1,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+            form_action=form.action,
+        )
+        _merge_block(lines, actionables, action_block, x=0, y=cursor_y)
+        width = max(width, action_block.width)
+        animation_interval_ms = _merge_animation_interval(animation_interval_ms, action_block.animation_interval_ms)
+    else:
         submit_block = _build_form_submit_block(
             form,
             form_key=form_key,
             max_width=max_width,
             render_state=render_state,
         )
+        if cursor_y > 0:
+            cursor_y += 1
+            lines.append([])
         _merge_block(lines, actionables, submit_block, x=0, y=cursor_y)
         width = max(width, submit_block.width)
 
@@ -2420,16 +2440,19 @@ def _build_form_submit_block(
     )
 
 
-def _form_has_explicit_submit_controls(children: list[Component]) -> bool:
+def _split_form_children(children: list[Component]) -> tuple[list[Component], list[Component]]:
+    field_children: list[Component] = []
+    action_children: list[Component] = []
     for child in children:
-        if isinstance(child, SubmitButton):
-            return True
-        if isinstance(child, ButtonRow) and any(isinstance(button, SubmitButton) for button in child.children):
-            return True
-        if isinstance(child, (Column, Row, Section)):
-            if _form_has_explicit_submit_controls(child.children):
-                return True
-    return False
+        if _is_form_action_component(child):
+            action_children.append(child)
+        else:
+            field_children.append(child)
+    return field_children, action_children
+
+
+def _is_form_action_component(child: Component) -> bool:
+    return isinstance(child, ButtonRow) and all(isinstance(button, SubmitButton) for button in child.children)
 
 
 def _build_column_like(
