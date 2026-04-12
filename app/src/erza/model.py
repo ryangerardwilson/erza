@@ -14,6 +14,11 @@ class Header:
 
 
 @dataclass(slots=True)
+class AsciiArt:
+    content: str
+
+
+@dataclass(slots=True)
 class Link:
     label: str
     href: str
@@ -98,4 +103,4 @@ class Screen:
     children: list["Component"]
 
 
-Component = Text | Header | Link | Input | Button | SubmitButton | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal
+Component = Text | Header | AsciiArt | Link | Input | Button | SubmitButton | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal

@@ -6,7 +6,7 @@ from _test_bootstrap import ensure_test_paths
 
 ensure_test_paths()
 
-from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
 from erza.parser import ParseError, compile_markup
 
 
@@ -90,6 +90,24 @@ oo
         self.assertEqual(animation.label, "Pulse")
         self.assertEqual(animation.frames, ["o", "oo"])
 
+    def test_compiles_ascii_art_component(self) -> None:
+        markup = """
+<Screen title="Profile">
+  <Section title="Resident">
+    <AsciiArt>&lt;o_o&gt;
+ /|\\
+ / \\
+</AsciiArt>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        art = screen.children[0].children[0]
+        self.assertIsInstance(art, AsciiArt)
+        self.assertEqual(art.content, "<o_o>\n /|\\\n / \\")
+
     def test_compiles_form_and_self_closing_inputs(self) -> None:
         markup = """
 <Screen title="Sign In">
@@ -115,6 +133,23 @@ oo
         self.assertTrue(form.children[0].required)
         self.assertIsInstance(form.children[1], Input)
         self.assertEqual(form.children[1].type, "password")
+
+    def test_compiles_ascii_art_input_type(self) -> None:
+        markup = """
+<Screen title="Profile">
+  <Modal id="profile-edit" title="Edit Profile">
+    <Form action="/profile/edit">
+      <Input name="profile_picture" type="ascii-art" label="Profile Picture" />
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        form = screen.children[0].children[0]
+        self.assertIsInstance(form.children[0], Input)
+        self.assertEqual(form.children[0].type, "ascii-art")
 
     def test_compiles_button_row(self) -> None:
         markup = """

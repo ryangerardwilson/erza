@@ -3,14 +3,18 @@ from __future__ import annotations
 from collections.abc import Callable
 import curses
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
+import shlex
+import subprocess
+import tempfile
 import threading
 import textwrap
 import time
 
 from erza.backend import BackendBridge, bind_request_context
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
-from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -963,7 +967,7 @@ class _RuntimeSession:
             if self.mode == "edit":
                 self.pending_g = False
                 key = _decode_edit_key(stdscr, key)
-                self._handle_edit_key(key)
+                self._handle_edit_key(key, stdscr)
                 continue
             if key == ord("q"):
                 return
@@ -1476,7 +1480,7 @@ class _RuntimeSession:
         self.edit_state = None
         self.status = ""
 
-    def _open_modal(self, plan: RenderPlan, modal_id: str) -> None:
+    def _open_modal(self, plan: RenderPlan, modal_id: str, stdscr: curses.window | None = None) -> None:
         if modal_id not in plan.modals:
             self.status = f"unknown modal: {modal_id}"
             return
@@ -1490,7 +1494,7 @@ class _RuntimeSession:
         self.show_help = False
         self.pending_g = False
         self.status = ""
-        self._focus_first_modal_input(plan.modals[modal_id])
+        self._focus_first_modal_input(plan.modals[modal_id], stdscr)
 
     def _close_modal(self) -> None:
         self.active_modal_id = None
@@ -1591,7 +1595,7 @@ class _RuntimeSession:
         stdscr: curses.window | None = None,
     ) -> None:
         if isinstance(actionable, InputControl):
-            self._begin_edit(actionable)
+            self._begin_edit(actionable, stdscr)
             return
         if isinstance(actionable, SubmitControl):
             self._submit_form(plan, actionable, stdscr)
@@ -1602,7 +1606,7 @@ class _RuntimeSession:
                 if not modal_id:
                     self.status = "ui.open_modal requires modal_id"
                     return
-                self._open_modal(plan, modal_id)
+                self._open_modal(plan, modal_id, stdscr)
                 return
             try:
                 self._run_with_loading(
@@ -1641,9 +1645,24 @@ class _RuntimeSession:
         self.status = f"opened {actionable.href}"
         return
 
-    def _begin_edit(self, target: InputControl) -> None:
+    def _begin_edit(self, target: InputControl, stdscr: curses.window | None = None) -> None:
         current_value = self.form_values.setdefault(target.form_key, {}).get(target.input_name, target.initial_value)
         self.form_values[target.form_key][target.input_name] = current_value
+        if target.input_type == "ascii-art":
+            if stdscr is None:
+                self._set_editor_error("ascii-art inputs require an interactive terminal")
+                return
+            try:
+                updated_value = _edit_external_text(stdscr, current_value, suffix=".ascii")
+            except RuntimeError as exc:
+                self._set_editor_error(str(exc))
+                return
+            self.form_values[target.form_key][target.input_name] = updated_value
+            self.edit_state = None
+            self.mode = "modal" if self.active_modal_id is not None else "section"
+            self.show_help = False
+            self.status = ""
+            return
         self.edit_state = EditState(
             form_key=target.form_key,
             input_name=target.input_name,
@@ -1654,7 +1673,7 @@ class _RuntimeSession:
         self.show_help = False
         self.status = ""
 
-    def _handle_edit_key(self, key: int) -> None:
+    def _handle_edit_key(self, key: int, stdscr: curses.window | None = None) -> None:
         if self.edit_state is None:
             self.mode = "modal" if self.active_modal_id is not None else "section"
             return
@@ -1677,13 +1696,13 @@ class _RuntimeSession:
             self.edit_state = None
             self.mode = "modal" if self.active_modal_id is not None else "section"
             if self.active_modal_id is not None:
-                if self._advance_modal_edit(previous_edit):
+                if self._advance_modal_edit(previous_edit, stdscr):
                     self.status = ""
                     return
                 self.modal_line_index += 1
                 self.modal_action_index = 0
             else:
-                if self._advance_section_edit(previous_edit):
+                if self._advance_section_edit(previous_edit, stdscr):
                     self.status = ""
                     return
                 self.section_line_index += 1
@@ -1720,16 +1739,16 @@ class _RuntimeSession:
         self.edit_state.cursor_index = cursor
         self.status = ""
 
-    def _focus_first_modal_input(self, modal: ModalTarget) -> None:
+    def _focus_first_modal_input(self, modal: ModalTarget, stdscr: curses.window | None = None) -> None:
         for line_index, action_index, target in _ordered_modal_actionables(modal):
             if not isinstance(target.actionable, InputControl):
                 continue
             self.modal_line_index = line_index
             self.modal_action_index = action_index
-            self._begin_edit(target.actionable)
+            self._begin_edit(target.actionable, stdscr)
             return
 
-    def _advance_modal_edit(self, previous_edit: EditState) -> bool:
+    def _advance_modal_edit(self, previous_edit: EditState, stdscr: curses.window | None = None) -> bool:
         plan = self._navigation_plan_snapshot()
         modal = self._active_modal(plan) if plan is not None else None
         if modal is None:
@@ -1757,12 +1776,12 @@ class _RuntimeSession:
             self.modal_line_index = line_index
             self.modal_action_index = action_index
             if isinstance(target.actionable, InputControl):
-                self._begin_edit(target.actionable)
+                self._begin_edit(target.actionable, stdscr)
             return True
 
         return False
 
-    def _advance_section_edit(self, previous_edit: EditState) -> bool:
+    def _advance_section_edit(self, previous_edit: EditState, stdscr: curses.window | None = None) -> bool:
         plan = self._navigation_plan_snapshot()
         if plan is None or not plan.sections:
             return False
@@ -1790,10 +1809,16 @@ class _RuntimeSession:
             self.section_line_index = line_index
             self.section_action_index = action_index
             if isinstance(target.actionable, InputControl):
-                self._begin_edit(target.actionable)
+                self._begin_edit(target.actionable, stdscr)
             return True
 
         return False
+
+    def _set_editor_error(self, message: str) -> None:
+        if self.active_modal_id is not None:
+            self.modal_messages[self.active_modal_id] = message
+        else:
+            self.status = message
 
     def _navigation_plan_snapshot(self) -> RenderPlan | None:
         if self._last_plan is not None:
@@ -2140,6 +2165,8 @@ def _build_block(
         )
     if isinstance(component, Header):
         return _wrapped_text_block(component.content, style="header", max_width=max_width)
+    if isinstance(component, AsciiArt):
+        return _build_ascii_art_block(component, max_width=max_width)
     if isinstance(component, Text):
         return _wrapped_text_block(component.content, style="text", max_width=max_width)
     if isinstance(component, Link):
@@ -2337,6 +2364,16 @@ def _build_animation_block(animation: AsciiAnimation, *, animation_time: float, 
         height=len(lines),
         lines=lines,
         animation_interval_ms=_animation_interval_for_fps(animation.fps),
+    )
+
+
+def _build_ascii_art_block(ascii_art: AsciiArt, *, max_width: int) -> Block:
+    art_lines = ascii_art.content.split("\n") if ascii_art.content else [""]
+    clamped_lines = [_truncate_text(line, max_width) for line in art_lines]
+    return Block(
+        width=max((len(line) for line in clamped_lines), default=0),
+        height=len(clamped_lines),
+        lines=[[Segment(x=0, text=line, style="text")] for line in clamped_lines],
     )
 
 
@@ -2676,7 +2713,7 @@ def _render_input_line(
     label_text = _truncate_text(f"{label}:", min(max(max_width // 3, len(label) + 1), 18))
     prefix = f"{label_text} "
     field_width = max(max_width - len(prefix), 8)
-    display_value = "*" * len(current_value) if input_component.type == "password" else current_value
+    display_value = _input_display_value(input_component, current_value)
 
     plain_field = display_value
 
@@ -2722,6 +2759,81 @@ def _render_input_line(
 
 def _input_label(name: str) -> str:
     return name.replace("_", " ").replace("-", " ").title()
+
+
+def _input_display_value(input_component: Input, current_value: str) -> str:
+    if input_component.type == "password":
+        return "*" * len(current_value)
+    if input_component.type == "ascii-art":
+        return _ascii_art_input_summary(current_value)
+    return current_value
+
+
+def _ascii_art_input_summary(value: str) -> str:
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+    if not normalized:
+        return "Open in editor"
+    lines = normalized.split("\n")
+    line_count = len(lines)
+    max_columns = max((len(line) for line in lines), default=0)
+    line_label = "line" if line_count == 1 else "lines"
+    column_label = "col" if max_columns == 1 else "cols"
+    return f"{line_count} {line_label}, {max_columns} {column_label}"
+
+
+def _edit_external_text(
+    stdscr: curses.window,
+    initial_value: str,
+    *,
+    suffix: str = ".txt",
+) -> str:
+    editor_command = _resolve_editor_command()
+    fd, raw_path = tempfile.mkstemp(prefix="erza-edit-", suffix=suffix)
+    temp_path = Path(raw_path)
+    os.close(fd)
+    temp_path.write_text(initial_value, encoding="utf-8")
+
+    try:
+        try:
+            curses.def_prog_mode()
+        except curses.error:
+            pass
+        try:
+            curses.endwin()
+        except curses.error:
+            pass
+
+        try:
+            result = subprocess.run([*editor_command, str(temp_path)], check=False)
+        except OSError as exc:
+            raise RuntimeError(f"failed to launch editor: {editor_command[0]}") from exc
+        finally:
+            try:
+                curses.reset_prog_mode()
+            except curses.error:
+                pass
+            try:
+                curses.curs_set(0)
+            except curses.error:
+                pass
+            stdscr.keypad(True)
+            stdscr.clear()
+            stdscr.refresh()
+
+        if result.returncode != 0:
+            raise RuntimeError(f"editor exited with status {result.returncode}")
+
+        return temp_path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n").rstrip("\n")
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def _resolve_editor_command() -> list[str]:
+    configured = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "vim"
+    command = shlex.split(configured)
+    if not command:
+        return ["vim"]
+    return command
 
 
 def _select_animation_frame(animation: AsciiAnimation, animation_time: float) -> str:

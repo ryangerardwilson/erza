@@ -32,7 +32,7 @@
       <Header>Builders near the feed</Header>
       <? for person in people ?>
         <Text><?= person.name ?> @<?= person.handle ?></Text>
-        <Text><?= person.bio ?></Text>
+        <Text><?= person.description or "No description set yet." ?></Text>
         <Text>Primary circle: <?= person.primary_circle ?></Text>
         <? if person.can_follow ?>
           <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
@@ -41,13 +41,14 @@
     </Section>
 
     <Section title="Profile" tab-order="0">
-      <Header><?= profile.name ?> @<?= profile.handle ?></Header>
-      <Text><?= status ?></Text>
+      <AsciiArt><?= profile.picture ?></AsciiArt>
+      <Header>@<?= profile.handle ?></Header>
+      <Text><?= profile.description or "No description set yet." ?></Text>
       <ButtonRow>
         <Action on:press="ui.open_modal" modal:id="create-post">New post</Action>
-        <Action on:press="ui.open_modal" modal:id="profile-description">Edit description</Action>
+        <Action on:press="ui.open_modal" modal:id="profile-edit">Edit profile</Action>
       </ButtonRow>
-      <Text><?= profile.bio ?></Text>
+      <Text><?= status ?></Text>
       <Text>Primary circle: <?= profile.primary_circle ?></Text>
       <Text><?= profile.followers ?> followers</Text>
 
@@ -67,13 +68,14 @@
       <Action on:press="auth.logout">Log out</Action>
     </Section>
 
-    <Modal id="profile-description" title="Profile Description">
-      <Header>Set your current description.</Header>
-      <Text>Keep it short and current. You can change or clear it whenever you want.</Text>
-      <Form action="/profile/bio">
-        <Input name="bio" type="text" label="Description" value="<?= profile.bio ?>" />
+    <Modal id="profile-edit" title="Edit Profile">
+      <Header>Shape your profile card.</Header>
+      <Text>Description stays short. Profile picture opens in your editor for multi-line ASCII art.</Text>
+      <Form action="/profile/edit">
+        <Input name="description" type="text" label="Description" value="<?= profile.description ?>" />
+        <Input name="profile_picture" type="ascii-art" label="Profile Picture" value="<?= profile.picture ?>" />
         <ButtonRow align="right">
-          <Submit>Save description</Submit>
+          <Submit>Save profile</Submit>
         </ButtonRow>
       </Form>
     </Modal>

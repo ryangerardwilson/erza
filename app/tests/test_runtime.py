@@ -10,7 +10,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -654,6 +654,24 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(all(item.action_group == "button_row" for item in submit_targets))
         self.assertTrue(all(item.action_align == "right" for item in submit_targets))
 
+    def test_build_render_plan_preserves_ascii_art_lines(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Section(
+                    title="Resident",
+                    children=[AsciiArt(" /\\\\\n<  >\n \\\\/")],
+                )
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        art_lines = ["".join(segment.text for segment in line) for line in plan.sections[0].block.lines[1:4]]
+
+        self.assertIn(" /\\\\", art_lines[0])
+        self.assertIn("<  >", art_lines[1])
+        self.assertIn(" \\\\/", art_lines[2])
+
     def test_modal_form_action_row_spans_full_width_and_leaves_blank_line_after_inputs(self) -> None:
         screen = Screen(
             title="Auth",
@@ -693,6 +711,32 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(top_border_segment.x, 2)
         self.assertEqual(len(top_border_segment.text), INTERACTIVE_MODAL_INNER_WIDTH)
+
+    def test_ascii_art_input_renders_summary_instead_of_raw_multiline_value(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Modal(
+                    modal_id="profile-edit",
+                    title="Edit Profile",
+                    children=[
+                        Form(
+                            action="/profile/edit",
+                            children=[
+                                Input(name="profile_picture", type="ascii-art", label="Profile Picture", value=" /\\\\\n<  >"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        modal = plan.modals["profile-edit"]
+        input_line = "".join(segment.text for segment in modal.block.lines[1])
+
+        self.assertIn("2 lines, 4 cols", input_line)
+        self.assertNotIn("<  >", input_line)
 
     def test_form_input_activation_enters_edit_mode_and_submits(self) -> None:
         screen = Screen(
@@ -769,6 +813,41 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(session.mode, "edit")
         self.assertEqual(session.edit_state.input_name, "password")
         self.assertEqual(session.section_line_index, next_plan.sections[0].block.actionables[1].y - 1)
+
+    def test_edit_mode_enter_can_advance_into_ascii_art_editor(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Modal(
+                    modal_id="profile-edit",
+                    title="Edit Profile",
+                    children=[
+                        Form(
+                            action="/profile/edit",
+                            children=[
+                                Input(name="description", label="Description"),
+                                Input(name="profile_picture", type="ascii-art", label="Profile Picture"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._open_modal(plan, "profile-edit")
+        session._handle_edit_key(ord("x"))
+
+        with patch("erza.runtime._edit_external_text", return_value=" /\\\\\n<__>") as edit_mock:
+            session._handle_edit_key(ord("\n"), stdscr=object())
+
+        self.assertEqual(session.mode, "modal")
+        self.assertEqual(session.form_values["form:0"]["description"], "x")
+        self.assertEqual(session.form_values["form:0"]["profile_picture"], " /\\\\\n<__>")
+        self.assertEqual(session.modal_line_index, 1)
+        self.assertEqual(session.modal_action_index, 0)
+        edit_mock.assert_called_once()
 
     def test_edit_mode_escape_restores_original_value(self) -> None:
         screen = Screen(

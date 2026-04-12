@@ -19,6 +19,22 @@ class SupabaseError(RuntimeError):
     """Raised when Koinonia cannot complete a Supabase request."""
 
 
+PROFILE_STATE_PREFIX = "koinonia-profile-v1:"
+MAX_PROFILE_DESCRIPTION_LENGTH = 160
+MAX_PROFILE_PICTURE_LINES = 12
+MAX_PROFILE_PICTURE_WIDTH = 28
+MAX_PROFILE_PICTURE_CHARS = 512
+DEFAULT_PROFILE_PICTURE = "\n".join(
+    [
+        "  .--.",
+        " /_.._\\\\",
+        "( o  o )",
+        " | .. |",
+        " |____|",
+    ]
+)
+
+
 def _env(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -142,6 +158,54 @@ def _status() -> str:
         "ui_status",
         "Koinonia now behaves like a single-screen erza app with tabs that shift around your login state.",
     )
+
+
+def _decode_profile_state(raw_bio: str) -> dict[str, str]:
+    stored = str(raw_bio or "")
+    if stored.startswith(PROFILE_STATE_PREFIX):
+        payload_text = stored[len(PROFILE_STATE_PREFIX) :]
+        try:
+            payload = json.loads(payload_text)
+        except json.JSONDecodeError:
+            payload = {}
+        description = str(payload.get("description", "")).strip()
+        picture = _normalize_profile_picture(str(payload.get("picture", "")))
+        return {"description": description, "picture": picture}
+    return {
+        "description": stored.strip(),
+        "picture": DEFAULT_PROFILE_PICTURE,
+    }
+
+
+def _encode_profile_state(description: str, picture: str) -> str:
+    return PROFILE_STATE_PREFIX + json.dumps(
+        {
+            "description": description,
+            "picture": picture,
+        },
+        ensure_ascii=True,
+        separators=(",", ":"),
+    )
+
+
+def _normalize_profile_picture(raw_picture: str) -> str:
+    normalized = str(raw_picture or "").replace("\r\n", "\n").replace("\r", "\n").expandtabs(4).strip("\n")
+    if not normalized.strip():
+        return DEFAULT_PROFILE_PICTURE
+    if len(normalized) > MAX_PROFILE_PICTURE_CHARS:
+        raise ValueError(f"Profile picture must stay within {MAX_PROFILE_PICTURE_CHARS} characters.")
+
+    lines = normalized.split("\n")
+    if len(lines) > MAX_PROFILE_PICTURE_LINES:
+        raise ValueError(f"Profile picture must stay within {MAX_PROFILE_PICTURE_LINES} lines.")
+
+    max_width = max((len(line) for line in lines), default=0)
+    if max_width > MAX_PROFILE_PICTURE_WIDTH:
+        raise ValueError(f"Profile picture must stay within {MAX_PROFILE_PICTURE_WIDTH} columns.")
+
+    if any(character != "\n" and not 32 <= ord(character) <= 126 for character in normalized):
+        raise ValueError("Profile picture must use printable ASCII only.")
+    return normalized
 
 
 def _hash_password(password: str) -> str:
@@ -316,7 +380,9 @@ def profiles_current() -> dict[str, Any]:
         return {
             "name": "",
             "handle": "",
+            "description": "",
             "bio": "",
+            "picture": DEFAULT_PROFILE_PICTURE,
             "primary_circle": "",
             "followers": 0,
             "following": False,
@@ -382,11 +448,14 @@ def people_suggested() -> list[dict[str, Any]]:
         handle = str(row["handle"])
         can_follow = viewer_handle is not None and viewer_handle != handle
         following = handle in followed_handles
+        profile_state = _decode_profile_state(str(row["bio"]))
         people.append(
             {
                 "name": str(row["display_name"]),
                 "handle": handle,
-                "bio": str(row["bio"]),
+                "description": profile_state["description"],
+                "bio": profile_state["description"],
+                "picture": profile_state["picture"],
                 "primary_circle": str(row["primary_circle"]),
                 "following": following,
                 "can_follow": can_follow,
@@ -461,7 +530,9 @@ def profiles_by_handle(handle: str) -> dict[str, Any]:
         return {
             "name": "Unknown resident",
             "handle": normalized,
+            "description": "",
             "bio": "This profile has not been authored yet.",
+            "picture": DEFAULT_PROFILE_PICTURE,
             "primary_circle": "unassigned",
             "followers": 0,
             "following": False,
@@ -481,10 +552,13 @@ def profiles_by_handle(handle: str) -> dict[str, Any]:
     )
     is_self = viewer_handle == normalized
     following = _following_state(viewer_handle, normalized)
+    profile_state = _decode_profile_state(str(profile["bio"]))
     return {
         "name": str(profile["display_name"]),
         "handle": str(profile["handle"]),
-        "bio": str(profile["bio"]),
+        "description": profile_state["description"],
+        "bio": profile_state["description"],
+        "picture": profile_state["picture"],
         "primary_circle": str(profile["primary_circle"]),
         "followers": int(profile["followers"]),
         "following": following,
@@ -628,23 +702,39 @@ def create_post(body: str = ""):
     return redirect("index.erza")
 
 
-@route("/profile/bio")
-def update_profile_bio(bio: str = ""):
+@route("/profile/edit")
+def update_profile(description: str | None = None, profile_picture: str | None = None, bio: str | None = None):
     account = _current_account()
     if account is None:
         return error("Sign in first to update your profile.")
 
-    description = bio.strip()
-    if len(description) > 160:
-        return error("Description must stay within 160 characters.")
+    current_profile = _profile_row(account["handle"])
+    current_state = _decode_profile_state(str(current_profile["bio"])) if current_profile is not None else {
+        "description": "",
+        "picture": DEFAULT_PROFILE_PICTURE,
+    }
+    next_description = (description if description is not None else bio if bio is not None else current_state["description"]).strip()
+    if len(next_description) > MAX_PROFILE_DESCRIPTION_LENGTH:
+        return error(f"Description must stay within {MAX_PROFILE_DESCRIPTION_LENGTH} characters.")
+    try:
+        next_picture = _normalize_profile_picture(
+            profile_picture if profile_picture is not None else current_state["picture"]
+        )
+    except ValueError as exc:
+        return error(str(exc))
 
     _update(
         "profiles",
         query={"handle": f"eq.{account['handle']}"},
-        body={"bio": description},
+        body={"bio": _encode_profile_state(next_description, next_picture)},
     )
-    _set_status(f"Updated @{account['handle']}'s description.")
+    _set_status(f"Updated @{account['handle']}'s profile.")
     return redirect("index.erza")
+
+
+@route("/profile/bio")
+def update_profile_bio(bio: str = ""):
+    return update_profile(description=bio)
 
 
 @route("/threads/launch-week/reply")

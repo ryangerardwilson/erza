@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
 
 
 class ParseError(RuntimeError):
@@ -246,6 +246,8 @@ def _convert_element(
         return Text(content=_collect_text(element))
     if tag == "header":
         return Header(content=_collect_text(element))
+    if tag == "asciiart":
+        return AsciiArt(content=_collect_preserved_text(element))
     if tag == "link":
         href = element.attrs.get("href", "").strip()
         if not href:
@@ -313,6 +315,15 @@ def _collect_frame_text(element: Element) -> str:
     if not raw:
         raise ParseError("<Frame> cannot be empty")
     return raw
+
+
+def _collect_preserved_text(element: Element) -> str:
+    parts: list[str] = []
+    for child in element.children:
+        if not isinstance(child, str):
+            raise ParseError(f"<{element.tag}> only supports raw text")
+        parts.append(child)
+    return "".join(parts).strip("\n")
 
 
 def _normalize_text(value: str) -> str:
@@ -391,8 +402,8 @@ def _parse_bool(element: Element, name: str, *, default: bool) -> bool:
 
 def _parse_input_type(element: Element) -> str:
     input_type = (element.attrs.get("type", "text").strip() or "text").lower()
-    if input_type not in {"text", "password"}:
-        raise ParseError("<Input> type must be text or password in v1")
+    if input_type not in {"text", "password", "ascii-art"}:
+        raise ParseError("<Input> type must be text, password, or ascii-art in v1")
     return input_type
 
 

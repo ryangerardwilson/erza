@@ -82,7 +82,10 @@ begin
   values (
     normalized_handle,
     normalized_name,
-    'Joined through the Koinonia terminal prototype.',
+    'koinonia-profile-v1:' || json_build_object(
+      'description', 'Joined through the Koinonia terminal prototype.',
+      'picture', E'  .--.\n /_.._\\\\\n( o  o )\n | .. |\n |____|'
+    )::text,
     'proto-lab',
     1,
     false
