@@ -653,7 +653,7 @@ def draw_modal_overlay(
             break
         active_content_line = active_y == body_y
         for segment in line:
-            if segment.style == "section_fill" or segment.x >= block_width:
+            if segment.x >= block_width:
                 continue
             available = max(block_width - segment.x, 0)
             if available == 0:
@@ -831,6 +831,10 @@ class _RuntimeSession:
         try:
             curses.use_default_colors()
         except curses.error:
+            pass
+        try:
+            curses.assume_default_colors(-1, -1)
+        except (AttributeError, curses.error):
             pass
         stdscr.keypad(True)
 

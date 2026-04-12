@@ -31,6 +31,7 @@ from erza.runtime import (
     compute_scroll_offset,
     compute_section_scroll_offset,
     draw_loading_overlay,
+    draw_modal_overlay,
     next_section_index,
     next_section_line_index,
 )
@@ -952,6 +953,30 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(any(text == "Loading app" for _, _, text, _, _ in calls))
         self.assertTrue(any(text.startswith("+-[ Working ]") for _, _, text, _, _ in calls))
         self.assertFalse(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
+
+    def test_modal_overlay_draws_fill_to_cover_underlying_page(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(title="Why", children=[Text("Why")]),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[Text("Sign in here.")],
+                ),
+            ],
+        )
+        plan = build_render_plan(screen)
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_modal_overlay(_DrawingWindow(), plan.modals["auth-access"], line_index=0, scroll_offset=0)
+
+        self.assertTrue(any(text.startswith("+-[ Login / Sign Up ]") for _, _, text, _, _ in calls))
+        self.assertTrue(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
 
 
 class _CountingApp:
