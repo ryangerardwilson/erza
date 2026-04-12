@@ -12,9 +12,9 @@
     <Section title="Feed">
       <Header>Feed for @<?= auth.handle ?></Header>
       <Text><?= status ?></Text>
-      <Form action="/posts" submit-button-text="Post to feed">
-        <Input name="body" type="text" label="Post" required="mandatory" />
-      </Form>
+      <ButtonRow>
+        <Action on:press="ui.open_modal" modal:id="create-post">New post</Action>
+      </ButtonRow>
       <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> builders.</Text>
 
       <? for post in timeline ?>
@@ -22,10 +22,10 @@
           <Text>Circle: <?= post.circle ?></Text>
           <Text><?= post.body ?></Text>
           <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
-          <Row gap="1">
+          <ButtonRow>
             <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
             <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
-          </Row>
+          </ButtonRow>
         </Section>
       <? endfor ?>
 
@@ -43,10 +43,10 @@
     <Section title="Profile">
       <Header><?= profile.name ?> @<?= profile.handle ?></Header>
       <Text><?= status ?></Text>
-      <Form action="/posts" submit-button-text="Post from profile">
-        <Input name="body" type="text" label="Post" required="mandatory" />
-      </Form>
-      <Action on:press="ui.open_modal" modal:id="profile-description">Edit description</Action>
+      <ButtonRow>
+        <Action on:press="ui.open_modal" modal:id="create-post">New post</Action>
+        <Action on:press="ui.open_modal" modal:id="profile-description">Edit description</Action>
+      </ButtonRow>
       <Text><?= profile.bio ?></Text>
       <Text>Primary circle: <?= profile.primary_circle ?></Text>
       <Text><?= profile.followers ?> followers</Text>
@@ -72,6 +72,14 @@
       <Text>Keep it short and current. You can change or clear it whenever you want.</Text>
       <Form action="/profile/bio" submit-button-text="Save description">
         <Input name="bio" type="text" label="Description" value="<?= profile.bio ?>" />
+      </Form>
+    </Modal>
+
+    <Modal id="create-post" title="New Post">
+      <Header>Publish a new dispatch.</Header>
+      <Text>Write a short terminal-native post for the feed.</Text>
+      <Form action="/posts" submit-button-text="Post to Koinonia">
+        <Input name="body" type="text" label="Post" required="mandatory" />
       </Form>
     </Modal>
   <? else ?>

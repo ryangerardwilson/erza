@@ -10,7 +10,7 @@ import time
 
 from erza.backend import BackendBridge, bind_request_context
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
-from erza.model import AsciiAnimation, Button, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -61,6 +61,7 @@ HELP_SHORTCUTS = [
     ("Header gg / G", "Jump to the first or last section."),
     ("Backspace", "Go back one page."),
     ("Section j / k / arrows", "Move line by line inside the current section."),
+    ("Section h / l / arrows", "Move across buttons on the current button row."),
     ("Section Ctrl+D / Ctrl+U", "Move by half a page."),
     ("Section Enter", "Edit the current input or open the current link/action."),
     ("Edit type", "Insert text into the current input."),
@@ -89,6 +90,7 @@ class ActionableTarget:
     width: int
     label_text: str
     actionable: Button | Link | "InputControl" | "SubmitControl"
+    action_group: str | None = None
 
 
 @dataclass(slots=True)
@@ -438,6 +440,7 @@ def draw_plan(
         styles=styles,
         highlight_active_line=False,
         line_index=0,
+        action_index=0,
         scroll_offset=0,
     )
 
@@ -461,6 +464,7 @@ def draw_section_page(
     section_index: int,
     header_scroll_offset: int,
     line_index: int,
+    action_index: int,
     scroll_offset: int,
     footer: str = "",
 ) -> None:
@@ -490,6 +494,7 @@ def draw_section_page(
         styles=styles,
         highlight_active_line=True,
         line_index=line_index,
+        action_index=action_index,
         scroll_offset=scroll_offset,
     )
 
@@ -610,6 +615,7 @@ def draw_modal_overlay(
     modal: ModalTarget,
     *,
     line_index: int,
+    action_index: int,
     scroll_offset: int,
 ) -> None:
     height, terminal_width = stdscr.getmaxyx()
@@ -668,7 +674,24 @@ def draw_modal_overlay(
                 _segment_style(styles, style_name, active_content_line=active_content_line),
             )
         if active_content_line:
-            _safe_addnstr(stdscr, screen_y, max(modal_x - 1, 0), ">", 1, styles["selection_marker"])
+            _draw_active_actionable(
+                stdscr,
+                line_actionables=_modal_line_actionables(modal, line_index),
+                selected_index=action_index,
+                origin_x=modal_x,
+                screen_y=screen_y,
+                max_width=block_width,
+                styles=styles,
+            )
+        if active_content_line:
+            _safe_addnstr(
+                stdscr,
+                screen_y,
+                max(modal_x - 1, 0),
+                ">",
+                1,
+                styles["selection_marker_active"],
+            )
 
     stdscr.refresh()
 
@@ -741,6 +764,7 @@ def _draw_section_body(
     styles: dict[str, int],
     highlight_active_line: bool,
     line_index: int,
+    action_index: int,
     scroll_offset: int,
 ) -> None:
     if available_height <= 0:
@@ -795,6 +819,16 @@ def _draw_section_body(
                 _segment_style(styles, segment.style, active_content_line=active_content_line),
             )
         if active_content_line:
+            _draw_active_actionable(
+                stdscr,
+                line_actionables=_section_line_actionables(section, line_index),
+                selected_index=action_index,
+                origin_x=block_x,
+                screen_y=screen_y,
+                max_width=block_width,
+                styles=styles,
+            )
+        if active_content_line:
             _safe_addnstr(stdscr, screen_y, max(block_x - 1, 0), ">", 1, styles["selection_marker"])
 
 
@@ -809,6 +843,7 @@ class _RuntimeSession:
         self.modal_base_mode = "page"
         self.modal_line_index = 0
         self.modal_scroll_offset = 0
+        self.modal_action_index = 0
         self.modal_messages: dict[str, str] = {}
         self.body_section_index = 0
         self.mode = "page"
@@ -817,6 +852,7 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.form_values: dict[str, dict[str, str]] = {}
         self.edit_state: EditState | None = None
         self.pending_g = False
@@ -906,6 +942,12 @@ class _RuntimeSession:
 
             self.pending_g = False
             if self.active_modal_id is not None:
+                if key in {ord("h"), curses.KEY_LEFT}:
+                    self._move_modal_action(plan, -1)
+                    continue
+                if key in {ord("l"), curses.KEY_RIGHT}:
+                    self._move_modal_action(plan, 1)
+                    continue
                 if key in {ord("j"), curses.KEY_DOWN}:
                     self._move_modal_line(plan, 1)
                     continue
@@ -946,6 +988,14 @@ class _RuntimeSession:
                 if self.mode == "section":
                     self._move_section_line(plan, -1)
                 continue
+            if key in {ord("h"), curses.KEY_LEFT}:
+                if self.mode == "section":
+                    self._move_section_action(plan, -1)
+                continue
+            if key in {ord("l"), curses.KEY_RIGHT}:
+                if self.mode == "section":
+                    self._move_section_action(plan, 1)
+                continue
             if key == CTRL_D and self.mode == "section":
                 self._scroll_section_half_page(plan, stdscr.getmaxyx()[0], 1)
                 continue
@@ -967,6 +1017,7 @@ class _RuntimeSession:
                 self.section_index,
                 self.scroll_offset,
                 self.section_line_index,
+                self.section_action_index,
                 self.section_scroll_offset,
                 footer,
             )
@@ -988,6 +1039,7 @@ class _RuntimeSession:
                 stdscr,
                 active_modal,
                 line_index=self.modal_line_index,
+                action_index=self.modal_action_index,
                 scroll_offset=self.modal_scroll_offset,
             )
         if self.show_help:
@@ -1017,6 +1069,7 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self._pending_section_index = None
 
     def _run_with_loading(
@@ -1093,10 +1146,12 @@ class _RuntimeSession:
             self.scroll_offset = 0
             self.section_line_index = 0
             self.section_scroll_offset = 0
+            self.section_action_index = 0
             self.edit_state = None
             self.active_modal_id = None
             self.modal_line_index = 0
             self.modal_scroll_offset = 0
+            self.modal_action_index = 0
             return
 
         self.section_index = min(self.section_index, len(plan.sections) - 1)
@@ -1111,11 +1166,16 @@ class _RuntimeSession:
             self.section_line_index,
             max(_section_content_line_count(active_section) - 1, 0),
         )
+        self.section_action_index = min(
+            self.section_action_index,
+            max(len(_section_line_actionables(active_section, self.section_line_index)) - 1, 0),
+        )
         active_modal = self._active_modal(plan)
         if self.active_modal_id is not None and active_modal is None:
             self.active_modal_id = None
             self.modal_line_index = 0
             self.modal_scroll_offset = 0
+            self.modal_action_index = 0
             if self.mode != "edit":
                 self.mode = self.modal_base_mode
         elif active_modal is not None:
@@ -1123,15 +1183,25 @@ class _RuntimeSession:
                 self.modal_line_index,
                 max(_modal_content_line_count(active_modal) - 1, 0),
             )
+            self.modal_action_index = min(
+                self.modal_action_index,
+                max(len(_modal_line_actionables(active_modal, self.modal_line_index)) - 1, 0),
+            )
         if self.mode == "edit":
             if active_modal is not None:
-                active_target = _modal_line_actionable(active_modal, self.modal_line_index)
-                if not isinstance(active_target.actionable, InputControl):
+                active_target = _selected_actionable(
+                    _modal_line_actionables(active_modal, self.modal_line_index),
+                    self.modal_action_index,
+                )
+                if active_target is None or not isinstance(active_target.actionable, InputControl):
                     self.mode = "modal"
                     self.edit_state = None
                 return
-            active_target = _section_line_actionable(active_section, self.section_line_index)
-            if not isinstance(active_target.actionable, InputControl):
+            active_target = _selected_actionable(
+                _section_line_actionables(active_section, self.section_line_index),
+                self.section_action_index,
+            )
+            if active_target is None or not isinstance(active_target.actionable, InputControl):
                 self.mode = "section"
                 self.edit_state = None
 
@@ -1176,6 +1246,7 @@ class _RuntimeSession:
         self.section_index = next_index
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.status = ""
 
     def _move_header_selection(self, plan: RenderPlan, terminal_width: int, direction: str) -> None:
@@ -1192,6 +1263,7 @@ class _RuntimeSession:
         self.section_index = next_index
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.status = ""
 
     def _move_section_line(self, plan: RenderPlan, delta: int) -> None:
@@ -1202,6 +1274,7 @@ class _RuntimeSession:
             self.section_line_index,
             delta,
         )
+        self.section_action_index = 0
         self.status = ""
 
     def _move_modal_line(self, plan: RenderPlan, delta: int) -> None:
@@ -1210,6 +1283,32 @@ class _RuntimeSession:
             return
         line_count = _modal_content_line_count(modal)
         self.modal_line_index = min(max(self.modal_line_index + delta, 0), max(line_count - 1, 0))
+        self.modal_action_index = 0
+        self.status = ""
+
+    def _move_section_action(self, plan: RenderPlan, delta: int) -> None:
+        if not plan.sections:
+            return
+        actionables = _section_line_actionables(plan.sections[self.section_index], self.section_line_index)
+        if len(actionables) <= 1:
+            return
+        self.section_action_index = min(
+            max(self.section_action_index + delta, 0),
+            len(actionables) - 1,
+        )
+        self.status = ""
+
+    def _move_modal_action(self, plan: RenderPlan, delta: int) -> None:
+        modal = self._active_modal(plan)
+        if modal is None:
+            return
+        actionables = _modal_line_actionables(modal, self.modal_line_index)
+        if len(actionables) <= 1:
+            return
+        self.modal_action_index = min(
+            max(self.modal_action_index + delta, 0),
+            len(actionables) - 1,
+        )
         self.status = ""
 
     def _jump_to_first_section(self, plan: RenderPlan) -> None:
@@ -1218,6 +1317,7 @@ class _RuntimeSession:
         self.section_index = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.status = ""
 
     def _jump_to_last_section(self, plan: RenderPlan) -> None:
@@ -1226,24 +1326,28 @@ class _RuntimeSession:
         self.section_index = len(plan.sections) - 1
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.status = ""
 
     def _jump_to_first_line(self, plan: RenderPlan) -> None:
         if not plan.sections:
             return
         self.section_line_index = 0
+        self.section_action_index = 0
         self.status = ""
 
     def _jump_to_last_line(self, plan: RenderPlan) -> None:
         if not plan.sections:
             return
         self.section_line_index = max(_section_content_line_count(plan.sections[self.section_index]) - 1, 0)
+        self.section_action_index = 0
         self.status = ""
 
     def _jump_to_first_modal_line(self, plan: RenderPlan) -> None:
         if self._active_modal(plan) is None:
             return
         self.modal_line_index = 0
+        self.modal_action_index = 0
         self.status = ""
 
     def _jump_to_last_modal_line(self, plan: RenderPlan) -> None:
@@ -1251,6 +1355,7 @@ class _RuntimeSession:
         if modal is None:
             return
         self.modal_line_index = max(_modal_content_line_count(modal) - 1, 0)
+        self.modal_action_index = 0
         self.status = ""
 
     def _scroll_section_half_page(self, plan: RenderPlan, screen_height: int, direction: int) -> None:
@@ -1260,6 +1365,7 @@ class _RuntimeSession:
         content_height = _section_content_viewport_height(screen_height)
         step = max(content_height // 2, 1)
         self.section_line_index = next_section_line_index(section, self.section_line_index, direction * step)
+        self.section_action_index = 0
         self.status = ""
 
     def _scroll_modal_half_page(self, plan: RenderPlan, screen_height: int, direction: int) -> None:
@@ -1273,6 +1379,7 @@ class _RuntimeSession:
             max(self.modal_line_index + direction * step, 0),
             max(line_count - 1, 0),
         )
+        self.modal_action_index = 0
         self.status = ""
 
     def _enter_section_mode(self, plan: RenderPlan, stdscr: curses.window | None = None) -> None:
@@ -1287,12 +1394,14 @@ class _RuntimeSession:
         self.show_help = False
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.status = ""
 
     def _exit_section_mode(self) -> None:
         self.mode = "page"
         self.show_help = False
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.edit_state = None
         self.status = ""
 
@@ -1304,6 +1413,7 @@ class _RuntimeSession:
         self.modal_base_mode = "section" if self.mode in {"section", "edit"} else "page"
         self.modal_line_index = 0
         self.modal_scroll_offset = 0
+        self.modal_action_index = 0
         self.modal_messages.pop(modal_id, None)
         self.mode = "modal"
         self.show_help = False
@@ -1314,6 +1424,7 @@ class _RuntimeSession:
         self.active_modal_id = None
         self.modal_line_index = 0
         self.modal_scroll_offset = 0
+        self.modal_action_index = 0
         self.edit_state = None
         self.mode = self.modal_base_mode
         self.show_help = False
@@ -1333,11 +1444,13 @@ class _RuntimeSession:
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
+        self.section_action_index = 0
         self.form_values = {}
         self.edit_state = None
         self.active_modal_id = None
         self.modal_line_index = 0
         self.modal_scroll_offset = 0
+        self.modal_action_index = 0
         self.modal_messages = {}
         self.pending_g = False
         self.status = "went back"
@@ -1375,7 +1488,10 @@ class _RuntimeSession:
         if not plan.sections:
             return
         section = plan.sections[self.section_index]
-        target = _section_line_actionable(section, self.section_line_index)
+        target = _selected_actionable(
+            _section_line_actionables(section, self.section_line_index),
+            self.section_action_index,
+        )
         if target is None:
             self.status = f"line {self.section_line_index + 1} has nothing to open"
             return
@@ -1386,7 +1502,10 @@ class _RuntimeSession:
         modal = self._active_modal(plan)
         if modal is None:
             return
-        target = _modal_line_actionable(modal, self.modal_line_index)
+        target = _selected_actionable(
+            _modal_line_actionables(modal, self.modal_line_index),
+            self.modal_action_index,
+        )
         if target is None:
             self.status = f"line {self.modal_line_index + 1} has nothing to open"
             return
@@ -1486,8 +1605,10 @@ class _RuntimeSession:
             self.mode = "modal" if self.active_modal_id is not None else "section"
             if self.active_modal_id is not None:
                 self.modal_line_index += 1
+                self.modal_action_index = 0
             else:
                 self.section_line_index += 1
+                self.section_action_index = 0
             self.status = ""
             return
         if key == CTRL_W:
@@ -1695,22 +1816,36 @@ def _section_content_line_count(section: SectionTarget) -> int:
     return max(len(section.block.lines) - 2, 1)
 
 
+def _section_line_actionables(section: SectionTarget, line_index: int) -> list[ActionableTarget]:
+    return sorted(
+        [item for item in section.block.actionables if item.y - 1 == line_index],
+        key=lambda item: item.x,
+    )
+
+
 def _section_line_actionable(section: SectionTarget, line_index: int) -> ActionableTarget | None:
-    matching = [item for item in section.block.actionables if item.y - 1 == line_index]
+    matching = _section_line_actionables(section, line_index)
     if not matching:
         return None
-    return min(matching, key=lambda item: item.x)
+    return matching[0]
 
 
 def _modal_content_line_count(modal: ModalTarget) -> int:
     return max(len(modal.block.lines) - 2, 1)
 
 
+def _modal_line_actionables(modal: ModalTarget, line_index: int) -> list[ActionableTarget]:
+    return sorted(
+        [item for item in modal.actionables if item.y - 1 == line_index],
+        key=lambda item: item.x,
+    )
+
+
 def _modal_line_actionable(modal: ModalTarget, line_index: int) -> ActionableTarget | None:
-    matching = [item for item in modal.actionables if item.y - 1 == line_index]
+    matching = _modal_line_actionables(modal, line_index)
     if not matching:
         return None
-    return min(matching, key=lambda item: item.x)
+    return matching[0]
 
 
 def _normalize_sections(children: list[Component]) -> list[Section]:
@@ -1772,6 +1907,14 @@ def _build_block(
         )
     if isinstance(component, Row):
         return _build_row(
+            component,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+        )
+    if isinstance(component, ButtonRow):
+        return _build_button_row(
             component,
             animation_time=animation_time,
             max_width=max_width,
@@ -1932,6 +2075,7 @@ def _build_bordered_section_block(
                 width=item.width,
                 label_text=item.label_text,
                 actionable=item.actionable,
+                action_group=item.action_group,
             )
         )
 
@@ -2162,6 +2306,60 @@ def _build_row(
     )
 
 
+def _build_button_row(
+    row: ButtonRow,
+    *,
+    animation_time: float,
+    max_width: int,
+    render_state: RenderState,
+    form_key: str | None = None,
+) -> Block:
+    child_blocks = [
+        _build_block(
+            child,
+            animation_time=animation_time,
+            max_width=max_width,
+            render_state=render_state,
+            form_key=form_key,
+        )
+        for child in row.children
+    ]
+    width = 0
+    lines = [[]]
+    actionables: list[ActionableTarget] = []
+    cursor_x = 0
+    animation_interval_ms: int | None = None
+
+    for index, block in enumerate(child_blocks):
+        if block.height != 1 or len(block.actionables) != 1:
+            raise TypeError("<ButtonRow> only supports single-line actionable children")
+        _merge_block(lines, actionables, block, x=cursor_x, y=0)
+        cursor_x += block.width
+        width = max(width, cursor_x)
+        animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
+        if index != len(child_blocks) - 1:
+            cursor_x += row.gap
+            width = max(width, cursor_x)
+
+    return Block(
+        width=width,
+        height=1,
+        lines=lines,
+        actionables=[
+            ActionableTarget(
+                x=item.x,
+                y=item.y,
+                width=item.width,
+                label_text=item.label_text,
+                actionable=item.actionable,
+                action_group="button_row",
+            )
+            for item in actionables
+        ],
+        animation_interval_ms=animation_interval_ms,
+    )
+
+
 def _leaf_block(text: str, *, style: str) -> Block:
     return Block(width=len(text), height=1, lines=[[Segment(x=0, text=text, style=style)]])
 
@@ -2310,8 +2508,41 @@ def _merge_block(
                 width=item.width,
                 label_text=item.label_text,
                 actionable=item.actionable,
+                action_group=item.action_group,
             )
         )
+
+
+def _selected_actionable(actionables: list[ActionableTarget], selected_index: int) -> ActionableTarget | None:
+    if not actionables:
+        return None
+    return actionables[min(max(selected_index, 0), len(actionables) - 1)]
+
+
+def _draw_active_actionable(
+    stdscr: curses.window,
+    *,
+    line_actionables: list[ActionableTarget],
+    selected_index: int,
+    origin_x: int,
+    screen_y: int,
+    max_width: int,
+    styles: dict[str, int],
+) -> None:
+    selected = _selected_actionable(line_actionables, selected_index)
+    if selected is None or isinstance(selected.actionable, InputControl):
+        return
+    available = max(max_width - selected.x, 0)
+    if available == 0:
+        return
+    _safe_addnstr(
+        stdscr,
+        screen_y,
+        origin_x + selected.x,
+        selected.label_text,
+        available,
+        styles["action_active"],
+    )
 
 
 def _safe_addnstr(
@@ -2364,6 +2595,7 @@ def _styles() -> dict[str, int]:
         "action_active": curses.A_REVERSE,
         "cursor": curses.A_REVERSE | curses.A_BOLD,
         "selection_marker": curses.A_BOLD,
+        "selection_marker_active": curses.A_REVERSE | curses.A_BOLD,
         "help": curses.A_DIM,
         "status": curses.A_DIM,
     }

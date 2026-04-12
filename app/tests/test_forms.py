@@ -25,11 +25,13 @@ class FormFlowTests(unittest.TestCase):
 
                       <Section title="Account">
                         <Text><?= status ?></Text>
+                      </Section>
+                      <Modal id="auth-access" title="Sign In">
                         <Form action="/auth/login" submit-button-text="Sign in">
                           <Input name="email" type="text" label="Email" required="mandatory" value="<?= email ?>" />
                           <Input name="password" type="password" label="Password" required="mandatory" />
                         </Form>
-                      </Section>
+                      </Modal>
                     </Screen>
                     """
                 ).strip()
@@ -95,8 +97,8 @@ class FormFlowTests(unittest.TestCase):
 
             rerendered = app.build_screen()
             section = rerendered.children[0]
-            form = section.children[1]
             self.assertEqual(section.children[0].content, "Invalid credentials.")
+            form = rerendered.children[1].children[0]
             self.assertEqual(form.children[0].value, "demo@erza.dev")
 
             success = app.submit_form(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import curses
 import unittest
 from unittest.mock import patch
 
@@ -9,7 +10,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, Button, Form, Input, Link, Modal, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -177,6 +178,32 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(any("[ Dispatch ]" in line for line in flattened_lines))
         self.assertEqual(len(plan.sections[0].actionables), 1)
         self.assertEqual(plan.sections[0].actionables[0].label_text, "[ Signal ]")
+
+    def test_button_row_renders_multiple_actionables_on_one_line(self) -> None:
+        plan = build_render_plan(
+            Screen(
+                title="Profile",
+                children=[
+                    Section(
+                        title="Actions",
+                        children=[
+                            ButtonRow(
+                                children=[
+                                    Button(label="New post", action="posts.open"),
+                                    Button(label="Edit description", action="profile.edit"),
+                                ]
+                            )
+                        ],
+                    )
+                ],
+            )
+        )
+
+        line_index = plan.sections[0].block.actionables[0].y - 1
+        actionables = [item for item in plan.sections[0].block.actionables if item.y - 1 == line_index]
+
+        self.assertEqual(len(actionables), 2)
+        self.assertTrue(all(item.action_group == "button_row" for item in actionables))
 
     def test_jump_to_section_boundaries_updates_active_section(self) -> None:
         screen = Screen(
@@ -898,6 +925,37 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(session.mode, "modal")
         self.assertEqual(session.modal_messages["auth-access"], "Invalid password.")
 
+    def test_button_row_supports_horizontal_navigation_and_activation(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Section(
+                    title="Actions",
+                    children=[
+                        ButtonRow(
+                            children=[
+                                Button(label="New post", action="posts.open"),
+                                Button(label="Edit description", action="profile.edit"),
+                            ]
+                        )
+                    ],
+                )
+            ],
+        )
+        app = _ActionApp(screen)
+        session = _RuntimeSession(app)
+        plan = build_render_plan(screen)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+
+        self.assertEqual(session.section_action_index, 0)
+
+        session._move_section_action(plan, 1)
+        self.assertEqual(session.section_action_index, 1)
+
+        session._activate(plan)
+        self.assertEqual(app.actions, [("profile.edit", {})])
+
     def test_redirect_submit_defers_tab_reset_until_new_screen_loads(self) -> None:
         initial = Screen(
             title="Auth",
@@ -973,10 +1031,19 @@ class RuntimeTests(unittest.TestCase):
             calls.append((y, x, text, max_length, style))
 
         with patch("erza.runtime._safe_addnstr", side_effect=capture):
-            draw_modal_overlay(_DrawingWindow(), plan.modals["auth-access"], line_index=0, scroll_offset=0)
+            draw_modal_overlay(
+                _DrawingWindow(),
+                plan.modals["auth-access"],
+                line_index=0,
+                action_index=0,
+                scroll_offset=0,
+            )
 
         self.assertTrue(any(text.startswith("+-[ Login / Sign Up ]") for _, _, text, _, _ in calls))
         self.assertTrue(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
+        marker_styles = [style for _, _, text, _, style in calls if text == ">"]
+        self.assertTrue(marker_styles)
+        self.assertTrue(all(style & curses.A_REVERSE for style in marker_styles))
 
 
 class _CountingApp:

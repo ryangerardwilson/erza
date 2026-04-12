@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, Button, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
 
 
 class ParseError(RuntimeError):
@@ -87,18 +87,37 @@ def compile_markup(markup: str) -> Screen:
     return Screen(title=title, children=_convert_children(root, parent_tag="screen"))
 
 
-def _convert_children(element: Element, *, parent_tag: str, inside_form: bool = False) -> list[Component]:
+def _convert_children(
+    element: Element,
+    *,
+    parent_tag: str,
+    inside_form: bool = False,
+    inside_modal: bool = False,
+) -> list[Component]:
     children: list[Component] = []
     for child in element.children:
         if isinstance(child, str):
             if _normalize_text(child):
                 children.append(Text(content=_normalize_text(child)))
             continue
-        children.append(_convert_element(child, parent_tag=parent_tag, inside_form=inside_form))
+        children.append(
+            _convert_element(
+                child,
+                parent_tag=parent_tag,
+                inside_form=inside_form,
+                inside_modal=inside_modal,
+            )
+        )
     return children
 
 
-def _convert_element(element: Element, *, parent_tag: str, inside_form: bool = False) -> Component:
+def _convert_element(
+    element: Element,
+    *,
+    parent_tag: str,
+    inside_form: bool = False,
+    inside_modal: bool = False,
+) -> Component:
     tag = element.tag
     if tag == "section":
         title = element.attrs.get("title", "").strip()
@@ -108,7 +127,12 @@ def _convert_element(element: Element, *, parent_tag: str, inside_form: bool = F
         return Section(
             title=title,
             tone=tone,
-            children=_convert_children(element, parent_tag="section", inside_form=inside_form),
+            children=_convert_children(
+                element,
+                parent_tag="section",
+                inside_form=inside_form,
+                inside_modal=inside_modal,
+            ),
         )
     if tag == "modal":
         if parent_tag != "screen":
@@ -122,21 +146,50 @@ def _convert_element(element: Element, *, parent_tag: str, inside_form: bool = F
         return Modal(
             modal_id=modal_id,
             title=title,
-            children=_convert_children(element, parent_tag="modal", inside_form=inside_form),
+            children=_convert_children(
+                element,
+                parent_tag="modal",
+                inside_form=inside_form,
+                inside_modal=True,
+            ),
         )
     if tag == "column":
         return Column(
-            children=_convert_children(element, parent_tag="column", inside_form=inside_form),
+            children=_convert_children(
+                element,
+                parent_tag="column",
+                inside_form=inside_form,
+                inside_modal=inside_modal,
+            ),
             gap=_parse_gap(element, default=0),
         )
     if tag == "row":
         return Row(
-            children=_convert_children(element, parent_tag="row", inside_form=inside_form),
+            children=_convert_children(
+                element,
+                parent_tag="row",
+                inside_form=inside_form,
+                inside_modal=inside_modal,
+            ),
             gap=_parse_gap(element, default=1),
         )
+    if tag == "buttonrow":
+        children = _convert_children(
+            element,
+            parent_tag="buttonrow",
+            inside_form=inside_form,
+            inside_modal=inside_modal,
+        )
+        if not children:
+            raise ParseError("<ButtonRow> requires at least one child")
+        if any(not isinstance(child, (Button, Link)) for child in children):
+            raise ParseError("<ButtonRow> only supports <Action>, <Button>, or <Link> children")
+        return ButtonRow(children=children, gap=_parse_gap(element, default=2))
     if tag == "form":
         if inside_form:
             raise ParseError("<Form> cannot be nested inside another <Form> in v1")
+        if not inside_modal:
+            raise ParseError("<Form> may only appear inside <Modal>")
         action = element.attrs.get("action", "").strip()
         if not action:
             raise ParseError("<Form> requires an action")
@@ -148,7 +201,12 @@ def _convert_element(element: Element, *, parent_tag: str, inside_form: bool = F
             action=action,
             method=method,
             submit_button_text=submit_button_text,
-            children=_convert_children(element, parent_tag="form", inside_form=True),
+            children=_convert_children(
+                element,
+                parent_tag="form",
+                inside_form=True,
+                inside_modal=inside_modal,
+            ),
         )
     if tag == "input":
         if not inside_form:

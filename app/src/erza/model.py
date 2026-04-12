@@ -56,6 +56,12 @@ class Row:
 
 
 @dataclass(slots=True)
+class ButtonRow:
+    children: list[Button | Link]
+    gap: int = 2
+
+
+@dataclass(slots=True)
 class Form:
     action: str
     children: list["Component"]
@@ -83,4 +89,4 @@ class Screen:
     children: list["Component"]
 
 
-Component = Text | Header | Link | Input | Button | AsciiAnimation | Column | Row | Form | Section | Modal
+Component = Text | Header | Link | Input | Button | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal

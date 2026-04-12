@@ -6,7 +6,7 @@ from _test_bootstrap import ensure_test_paths
 
 ensure_test_paths()
 
-from erza.model import AsciiAnimation, Button, Form, Input, Link, Modal, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Text
 from erza.parser import ParseError, compile_markup
 
 
@@ -77,12 +77,12 @@ oo
     def test_compiles_form_and_self_closing_inputs(self) -> None:
         markup = """
 <Screen title="Sign In">
-  <Section title="Account">
+  <Modal id="auth-access" title="Sign In">
     <Form action="/auth/login" submit-button-text="Sign in">
       <Input name="email" type="text" label="Email" required="mandatory" />
       <Input name="password" type="password" />
     </Form>
-  </Section>
+  </Modal>
 </Screen>
 """
 
@@ -99,6 +99,26 @@ oo
         self.assertTrue(form.children[0].required)
         self.assertIsInstance(form.children[1], Input)
         self.assertEqual(form.children[1].type, "password")
+
+    def test_compiles_button_row(self) -> None:
+        markup = """
+<Screen title="Feed">
+  <Section title="Actions">
+    <ButtonRow>
+      <Action on:press="posts.open">New post</Action>
+      <Action on:press="profile.edit">Edit description</Action>
+    </ButtonRow>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        row = screen.children[0].children[0]
+        self.assertIsInstance(row, ButtonRow)
+        self.assertEqual(len(row.children), 2)
+        self.assertIsInstance(row.children[0], Button)
+        self.assertEqual(row.children[0].action, "posts.open")
 
     def test_compiles_nested_sections_for_embedded_panels(self) -> None:
         markup = """
@@ -160,9 +180,23 @@ oo
     def test_placeholder_attribute_is_rejected(self) -> None:
         markup = """
 <Screen title="Sign In">
-  <Section title="Account">
+  <Modal id="auth-access" title="Sign In">
     <Form action="/auth/login">
       <Input name="email" placeholder="Email" />
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
+
+    def test_form_outside_modal_is_rejected(self) -> None:
+        markup = """
+<Screen title="Sign In">
+  <Section title="Account">
+    <Form action="/auth/login">
+      <Input name="email" />
     </Form>
   </Section>
 </Screen>
@@ -186,11 +220,11 @@ oo
     def test_form_only_supports_post_method(self) -> None:
         markup = """
 <Screen title="Search">
-  <Section title="Search">
+  <Modal id="search" title="Search">
     <Form action="/search" method="get">
       <Input name="q" />
     </Form>
-  </Section>
+  </Modal>
 </Screen>
 """
 
