@@ -37,8 +37,12 @@ LOADING_MODAL_MAX_WIDTH = 28
 INTERACTIVE_MODAL_INNER_WIDTH = 51
 LOADING_FRAME_INTERVAL_MS = 90
 LOADING_DISPLAY_DELAY_SECONDS = 0.12
-LOADING_SWEEP_MIN_WIDTH = 12
-LOADING_SWEEP_MAX_WIDTH = 16
+LOADING_MATRIX_ROWS = 4
+LOADING_MATRIX_MIN_WIDTH = 14
+LOADING_MATRIX_MAX_WIDTH = 18
+LOADING_MATRIX_HEADS = "01+x"
+LOADING_MATRIX_TRAILS = ":."
+LOADING_MATRIX_NOISE = ".'"
 HELP_SHORTCUTS = [
     ("Header h / k / arrows", "Move across the header strip with hjkl or the arrow keys."),
     ("Enter", "Focus the current section body."),
@@ -564,7 +568,7 @@ def draw_loading_overlay(
     del message
 
     max_inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 16))
-    inner_width = min(max_inner_width, LOADING_SWEEP_MAX_WIDTH + 4)
+    inner_width = min(max_inner_width, LOADING_MATRIX_MAX_WIDTH)
     width = inner_width + 4
     top_border = "+" + "-" * max(width - 2, 0) + "+"
     bottom_border = "+" + "-" * (width - 2) + "+"
@@ -599,31 +603,45 @@ def draw_loading_overlay(
 
 
 def _loading_overlay_lines(frame_index: int, inner_width: int) -> list[str]:
-    sweep_width = max(min(inner_width - 2, LOADING_SWEEP_MAX_WIDTH), LOADING_SWEEP_MIN_WIDTH)
-    positions = list(range(3, sweep_width - 1)) + list(range(sweep_width - 2, 2, -1))
-    head = positions[frame_index % len(positions)]
-
-    top = [" "] * sweep_width
-    middle = [" "] * sweep_width
-    bottom = [" "] * sweep_width
-
-    for offset, char in [(-2, "="), (-1, "="), (0, ">")]:
-        position = head + offset
-        if 0 <= position < sweep_width:
-            middle[position] = char
-
-    for position in [head - 4, head + 1]:
-        if 0 <= position < sweep_width:
-            top[position] = "."
-    for position in [head - 5, head - 2]:
-        if 0 <= position < sweep_width:
-            bottom[position] = "."
-
-    return [
-        "".join(top).rstrip() or ".",
-        "[" + "".join(middle) + "]",
-        "".join(bottom).rstrip() or ".",
+    matrix_width = max(min(inner_width, LOADING_MATRIX_MAX_WIDTH), LOADING_MATRIX_MIN_WIDTH)
+    rows = [[" "] * matrix_width for _ in range(LOADING_MATRIX_ROWS)]
+    column_count = 4 if matrix_width < 18 else 5
+    positions = [
+        max(
+            1,
+            min(
+                matrix_width - 2,
+                round((matrix_width - 1) * (index + 1) / (column_count + 1)),
+            ),
+        )
+        for index in range(column_count)
     ]
+
+    for column_index, position in enumerate(positions):
+        cycle = LOADING_MATRIX_ROWS + 4 + (column_index % 2)
+        head_row = ((frame_index + column_index * 2) % cycle) - 2
+        head_char = LOADING_MATRIX_HEADS[(frame_index + column_index * 3) % len(LOADING_MATRIX_HEADS)]
+
+        if 0 <= head_row < LOADING_MATRIX_ROWS:
+            rows[head_row][position] = head_char
+
+        for trail_index, trail_char in enumerate(LOADING_MATRIX_TRAILS, start=1):
+            trail_row = head_row - trail_index
+            if 0 <= trail_row < LOADING_MATRIX_ROWS and rows[trail_row][position] == " ":
+                rows[trail_row][position] = trail_char
+
+    for noise_index in range(2):
+        x = (frame_index * (3 + noise_index) + noise_index * 5) % matrix_width
+        y = ((frame_index // 2) + noise_index * 2) % LOADING_MATRIX_ROWS
+        if rows[y][x] == " ":
+            rows[y][x] = LOADING_MATRIX_NOISE[(frame_index + noise_index) % len(LOADING_MATRIX_NOISE)]
+
+    for row_index, row in enumerate(rows):
+        if all(char == " " for char in row):
+            x = (frame_index * 2 + row_index * 3) % matrix_width
+            row[x] = LOADING_MATRIX_TRAILS[row_index % len(LOADING_MATRIX_TRAILS)]
+
+    return ["".join(row) for row in rows]
 
 
 def draw_modal_overlay(

@@ -1186,8 +1186,8 @@ class RuntimeTests(unittest.TestCase):
         with patch("erza.runtime._safe_addnstr", side_effect=capture):
             draw_loading_overlay(_DrawingWindow(), message="Loading app", frame_index=0)
 
-        self.assertTrue(any(text.startswith("[ ==>") for _, _, text, _, _ in calls))
-        self.assertTrue(any("." in text for _, _, text, _, _ in calls))
+        self.assertTrue(any(any(glyph in text for glyph in "01+x") for _, _, text, _, _ in calls))
+        self.assertTrue(any(any(glyph in text for glyph in ":.'") for _, _, text, _, _ in calls))
         self.assertTrue(any(text.startswith("+---") for _, _, text, _, _ in calls))
         self.assertFalse(any(text == "Loading app" for _, _, text, _, _ in calls))
         self.assertFalse(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
