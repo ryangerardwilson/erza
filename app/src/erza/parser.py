@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SubmitButton, Text
 
 
 class ParseError(RuntimeError):
@@ -84,7 +84,20 @@ def compile_markup(markup: str) -> Screen:
     if root.tag != "screen":
         raise ParseError("the root .erza component must be <Screen>")
     title = root.attrs.get("title", "erza")
-    return Screen(title=title, children=_convert_children(root, parent_tag="screen"))
+    children: list[Component] = []
+    splash: Splash | None = None
+    for child in root.children:
+        if isinstance(child, str):
+            if child.strip():
+                raise ParseError("text directly inside <Screen> is not allowed")
+            continue
+        if child.tag == "splash":
+            if splash is not None:
+                raise ParseError("<Screen> may only declare one <Splash>")
+            splash = _convert_splash(child)
+            continue
+        children.append(_convert_element(child, parent_tag="screen"))
+    return Screen(title=title, children=children, splash=splash)
 
 
 def _convert_children(
@@ -273,6 +286,16 @@ def _convert_element(
         }
         return Button(label=_collect_text(element), action=action, params=params)
     raise ParseError(f"unsupported component tag in v0: <{element.tag}>")
+
+
+def _convert_splash(element: Element) -> Splash:
+    children = _convert_children(element, parent_tag="splash")
+    if not children:
+        raise ParseError("<Splash> requires at least one child")
+    return Splash(
+        duration_ms=_parse_positive_int(element, "duration-ms", default=1500),
+        children=children,
+    )
 
 
 def _collect_text(element: Element) -> str:

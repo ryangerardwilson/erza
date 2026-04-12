@@ -14,7 +14,7 @@ import time
 
 from erza.backend import BackendBridge, bind_request_context
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SubmitButton, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -455,6 +455,53 @@ def draw_plan(
         )
 
     stdscr.refresh()
+
+
+def draw_splash_screen(
+    stdscr: curses.window,
+    splash: Splash,
+    *,
+    animation_time: float,
+    footer: str = "",
+) -> int | None:
+    stdscr.erase()
+    height, terminal_width = stdscr.getmaxyx()
+    visible_height = _viewport_height(height)
+    display_width = _display_width(terminal_width)
+    origin_x = _display_origin_x(terminal_width)
+    styles = _styles()
+    render_state = RenderState(form_values={})
+    block = _build_column_like(
+        splash.children,
+        gap=1,
+        animation_time=animation_time,
+        max_width=display_width,
+        render_state=render_state,
+    )
+    block_x = origin_x + max((display_width - block.width) // 2, 0)
+    block_y = max((visible_height - block.height) // 2, 0)
+
+    for line_index, segments in enumerate(block.lines):
+        screen_y = block_y + line_index
+        if screen_y >= visible_height:
+            break
+        for segment in segments:
+            available = max((origin_x + display_width) - (block_x + segment.x), 0)
+            if available <= 0:
+                continue
+            _safe_addnstr(
+                stdscr,
+                screen_y,
+                block_x + segment.x,
+                segment.text,
+                available,
+                _segment_style(styles, segment.style),
+            )
+
+    if footer and height > 0:
+        _safe_addnstr(stdscr, height - 1, origin_x, footer, display_width, styles["status"])
+    stdscr.refresh()
+    return block.animation_interval_ms
 
 
 def draw_section_page(
@@ -929,6 +976,9 @@ class _RuntimeSession:
         self.edit_state: EditState | None = None
         self.pending_g = False
         self.animation_epoch = time.monotonic()
+        self._seen_splash_locations: set[str] = set()
+        self._active_splash_location: str | None = None
+        self._active_splash_started_at: float | None = None
         self.status = ""
 
     def run(self, stdscr: curses.window) -> None:
@@ -948,6 +998,7 @@ class _RuntimeSession:
 
         while True:
             screen = self._current_screen(stdscr)
+            splash = self._active_splash(screen)
             animation_time = time.monotonic() - self.animation_epoch
             plan = build_render_plan(
                 screen,
@@ -958,11 +1009,28 @@ class _RuntimeSession:
             )
             self._sync_state(plan)
             self._last_plan = plan
-            self._draw_active_view(stdscr, plan, self._footer_text())
-
-            stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
+            footer = self._footer_text()
+            if splash is not None:
+                splash_interval_ms = draw_splash_screen(
+                    stdscr,
+                    splash,
+                    animation_time=animation_time,
+                    footer=footer,
+                )
+                remaining_ms = self._active_splash_remaining_ms(screen)
+                timeout_options = [remaining_ms]
+                if splash_interval_ms is not None:
+                    timeout_options.append(splash_interval_ms)
+                stdscr.timeout(max(min(timeout_options), 1))
+            else:
+                self._draw_active_view(stdscr, plan, footer)
+                stdscr.timeout(plan.animation_interval_ms if plan.animation_interval_ms is not None else -1)
             key = stdscr.getch()
             if key == -1:
+                continue
+            if splash is not None:
+                if key == ord("q"):
+                    return
                 continue
             if self.mode == "edit":
                 self.pending_g = False
@@ -1533,6 +1601,34 @@ class _RuntimeSession:
 
     def _footer_text(self) -> str:
         return _app_location(self.app)
+
+    def _active_splash(self, screen: Screen) -> Splash | None:
+        splash = screen.splash
+        location = _app_location(self.app)
+        if splash is None:
+            if self._active_splash_location == location:
+                self._active_splash_location = None
+                self._active_splash_started_at = None
+            return None
+        if location in self._seen_splash_locations:
+            return None
+        if self._active_splash_location != location or self._active_splash_started_at is None:
+            self._active_splash_location = location
+            self._active_splash_started_at = time.monotonic()
+            return splash
+        if self._active_splash_remaining_ms(screen) <= 0:
+            self._seen_splash_locations.add(location)
+            self._active_splash_location = None
+            self._active_splash_started_at = None
+            return None
+        return splash
+
+    def _active_splash_remaining_ms(self, screen: Screen) -> int:
+        splash = screen.splash
+        if splash is None or self._active_splash_started_at is None:
+            return 0
+        elapsed_ms = int((time.monotonic() - self._active_splash_started_at) * 1000)
+        return max(splash.duration_ms - elapsed_ms, 0)
 
     def _active_modal(self, plan: RenderPlan) -> ModalTarget | None:
         if self.active_modal_id is None:

@@ -6,7 +6,7 @@ from _test_bootstrap import ensure_test_paths
 
 ensure_test_paths()
 
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Splash, SubmitButton, Text
 from erza.parser import ParseError, compile_markup
 
 
@@ -64,6 +64,24 @@ class ParserTests(unittest.TestCase):
         self.assertIsInstance(section, Section)
         self.assertEqual(section.tab_order, 1)
         self.assertTrue(section.default_tab)
+
+    def test_compiles_screen_splash(self) -> None:
+        markup = """
+<Screen title="App">
+  <Splash duration-ms="1200">
+    <AsciiArt>APP</AsciiArt>
+  </Splash>
+  <Section title="Feed">
+    <Text>Ready</Text>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        self.assertIsInstance(screen.splash, Splash)
+        self.assertEqual(screen.splash.duration_ms, 1200)
+        self.assertIsInstance(screen.splash.children[0], AsciiArt)
 
     def test_compiles_ascii_animation_frames(self) -> None:
         markup = """

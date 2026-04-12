@@ -22,8 +22,7 @@ class SupabaseError(RuntimeError):
 PROFILE_STATE_PREFIX = "koinonia-profile-v1:"
 MAX_PROFILE_DESCRIPTION_LENGTH = 160
 MAX_PROFILE_PICTURE_LINES = 12
-MAX_PROFILE_PICTURE_WIDTH = 28
-MAX_PROFILE_PICTURE_CHARS = 512
+MAX_PROFILE_PICTURE_WIDTH = 72
 DEFAULT_PROFILE_PICTURE = "\n".join(
     [
         "  .--.",
@@ -192,8 +191,6 @@ def _normalize_profile_picture(raw_picture: str) -> str:
     normalized = str(raw_picture or "").replace("\r\n", "\n").replace("\r", "\n").expandtabs(4).strip("\n")
     if not normalized.strip():
         return DEFAULT_PROFILE_PICTURE
-    if len(normalized) > MAX_PROFILE_PICTURE_CHARS:
-        raise ValueError(f"Profile picture must stay within {MAX_PROFILE_PICTURE_CHARS} characters.")
 
     lines = normalized.split("\n")
     if len(lines) > MAX_PROFILE_PICTURE_LINES:

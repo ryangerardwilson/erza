@@ -63,6 +63,10 @@ class KoinoniaBackendTests(unittest.TestCase):
         self.assertEqual(decoded["picture"], " /\\\\\n<__>")
         self.assertEqual(status_messages, ["Updated @ryan's profile."])
 
+    def test_profile_picture_rejects_lines_wider_than_72_columns(self) -> None:
+        with self.assertRaises(ValueError):
+            koinonia_backend._normalize_profile_picture("x" * 73)
+
 
 if __name__ == "__main__":
     unittest.main()

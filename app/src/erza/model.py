@@ -98,9 +98,16 @@ class Modal:
 
 
 @dataclass(slots=True)
+class Splash:
+    duration_ms: int
+    children: list["Component"]
+
+
+@dataclass(slots=True)
 class Screen:
     title: str
     children: list["Component"]
+    splash: Splash | None = None
 
 
 Component = Text | Header | AsciiArt | Link | Input | Button | SubmitButton | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal

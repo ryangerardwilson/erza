@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import curses
+import time
 import unittest
 from unittest.mock import patch
 
@@ -10,7 +11,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Splash, SubmitButton, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -578,6 +579,20 @@ class RuntimeTests(unittest.TestCase):
         self.assertIs(first, second)
         self.assertIs(second, third)
         self.assertEqual(app.build_calls, 1)
+
+    def test_runtime_session_only_shows_splash_once_per_app_location(self) -> None:
+        screen = Screen(
+            title="Splash",
+            children=[Section(title="Feed", children=[Text("Ready")])],
+            splash=Splash(duration_ms=100, children=[AsciiArt("APP")]),
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+
+        self.assertIs(session._active_splash(screen), screen.splash)
+        session._active_splash_started_at = time.monotonic() - 0.2
+        self.assertIsNone(session._active_splash(screen))
+        self.assertIn("<screen>", session._seen_splash_locations)
+        self.assertIsNone(session._active_splash(screen))
 
     def test_build_render_plan_collects_form_input_and_submit_targets(self) -> None:
         screen = Screen(
