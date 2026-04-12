@@ -1147,7 +1147,7 @@ class _RuntimeSession:
             frame_index = 0
             self._draw_loading_frame(stdscr, message=message, frame_index=frame_index, plan=plan)
             while not finished.wait(LOADING_FRAME_INTERVAL_MS / 1000):
-                frame_index = (frame_index + 1) % len(LOADING_FRAMES)
+                frame_index += 1
                 self._draw_loading_frame(stdscr, message=message, frame_index=frame_index, plan=plan)
 
         thread.join()
