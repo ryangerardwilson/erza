@@ -55,6 +55,25 @@ class TemplateRenderTests(unittest.TestCase):
         self.assertIn("<Text>Empty</Text>", rendered)
         self.assertNotIn("Has tasks", rendered)
 
+    def test_bool_ops_return_operand_values(self) -> None:
+        source = """
+<Screen title="Profile">
+  <? description = "" ?>
+  <? fallback = "No description set yet." ?>
+  <Column>
+    <Text><?= description or fallback ?></Text>
+    <? description = "Builder" ?>
+    <Text><?= description or fallback ?></Text>
+  </Column>
+</Screen>
+"""
+
+        rendered = render_template(source)
+
+        self.assertIn("<Text>No description set yet.</Text>", rendered)
+        self.assertIn("<Text>Builder</Text>", rendered)
+        self.assertNotIn("<Text>True</Text>", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -294,11 +294,20 @@ class _ExpressionEvaluator(ast.NodeVisitor):
         return self.generic_visit(node)
 
     def visit_BoolOp(self, node: ast.BoolOp) -> Any:
-        values = [self.visit(value) for value in node.values]
         if isinstance(node.op, ast.And):
-            return all(values)
+            result = self.visit(node.values[0])
+            for value in node.values[1:]:
+                if not result:
+                    return result
+                result = self.visit(value)
+            return result
         if isinstance(node.op, ast.Or):
-            return any(values)
+            result = self.visit(node.values[0])
+            for value in node.values[1:]:
+                if result:
+                    return result
+                result = self.visit(value)
+            return result
         return self.generic_visit(node)
 
     def visit_Compare(self, node: ast.Compare) -> Any:
