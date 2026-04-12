@@ -26,6 +26,7 @@ from erza.runtime import (
     _RuntimeSession,
     _decode_edit_key,
     _display_origin_x,
+    _draw_header_cell,
     _header_grid_layout,
     _help_modal_lines,
     align_section_top_offset,
@@ -400,6 +401,63 @@ class RuntimeTests(unittest.TestCase):
 
         session._jump_to_last_section(plan)
         self.assertEqual(session.section_index, len(plan.sections) - 1)
+
+    def test_build_render_plan_orders_sections_and_tracks_default_tab(self) -> None:
+        screen = Screen(
+            title="App",
+            children=[
+                Section(title="Feed", children=[Text("Feed")], tab_order=1, default_tab=True),
+                Section(title="Profile", children=[Text("Profile")], tab_order=0),
+                Section(title="Logout", children=[Text("Logout")], tab_order=2),
+            ],
+        )
+
+        plan = build_render_plan(screen)
+
+        self.assertEqual([section.title for section in plan.sections], ["Profile", "Feed", "Logout"])
+        self.assertEqual(plan.default_section_index, 1)
+
+    def test_initial_screen_load_uses_default_tab(self) -> None:
+        screen = Screen(
+            title="App",
+            children=[
+                Section(title="Feed", children=[Text("Feed")], tab_order=1, default_tab=True),
+                Section(title="Profile", children=[Text("Profile")], tab_order=0),
+                Section(title="Logout", children=[Text("Logout")], tab_order=2),
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+
+        session._current_screen()
+        plan = build_render_plan(screen)
+        session._sync_state(plan)
+
+        self.assertEqual([section.title for section in plan.sections], ["Profile", "Feed", "Logout"])
+        self.assertEqual(session.section_index, 1)
+
+    def test_header_cell_centers_short_titles_across_full_box_width(self) -> None:
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            _draw_header_cell(
+                _DrawingWindow(),
+                x=0,
+                y=0,
+                title="Feed",
+                inner_width=7,
+                active=False,
+                styles={
+                    "section_border": 0,
+                    "section_fill": 0,
+                    "section_title": 0,
+                    "section_title_active": 0,
+                },
+            )
+
+        self.assertIn((1, 1, "   Feed  ", 9, 0), calls)
 
     def test_header_grid_navigation_moves_across_rows_and_columns(self) -> None:
         screen = Screen(
@@ -1341,8 +1399,8 @@ class RuntimeTests(unittest.TestCase):
         target = Screen(
             title="App",
             children=[
-                Section(title="Feed", children=[Text("Feed")]),
-                Section(title="Profile", children=[Text("Profile")]),
+                Section(title="Feed", children=[Text("Feed")], tab_order=1, default_tab=True),
+                Section(title="Profile", children=[Text("Profile")], tab_order=0),
             ],
         )
         app = _RedirectingSubmittingApp(initial, target, SubmitResult(type="redirect", href="index.erza"))
@@ -1361,7 +1419,7 @@ class RuntimeTests(unittest.TestCase):
         next_screen = session._current_screen()
 
         self.assertEqual(next_screen.title, "App")
-        self.assertEqual(session.section_index, 0)
+        self.assertEqual(session.section_index, 1)
 
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)

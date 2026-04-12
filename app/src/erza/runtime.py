@@ -116,6 +116,7 @@ class RenderPlan:
     title: str
     lines: list[list[Segment]]
     sections: list[SectionTarget]
+    default_section_index: int = 0
     modals: dict[str, ModalTarget] = field(default_factory=dict)
     form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
     form_requirements: dict[str, dict[str, str]] = field(default_factory=dict)
@@ -256,6 +257,7 @@ def build_render_plan(
     modal_messages: dict[str, str] | None = None,
 ) -> RenderPlan:
     sections = _normalize_sections(screen.children)
+    default_section_index = _default_section_index(sections)
     modals = _collect_modals(screen.children)
     render_state = RenderState(form_values=form_values or {}, edit_state=edit_state)
     lines = [
@@ -340,6 +342,7 @@ def build_render_plan(
         title=screen.title,
         lines=lines,
         sections=section_targets,
+        default_section_index=default_section_index,
         modals=modal_targets,
         form_defaults=render_state.form_defaults,
         form_requirements=render_state.form_requirements,
@@ -788,17 +791,18 @@ def _draw_header_cell(
     active: bool,
     styles: dict[str, int],
 ) -> None:
-    title_text = _truncate_text(title, inner_width).center(inner_width)
+    content_width = inner_width + 2
+    title_text = _truncate_text(title, content_width).center(content_width)
     border = "+" + "-" * (inner_width + 2) + "+"
     border_style = styles["section_border"]
     fill_style = styles["section_fill"] | curses.A_REVERSE if active else styles["section_fill"]
     title_style = styles["section_title_active"] if active else styles["section_title"]
 
     _safe_addnstr(stdscr, y, x, border, len(border), border_style)
-    _safe_addnstr(stdscr, y + 1, x, "| ", 2, border_style)
-    _safe_addnstr(stdscr, y + 1, x + 2, " " * inner_width, inner_width, fill_style)
-    _safe_addnstr(stdscr, y + 1, x + 2, title_text, len(title_text), title_style)
-    _safe_addnstr(stdscr, y + 1, x + 2 + len(title_text), " |", 2, border_style)
+    _safe_addnstr(stdscr, y + 1, x, "|", 1, border_style)
+    _safe_addnstr(stdscr, y + 1, x + 1, " " * content_width, content_width, fill_style)
+    _safe_addnstr(stdscr, y + 1, x + 1, title_text, len(title_text), title_style)
+    _safe_addnstr(stdscr, y + 1, x + 1 + content_width, "|", 1, border_style)
     _safe_addnstr(stdscr, y + 2, x, border, len(border), border_style)
 
 
@@ -902,7 +906,7 @@ class _RuntimeSession:
         self.history: list[ErzaApp | RemoteApp | StaticScreenApp] = []
         self._screen: Screen | None = None
         self._last_plan: RenderPlan | None = None
-        self._pending_section_index: int | None = None
+        self._pending_section_index: int | None = -1
         self.active_modal_id: str | None = None
         self.modal_base_mode = "page"
         self.modal_line_index = 0
@@ -1120,16 +1124,19 @@ class _RuntimeSession:
                     message="Loading app",
                     plan=self._last_plan,
                 )
-            self._apply_pending_page_reset()
+            self._apply_pending_page_reset(self._screen)
         return self._screen
 
-    def _schedule_page_reset(self, section_index: int = 0) -> None:
-        self._pending_section_index = max(section_index, 0)
+    def _schedule_page_reset(self, section_index: int | None = None) -> None:
+        self._pending_section_index = -1 if section_index is None else max(section_index, 0)
 
-    def _apply_pending_page_reset(self) -> None:
+    def _apply_pending_page_reset(self, screen: Screen) -> None:
         if self._pending_section_index is None:
             return
-        self.section_index = self._pending_section_index
+        if self._pending_section_index < 0:
+            self.section_index = _default_section_index(_normalize_sections(screen.children))
+        else:
+            self.section_index = self._pending_section_index
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
@@ -1624,7 +1631,7 @@ class _RuntimeSession:
         self._invalidate_screen(reset_animation=True)
         self.mode = "page"
         self.show_help = False
-        self._schedule_page_reset(0)
+        self._schedule_page_reset()
         self.pending_g = False
         self.form_values = {}
         self.edit_state = None
@@ -1858,7 +1865,7 @@ class _RuntimeSession:
                 self.modal_line_index = 0
                 self.modal_scroll_offset = 0
             self.mode = "page"
-            self._schedule_page_reset(0)
+            self._schedule_page_reset()
             self.form_values = {}
             self.status = f"opened {result.href}"
             return
@@ -2046,7 +2053,32 @@ def _normalize_sections(children: list[Component]) -> list[Section]:
 
     if loose:
         sections.append(Section(title="Main", children=loose))
-    return sections
+    return _ordered_sections(sections)
+
+
+def _ordered_sections(sections: list[Section]) -> list[Section]:
+    if not any(section.tab_order is not None for section in sections):
+        return sections
+    return [
+        section
+        for _, section in sorted(
+            enumerate(sections),
+            key=lambda item: (
+                item[1].tab_order is None,
+                item[1].tab_order if item[1].tab_order is not None else 0,
+                item[0],
+            ),
+        )
+    ]
+
+
+def _default_section_index(sections: list[Section]) -> int:
+    if not sections:
+        return 0
+    for index, section in enumerate(sections):
+        if section.default_tab:
+            return index
+    return 0
 
 
 def _collect_modals(children: list[Component]) -> list[Modal]:

@@ -9,7 +9,7 @@
     <? timeline = backend("feed.timeline") ?>
     <? people = backend("people.suggested") ?>
 
-    <Section title="Feed">
+    <Section title="Feed" tab-order="1" default-tab="true">
       <Header>Feed for @<?= auth.handle ?></Header>
       <Text><?= status ?></Text>
       <ButtonRow>
@@ -40,7 +40,7 @@
       <? endfor ?>
     </Section>
 
-    <Section title="Profile">
+    <Section title="Profile" tab-order="0">
       <Header><?= profile.name ?> @<?= profile.handle ?></Header>
       <Text><?= status ?></Text>
       <ButtonRow>
@@ -63,7 +63,7 @@
       <? endif ?>
     </Section>
 
-    <Section title="Logout">
+    <Section title="Logout" tab-order="2">
       <Action on:press="auth.logout">Log out</Action>
     </Section>
 

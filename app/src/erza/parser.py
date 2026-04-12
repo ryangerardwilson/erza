@@ -127,6 +127,8 @@ def _convert_element(
         return Section(
             title=title,
             tone=tone,
+            tab_order=_parse_section_tab_order(element),
+            default_tab=_parse_section_default_tab(element),
             children=_convert_children(
                 element,
                 parent_tag="section",
@@ -328,6 +330,28 @@ def _parse_gap(element: Element, *, default: int) -> int:
     if gap < 0:
         raise ParseError(f"gap cannot be negative on <{element.tag}>")
     return gap
+
+
+def _parse_section_tab_order(element: Element) -> int | None:
+    raw = element.attrs.get("tab-order")
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ParseError('tab-order must be an integer on <Section>') from exc
+
+
+def _parse_section_default_tab(element: Element) -> bool:
+    raw = element.attrs.get("default-tab")
+    if raw is None:
+        return False
+    normalized = raw.strip().lower()
+    if normalized in {"", "true"}:
+        return True
+    if normalized == "false":
+        return False
+    raise ParseError('default-tab must be true or false on <Section>')
 
 
 def _parse_alignment(element: Element, *, default: str) -> str:

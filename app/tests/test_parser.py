@@ -49,6 +49,22 @@ class ParserTests(unittest.TestCase):
         with self.assertRaises(ParseError):
             compile_markup(markup)
 
+    def test_compiles_section_tab_metadata(self) -> None:
+        markup = """
+<Screen title="App">
+  <Section title="Feed" tab-order="1" default-tab="true">
+    <Text>Feed</Text>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        section = screen.children[0]
+        self.assertIsInstance(section, Section)
+        self.assertEqual(section.tab_order, 1)
+        self.assertTrue(section.default_tab)
+
     def test_compiles_ascii_animation_frames(self) -> None:
         markup = """
 <Screen title="Lab">

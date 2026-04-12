@@ -81,6 +81,8 @@ class Section:
     title: str
     children: list["Component"]
     tone: str = "default"
+    tab_order: int | None = None
+    default_tab: bool = False
 
 
 @dataclass(slots=True)
