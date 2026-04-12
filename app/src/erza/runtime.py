@@ -40,9 +40,12 @@ LOADING_DISPLAY_DELAY_SECONDS = 0.12
 LOADING_MATRIX_ROWS = 4
 LOADING_MATRIX_MIN_WIDTH = 14
 LOADING_MATRIX_MAX_WIDTH = 18
+LOADING_MATRIX_MIN_COLUMNS = 5
+LOADING_MATRIX_MAX_COLUMNS = 6
 LOADING_MATRIX_HEADS = "01+x"
-LOADING_MATRIX_TRAILS = ":."
+LOADING_MATRIX_TRAILS = ":.'"
 LOADING_MATRIX_NOISE = ".'"
+LOADING_MATRIX_NOISE_POINTS = 4
 HELP_SHORTCUTS = [
     ("Header h / k / arrows", "Move across the header strip with hjkl or the arrow keys."),
     ("Enter", "Focus the current section body."),
@@ -605,21 +608,21 @@ def draw_loading_overlay(
 def _loading_overlay_lines(frame_index: int, inner_width: int) -> list[str]:
     matrix_width = max(min(inner_width, LOADING_MATRIX_MAX_WIDTH), LOADING_MATRIX_MIN_WIDTH)
     rows = [[" "] * matrix_width for _ in range(LOADING_MATRIX_ROWS)]
-    column_count = 4 if matrix_width < 18 else 5
+    column_count = LOADING_MATRIX_MIN_COLUMNS if matrix_width < 17 else LOADING_MATRIX_MAX_COLUMNS
     positions = [
         max(
             1,
             min(
                 matrix_width - 2,
-                round((matrix_width - 1) * (index + 1) / (column_count + 1)),
+                round((matrix_width - 1) * (index + 1) / (column_count + 1)) + (index % 2),
             ),
         )
         for index in range(column_count)
     ]
 
     for column_index, position in enumerate(positions):
-        cycle = LOADING_MATRIX_ROWS + 4 + (column_index % 2)
-        head_row = ((frame_index + column_index * 2) % cycle) - 2
+        cycle = LOADING_MATRIX_ROWS + 2 + (column_index % 3)
+        head_row = ((frame_index * 2 + column_index * 2) % cycle) - 1
         head_char = LOADING_MATRIX_HEADS[(frame_index + column_index * 3) % len(LOADING_MATRIX_HEADS)]
 
         if 0 <= head_row < LOADING_MATRIX_ROWS:
@@ -630,9 +633,9 @@ def _loading_overlay_lines(frame_index: int, inner_width: int) -> list[str]:
             if 0 <= trail_row < LOADING_MATRIX_ROWS and rows[trail_row][position] == " ":
                 rows[trail_row][position] = trail_char
 
-    for noise_index in range(2):
+    for noise_index in range(LOADING_MATRIX_NOISE_POINTS):
         x = (frame_index * (3 + noise_index) + noise_index * 5) % matrix_width
-        y = ((frame_index // 2) + noise_index * 2) % LOADING_MATRIX_ROWS
+        y = ((frame_index // 2) + noise_index) % LOADING_MATRIX_ROWS
         if rows[y][x] == " ":
             rows[y][x] = LOADING_MATRIX_NOISE[(frame_index + noise_index) % len(LOADING_MATRIX_NOISE)]
 
