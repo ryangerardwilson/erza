@@ -33,28 +33,12 @@ MIN_ANIMATION_INTERVAL_MS = 50
 HELP_MODAL_MAX_WIDTH = 67
 HEADER_CELL_GAP = 2
 HEADER_CELL_ROW_HEIGHT = 3
-LOADING_MODAL_MAX_WIDTH = 34
+LOADING_MODAL_MAX_WIDTH = 28
 INTERACTIVE_MODAL_INNER_WIDTH = 51
 LOADING_FRAME_INTERVAL_MS = 90
 LOADING_DISPLAY_DELAY_SECONDS = 0.12
-LOADING_FRAMES = (
-    "[=      ]",
-    "[==     ]",
-    "[===    ]",
-    "[ ===   ]",
-    "[  ===  ]",
-    "[   === ]",
-    "[    ===]",
-    "[     ==]",
-    "[      =]",
-    "[     ==]",
-    "[    ===]",
-    "[   === ]",
-    "[  ===  ]",
-    "[ ===   ]",
-    "[===    ]",
-    "[==     ]",
-)
+LOADING_SWEEP_MIN_WIDTH = 12
+LOADING_SWEEP_MAX_WIDTH = 16
 HELP_SHORTCUTS = [
     ("Header h / k / arrows", "Move across the header strip with hjkl or the arrow keys."),
     ("Enter", "Focus the current section body."),
@@ -579,14 +563,13 @@ def draw_loading_overlay(
 
     del message
 
-    max_inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 12))
-    frame_text = _truncate_text(LOADING_FRAMES[frame_index % len(LOADING_FRAMES)], max_inner_width)
-    inner_width = min(max_inner_width, max(len(frame_text) + 4, 12))
+    max_inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 16))
+    inner_width = min(max_inner_width, LOADING_SWEEP_MAX_WIDTH + 4)
     width = inner_width + 4
     top_border = "+" + "-" * max(width - 2, 0) + "+"
     bottom_border = "+" + "-" * (width - 2) + "+"
     modal_x = origin_x + max((display_width - width) // 2, 0)
-    lines = [frame_text]
+    lines = _loading_overlay_lines(frame_index, inner_width)
     modal_height = len(lines) + 2
     top_y = max((visible_height - modal_height) // 2, 0)
 
@@ -598,13 +581,14 @@ def draw_loading_overlay(
             break
         _safe_addnstr(stdscr, screen_y, modal_x, "| ", 2, styles["section_border"])
         _safe_addnstr(stdscr, screen_y, modal_x + width - 2, " |", 2, styles["section_border"])
+        line_style = styles["help"] if index in {1, len(lines)} else styles["header"]
         _safe_addnstr(
             stdscr,
             screen_y,
             modal_x + 2 + max((inner_width - len(line)) // 2, 0),
             line,
             len(line),
-            styles["header"],
+            line_style,
         )
 
     bottom_y = top_y + modal_height - 1
@@ -612,6 +596,34 @@ def draw_loading_overlay(
         _safe_addnstr(stdscr, bottom_y, modal_x, bottom_border, width, styles["section_border"])
 
     stdscr.refresh()
+
+
+def _loading_overlay_lines(frame_index: int, inner_width: int) -> list[str]:
+    sweep_width = max(min(inner_width - 2, LOADING_SWEEP_MAX_WIDTH), LOADING_SWEEP_MIN_WIDTH)
+    positions = list(range(3, sweep_width - 1)) + list(range(sweep_width - 2, 2, -1))
+    head = positions[frame_index % len(positions)]
+
+    top = [" "] * sweep_width
+    middle = [" "] * sweep_width
+    bottom = [" "] * sweep_width
+
+    for offset, char in [(-2, "="), (-1, "="), (0, ">")]:
+        position = head + offset
+        if 0 <= position < sweep_width:
+            middle[position] = char
+
+    for position in [head - 4, head + 1]:
+        if 0 <= position < sweep_width:
+            top[position] = "."
+    for position in [head - 5, head - 2]:
+        if 0 <= position < sweep_width:
+            bottom[position] = "."
+
+    return [
+        "".join(top).rstrip() or ".",
+        "[" + "".join(middle) + "]",
+        "".join(bottom).rstrip() or ".",
+    ]
 
 
 def draw_modal_overlay(
