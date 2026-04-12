@@ -33,6 +33,7 @@ from erza.runtime import (
     compute_section_scroll_offset,
     draw_loading_overlay,
     draw_modal_overlay,
+    draw_section_page,
     next_section_index,
     next_section_line_index,
 )
@@ -199,14 +200,143 @@ class RuntimeTests(unittest.TestCase):
             )
         )
 
-        flattened_lines = ["".join(segment.text for segment in line) for line in plan.sections[0].block.lines]
         line_index = plan.sections[0].block.actionables[0].y - 1
         actionables = [item for item in plan.sections[0].block.actionables if item.y - 1 == line_index]
 
         self.assertEqual(len(actionables), 2)
         self.assertTrue(all(item.action_group == "button_row" for item in actionables))
-        self.assertTrue(any("+----------------" in line for line in flattened_lines))
-        self.assertTrue(any("[ New post ]" in line and "[ Edit description ]" in line for line in flattened_lines))
+        self.assertTrue(all(item.action_align == "center" for item in actionables))
+        self.assertEqual(plan.sections[0].block.width, 77)
+
+    def test_button_row_draws_centered_inside_full_width_panel(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Section(
+                    title="Actions",
+                    children=[
+                        ButtonRow(
+                            children=[
+                                Button(label="New post", action="posts.open"),
+                                Button(label="Edit description", action="profile.edit"),
+                            ]
+                        )
+                    ],
+                )
+            ],
+        )
+        plan = build_render_plan(screen)
+        line_index = plan.sections[0].block.actionables[0].y - 1
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_section_page(
+                _DrawingWindow(),
+                plan,
+                plan.sections[0],
+                0,
+                0,
+                line_index,
+                0,
+                0,
+            )
+
+        panel_left = 1 + 4
+        panel_inner_width = plan.sections[0].block.width - 8
+        label_calls = [(x, text) for _, x, text, _, _ in calls if text in {"[ New post ]", "[ Edit description ]"}]
+        self.assertEqual(len(label_calls), 2)
+        content_left = min(x for x, _ in label_calls)
+        content_right = max(x + len(text) for x, text in label_calls)
+        left_padding = content_left - panel_left
+        right_padding = (panel_left + panel_inner_width) - content_right
+        self.assertLessEqual(abs(left_padding - right_padding), 1)
+
+    def test_button_row_supports_right_alignment(self) -> None:
+        screen = Screen(
+            title="Feed",
+            children=[
+                Section(
+                    title="Post",
+                    children=[
+                        ButtonRow(
+                            align="right",
+                            children=[
+                                Button(label="Signal", action="feed.like"),
+                                Button(label="Boost", action="feed.boost"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        plan = build_render_plan(screen)
+        line_index = plan.sections[0].block.actionables[0].y - 1
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_section_page(
+                _DrawingWindow(),
+                plan,
+                plan.sections[0],
+                0,
+                0,
+                line_index,
+                0,
+                0,
+            )
+
+        panel_left = 1 + 4
+        panel_inner_width = plan.sections[0].block.width - 8
+        label_calls = [(x, text) for _, x, text, _, _ in calls if text in {"[ Signal ]", "[ Boost ]"}]
+        self.assertEqual(len(label_calls), 2)
+        content_left = min(x for x, _ in label_calls)
+        content_right = max(x + len(text) for x, text in label_calls)
+        left_padding = content_left - panel_left
+        right_padding = (panel_left + panel_inner_width) - content_right
+        self.assertGreater(left_padding, right_padding)
+
+    def test_button_row_scrolls_to_keep_selected_action_visible(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Section(
+                    title="Actions",
+                    children=[
+                        ButtonRow(
+                            children=[Button(label=f"Action {index}", action=f"actions.{index}") for index in range(12)]
+                        )
+                    ],
+                )
+            ],
+        )
+        plan = build_render_plan(screen)
+        line_index = plan.sections[0].block.actionables[0].y - 1
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_section_page(
+                _DrawingWindow(),
+                plan,
+                plan.sections[0],
+                0,
+                0,
+                line_index,
+                11,
+                0,
+            )
+
+        rendered_labels = {text for _, _, text, _, _ in calls if text.startswith("[ Action ")}
+        self.assertIn("[ Action 11 ]", rendered_labels)
+        self.assertNotIn("[ Action 0 ]", rendered_labels)
 
     def test_jump_to_section_boundaries_updates_active_section(self) -> None:
         screen = Screen(
@@ -1120,6 +1250,9 @@ class _FakeWindow:
 class _DrawingWindow:
     def getmaxyx(self) -> tuple[int, int]:
         return (24, 79)
+
+    def erase(self) -> None:
+        return
 
     def refresh(self) -> None:
         return

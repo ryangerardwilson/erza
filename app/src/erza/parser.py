@@ -184,7 +184,11 @@ def _convert_element(
             raise ParseError("<ButtonRow> requires at least one child")
         if any(not isinstance(child, (Button, Link)) for child in children):
             raise ParseError("<ButtonRow> only supports <Action>, <Button>, or <Link> children")
-        return ButtonRow(children=children, gap=_parse_gap(element, default=2))
+        return ButtonRow(
+            children=children,
+            gap=_parse_gap(element, default=2),
+            align=_parse_alignment(element, default="center"),
+        )
     if tag == "form":
         if inside_form:
             raise ParseError("<Form> cannot be nested inside another <Form> in v1")
@@ -312,6 +316,16 @@ def _parse_gap(element: Element, *, default: int) -> int:
     if gap < 0:
         raise ParseError(f"gap cannot be negative on <{element.tag}>")
     return gap
+
+
+def _parse_alignment(element: Element, *, default: str) -> str:
+    raw = element.attrs.get("align")
+    if raw is None or raw == "":
+        return default
+    alignment = raw.strip().lower()
+    if alignment in {"left", "center", "right"}:
+        return alignment
+    raise ParseError(f'align must be "left", "center", or "right" on <{element.tag}>')
 
 
 def _parse_positive_int(element: Element, name: str, *, default: int) -> int:

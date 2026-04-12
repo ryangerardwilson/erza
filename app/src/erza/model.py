@@ -59,6 +59,7 @@ class Row:
 class ButtonRow:
     children: list[Button | Link]
     gap: int = 2
+    align: str = "center"
 
 
 @dataclass(slots=True)

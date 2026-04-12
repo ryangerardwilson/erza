@@ -104,7 +104,7 @@ oo
         markup = """
 <Screen title="Feed">
   <Section title="Actions">
-    <ButtonRow>
+    <ButtonRow align="right">
       <Action on:press="posts.open">New post</Action>
       <Action on:press="profile.edit">Edit description</Action>
     </ButtonRow>
@@ -117,8 +117,23 @@ oo
         row = screen.children[0].children[0]
         self.assertIsInstance(row, ButtonRow)
         self.assertEqual(len(row.children), 2)
+        self.assertEqual(row.align, "right")
         self.assertIsInstance(row.children[0], Button)
         self.assertEqual(row.children[0].action, "posts.open")
+
+    def test_button_row_align_must_be_supported_value(self) -> None:
+        markup = """
+<Screen title="Feed">
+  <Section title="Actions">
+    <ButtonRow align="diagonal">
+      <Action on:press="posts.open">New post</Action>
+    </ButtonRow>
+  </Section>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
 
     def test_compiles_nested_sections_for_embedded_panels(self) -> None:
         markup = """

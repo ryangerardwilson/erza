@@ -91,6 +91,7 @@ class ActionableTarget:
     label_text: str
     actionable: Button | Link | "InputControl" | "SubmitControl"
     action_group: str | None = None
+    action_align: str | None = None
 
 
 @dataclass(slots=True)
@@ -303,6 +304,8 @@ def build_render_plan(
                         width=item.width,
                         label_text=item.label_text,
                         actionable=item.actionable,
+                        action_group=item.action_group,
+                        action_align=item.action_align,
                     )
                     for item in block.actionables
                 ],
@@ -337,6 +340,8 @@ def build_render_plan(
                     width=item.width,
                     label_text=item.label_text,
                     actionable=item.actionable,
+                    action_group=item.action_group,
+                    action_align=item.action_align,
                 )
                 for item in block.actionables
             ],
@@ -658,6 +663,10 @@ def draw_modal_overlay(
         if screen_y >= visible_height:
             break
         active_content_line = active_y == body_y
+        current_line_index: int | None = None
+        if body_y != 0 and body_y != len(visible_lines) - 1:
+            current_line_index = body_y - 1 if available_height >= modal.block.height else scroll_offset + body_y - 1
+        line_actionables = _modal_line_actionables(modal, current_line_index) if current_line_index is not None else []
         for segment in line:
             if segment.x >= block_width:
                 continue
@@ -673,10 +682,21 @@ def draw_modal_overlay(
                 available,
                 _segment_style(styles, style_name, active_content_line=active_content_line),
             )
-        if active_content_line:
+        if _is_button_row_actionable_line(line_actionables):
+            _draw_button_row_actionables(
+                stdscr,
+                line_actionables=line_actionables,
+                selected_index=action_index,
+                origin_x=modal_x,
+                screen_y=screen_y,
+                max_width=block_width,
+                styles=styles,
+                active=active_content_line,
+            )
+        elif active_content_line:
             _draw_active_actionable(
                 stdscr,
-                line_actionables=_modal_line_actionables(modal, line_index),
+                line_actionables=line_actionables,
                 selected_index=action_index,
                 origin_x=modal_x,
                 screen_y=screen_y,
@@ -804,6 +824,10 @@ def _draw_section_body(
         if screen_y >= start_y + available_height:
             break
         active_content_line = active_y == body_y
+        current_line_index: int | None = None
+        if body_y != 0 and body_y != len(visible_lines) - 1:
+            current_line_index = body_y - 1 if available_height >= section.block.height else scroll_offset + body_y - 1
+        line_actionables = _section_line_actionables(section, current_line_index) if current_line_index is not None else []
         for segment in line:
             if segment.x >= block_width:
                 continue
@@ -818,10 +842,21 @@ def _draw_section_body(
                 available,
                 _segment_style(styles, segment.style, active_content_line=active_content_line),
             )
-        if active_content_line:
+        if _is_button_row_actionable_line(line_actionables):
+            _draw_button_row_actionables(
+                stdscr,
+                line_actionables=line_actionables,
+                selected_index=action_index,
+                origin_x=block_x,
+                screen_y=screen_y,
+                max_width=block_width,
+                styles=styles,
+                active=active_content_line,
+            )
+        elif active_content_line:
             _draw_active_actionable(
                 stdscr,
-                line_actionables=_section_line_actionables(section, line_index),
+                line_actionables=line_actionables,
                 selected_index=action_index,
                 origin_x=block_x,
                 screen_y=screen_y,
@@ -2076,6 +2111,7 @@ def _build_bordered_section_block(
                 label_text=item.label_text,
                 actionable=item.actionable,
                 action_group=item.action_group,
+                action_align=item.action_align,
             )
         )
 
@@ -2314,68 +2350,39 @@ def _build_button_row(
     render_state: RenderState,
     form_key: str | None = None,
 ) -> Block:
-    child_blocks = [
-        _build_block(
-            child,
-            animation_time=animation_time,
-            max_width=max_width,
-            render_state=render_state,
-            form_key=form_key,
-        )
-        for child in row.children
-    ]
-    content_width = 0
-    content_lines = [[]]
     actionables: list[ActionableTarget] = []
     cursor_x = 0
-    animation_interval_ms: int | None = None
-
-    for index, block in enumerate(child_blocks):
-        if block.height != 1 or len(block.actionables) != 1:
-            raise TypeError("<ButtonRow> only supports single-line actionable children")
-        _merge_block(content_lines, actionables, block, x=cursor_x, y=0)
-        cursor_x += block.width
-        content_width = max(content_width, cursor_x)
-        animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
-        if index != len(child_blocks) - 1:
-            cursor_x += row.gap
-            content_width = max(content_width, cursor_x)
-
-    inner_width = max(content_width + 2, 1)
+    inner_width = max(max_width - 4, 1)
     width = inner_width + 4
-    content_x = 2 + max((inner_width - content_width) // 2, 0)
-    top_border = "+" + "-" * (width - 2) + "+"
+    top_border = "+" + "-" * max(width - 2, 0) + "+"
     lines = [
         [Segment(x=0, text=top_border, style="section_border")],
         _boxed_content_line(inner_width),
         [Segment(x=0, text=top_border, style="section_border")],
     ]
 
-    for segment in content_lines[0]:
-        lines[1].append(
-            Segment(
-                x=segment.x + content_x,
-                text=segment.text,
-                style=segment.style,
+    for index, child in enumerate(row.children):
+        label = _truncate_text(f"[ {child.label} ]", inner_width)
+        actionables.append(
+            ActionableTarget(
+                x=2 + cursor_x,
+                y=1,
+                width=len(label),
+                label_text=label,
+                actionable=child,
+                action_group="button_row",
+                action_align=row.align,
             )
         )
+        cursor_x += len(label)
+        if index != len(row.children) - 1:
+            cursor_x += row.gap
 
     return Block(
         width=width,
         height=3,
         lines=lines,
-        actionables=[
-            ActionableTarget(
-                x=item.x + content_x,
-                y=item.y + 1,
-                width=item.width,
-                label_text=item.label_text,
-                actionable=item.actionable,
-                action_group="button_row",
-            )
-            for item in actionables
-        ],
-        animation_interval_ms=animation_interval_ms,
+        actionables=actionables,
     )
 
 
@@ -2528,6 +2535,7 @@ def _merge_block(
                 label_text=item.label_text,
                 actionable=item.actionable,
                 action_group=item.action_group,
+                action_align=item.action_align,
             )
         )
 
@@ -2536,6 +2544,123 @@ def _selected_actionable(actionables: list[ActionableTarget], selected_index: in
     if not actionables:
         return None
     return actionables[min(max(selected_index, 0), len(actionables) - 1)]
+
+
+def _is_button_row_actionable_line(actionables: list[ActionableTarget]) -> bool:
+    return bool(actionables) and all(item.action_group == "button_row" for item in actionables)
+
+
+def _button_row_gap(actionables: list[ActionableTarget]) -> int:
+    if len(actionables) <= 1:
+        return 2
+    gap = actionables[1].x - (actionables[0].x + actionables[0].width)
+    return max(gap, 0)
+
+
+def _button_row_visible_window(
+    actionables: list[ActionableTarget],
+    *,
+    inner_width: int,
+    selected_index: int,
+) -> list[ActionableTarget]:
+    if not actionables:
+        return []
+
+    selected_index = min(max(selected_index, 0), len(actionables) - 1)
+    gap = _button_row_gap(actionables)
+    best_start = selected_index
+    best_end = selected_index
+    best_score = (-1, -1, float("-inf"), float("-inf"))
+
+    for start in range(selected_index, -1, -1):
+        for end in range(start, len(actionables)):
+            if not start <= selected_index <= end:
+                continue
+            total_width = actionables[end].x - actionables[start].x + actionables[end].width
+            if total_width > inner_width and not (start == end == selected_index):
+                break
+            if total_width > inner_width:
+                continue
+            count = end - start + 1
+            midpoint = (start + end) / 2
+            center_distance = abs(midpoint - selected_index)
+            score = (count, total_width, -center_distance, -start)
+            if score > best_score:
+                best_score = score
+                best_start = start
+                best_end = end
+
+    if best_score[0] < 0:
+        return [actionables[selected_index]]
+
+    visible = actionables[best_start : best_end + 1]
+    if len(visible) == 1:
+        return visible
+
+    # Collapse leading or trailing items if cumulative gap inflation would push the row past the viewport.
+    while visible and (visible[-1].x - visible[0].x + visible[-1].width) > inner_width:
+        if selected_index - best_start > best_end - selected_index:
+            visible = visible[1:]
+            best_start += 1
+        else:
+            visible = visible[:-1]
+            best_end -= 1
+    return visible
+
+
+def _button_row_alignment_offset(align: str, inner_width: int, visible_width: int) -> int:
+    clamped_width = min(visible_width, inner_width)
+    if align == "left":
+        return 0
+    if align == "right":
+        return max(inner_width - clamped_width, 0)
+    return max((inner_width - clamped_width) // 2, 0)
+
+
+def _draw_button_row_actionables(
+    stdscr: curses.window,
+    *,
+    line_actionables: list[ActionableTarget],
+    selected_index: int,
+    origin_x: int,
+    screen_y: int,
+    max_width: int,
+    styles: dict[str, int],
+    active: bool,
+) -> None:
+    if not _is_button_row_actionable_line(line_actionables):
+        return
+
+    inner_width = max(max_width - 8, 1)
+    visible = _button_row_visible_window(
+        line_actionables,
+        inner_width=inner_width,
+        selected_index=selected_index if active else 0,
+    )
+    if not visible:
+        return
+
+    visible_width = visible[-1].x - visible[0].x + visible[-1].width
+    align = line_actionables[0].action_align or "center"
+    align_offset = _button_row_alignment_offset(align, inner_width, visible_width)
+    selected = _selected_actionable(line_actionables, selected_index) if active else None
+    base_content_x = 4
+
+    for item in visible:
+        relative_x = item.x - visible[0].x
+        screen_x = origin_x + base_content_x + align_offset + relative_x
+        available = max(max_width - (base_content_x + align_offset + relative_x), 0)
+        if available == 0:
+            continue
+        style = styles["action_active"] if active and item is selected else styles["action"]
+        _safe_addnstr(
+            stdscr,
+            screen_y,
+            screen_x,
+            item.label_text,
+            available,
+            style,
+        )
 
 
 def _draw_active_actionable(

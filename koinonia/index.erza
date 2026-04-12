@@ -22,7 +22,7 @@
           <Text>Circle: <?= post.circle ?></Text>
           <Text><?= post.body ?></Text>
           <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
-          <ButtonRow>
+          <ButtonRow align="right">
             <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
             <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
           </ButtonRow>
