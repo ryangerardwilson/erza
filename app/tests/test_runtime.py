@@ -9,7 +9,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, Button, Form, Input, Link, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Form, Input, Link, Modal, Screen, Section, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -700,6 +700,144 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertEqual(app.actions, [("auth.logout", {})])
         self.assertEqual(session.mode, "page")
+
+    def test_direct_action_section_can_open_modal(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(title="Why", children=[Text("Why")]),
+                Section(
+                    title="Login",
+                    children=[Button(label="Open access", action="ui.open_modal", params={"modal_id": "auth-access"})],
+                ),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[
+                        Form(
+                            action="/auth/access",
+                            submit_button_text="Enter",
+                            children=[
+                                Input(name="username", label="Username"),
+                                Input(name="password", type="password", label="Password"),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.section_index = 1
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+
+        session._enter_section_mode(plan)
+
+        self.assertEqual(session.active_modal_id, "auth-access")
+        self.assertEqual(session.mode, "modal")
+
+    def test_modal_submit_redirect_closes_modal_and_loads_target_screen(self) -> None:
+        initial = Screen(
+            title="Auth",
+            children=[
+                Section(
+                    title="Login",
+                    children=[Button(label="Open access", action="ui.open_modal", params={"modal_id": "auth-access"})],
+                ),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[
+                        Form(
+                            action="/auth/access",
+                            submit_button_text="Enter",
+                            children=[
+                                Input(name="username", label="Username"),
+                                Input(name="password", type="password", label="Password"),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+        )
+        target = Screen(title="App", children=[Section(title="Feed", children=[Text("Feed")])])
+        app = _RedirectingSubmittingApp(initial, target, SubmitResult(type="redirect", href="index.erza"))
+        session = _RuntimeSession(app)
+        plan = build_render_plan(initial, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+
+        modal = plan.modals["auth-access"]
+        form_key = next(
+            item.actionable.form_key
+            for item in modal.actionables
+            if isinstance(item.actionable, InputControl)
+        )
+        session.form_values = {form_key: {"username": "alpha", "password": "secret"}}
+        session.modal_line_index = next(
+            item.y - 1
+            for item in modal.actionables
+            if isinstance(item.actionable, SubmitControl)
+        )
+
+        session._activate_modal(plan)
+
+        self.assertIsNone(session.active_modal_id)
+        self.assertIsNone(session._screen)
+
+        next_screen = session._current_screen()
+
+        self.assertEqual(next_screen.title, "App")
+        self.assertEqual(session.section_index, 0)
+
+    def test_modal_submit_error_stays_open_and_records_message(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(
+                    title="Login",
+                    children=[Button(label="Open access", action="ui.open_modal", params={"modal_id": "auth-access"})],
+                ),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[
+                        Form(
+                            action="/auth/access",
+                            submit_button_text="Enter",
+                            children=[
+                                Input(name="username", label="Username"),
+                                Input(name="password", type="password", label="Password"),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+        )
+        app = _SubmittingApp(screen, SubmitResult(type="error", message="Invalid password."))
+        session = _RuntimeSession(app)
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+
+        modal = plan.modals["auth-access"]
+        form_key = next(
+            item.actionable.form_key
+            for item in modal.actionables
+            if isinstance(item.actionable, InputControl)
+        )
+        session.form_values = {form_key: {"username": "alpha", "password": "wrong"}}
+        session.modal_line_index = next(
+            item.y - 1
+            for item in modal.actionables
+            if isinstance(item.actionable, SubmitControl)
+        )
+
+        session._activate_modal(plan)
+
+        self.assertEqual(session.active_modal_id, "auth-access")
+        self.assertEqual(session.mode, "modal")
+        self.assertEqual(session.modal_messages["auth-access"], "Invalid password.")
 
     def test_redirect_submit_defers_tab_reset_until_new_screen_loads(self) -> None:
         initial = Screen(

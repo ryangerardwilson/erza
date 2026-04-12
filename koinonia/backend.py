@@ -105,6 +105,16 @@ def _insert(path: str, body: dict[str, Any] | list[dict[str, Any]]) -> Any:
     )
 
 
+def _update(path: str, *, query: dict[str, Any], body: dict[str, Any]) -> Any:
+    return _supabase_request(
+        "PATCH",
+        path,
+        query=query,
+        body=body,
+        extra_headers={"Prefer": "return=minimal"},
+    )
+
+
 def _rpc(name: str, **params: Any) -> Any:
     return _supabase_request("POST", f"rpc/{name}", body=params)
 
@@ -615,6 +625,25 @@ def create_post(body: str = ""):
         body=body.strip(),
     )
     _set_status(f"Published a new dispatch as @{account['handle']}.")
+    return redirect("index.erza")
+
+
+@route("/profile/bio")
+def update_profile_bio(bio: str = ""):
+    account = _current_account()
+    if account is None:
+        return error("Sign in first to update your profile.")
+
+    description = bio.strip()
+    if len(description) > 160:
+        return error("Description must stay within 160 characters.")
+
+    _update(
+        "profiles",
+        query={"handle": f"eq.{account['handle']}"},
+        body={"bio": description},
+    )
+    _set_status(f"Updated @{account['handle']}'s description.")
     return redirect("index.erza")
 
 

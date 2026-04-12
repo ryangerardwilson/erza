@@ -46,6 +46,7 @@
       <Form action="/posts" submit-button-text="Post from profile">
         <Input name="body" type="text" label="Post" required="mandatory" />
       </Form>
+      <Action on:press="ui.open_modal" modal:id="profile-description">Edit description</Action>
       <Text><?= profile.bio ?></Text>
       <Text>Primary circle: <?= profile.primary_circle ?></Text>
       <Text><?= profile.followers ?> followers</Text>
@@ -65,6 +66,14 @@
     <Section title="Logout">
       <Action on:press="auth.logout">Log out</Action>
     </Section>
+
+    <Modal id="profile-description" title="Profile Description">
+      <Header>Set your current description.</Header>
+      <Text>Keep it short and current. You can change or clear it whenever you want.</Text>
+      <Form action="/profile/bio" submit-button-text="Save description">
+        <Input name="bio" type="text" label="Description" value="<?= profile.bio ?>" />
+      </Form>
+    </Modal>
   <? else ?>
     <? circles = backend("circles.list") ?>
     <? signals = backend("signals.list") ?>
@@ -90,14 +99,16 @@
     </Section>
 
     <Section title="Login / Sign Up">
+      <Action on:press="ui.open_modal" modal:id="auth-access">Open account access</Action>
+    </Section>
+
+    <Modal id="auth-access" title="Login / Sign Up">
       <Header>Claim or reopen a username.</Header>
-      <Text><?= status ?></Text>
       <Text>One form does both jobs. Enter a username and password. If the username is unclaimed, it becomes yours. If it already exists, the same password gets you back in.</Text>
       <Form action="/auth/access" submit-button-text="Enter Koinonia">
         <Input name="username" type="text" label="Username" required="mandatory" />
         <Input name="password" type="password" label="Password" required="mandatory" />
       </Form>
-      <Text>After you enter, the tabs switch to Feed and Profile and both pages let you post immediately.</Text>
-    </Section>
+    </Modal>
   <? endif ?>
 </Screen>

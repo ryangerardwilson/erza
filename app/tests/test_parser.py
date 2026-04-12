@@ -6,7 +6,7 @@ from _test_bootstrap import ensure_test_paths
 
 ensure_test_paths()
 
-from erza.model import AsciiAnimation, Button, Form, Input, Link, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Form, Input, Link, Modal, Screen, Section, Text
 from erza.parser import ParseError, compile_markup
 
 
@@ -120,6 +120,42 @@ oo
         self.assertEqual(dispatch.title, "Dispatch")
         self.assertIsInstance(dispatch.children[0], Text)
         self.assertEqual(dispatch.children[0].content, "Hello")
+
+    def test_compiles_top_level_modal(self) -> None:
+        markup = """
+<Screen title="Auth">
+  <Section title="Login">
+    <Action on:press="ui.open_modal" modal:id="auth-access">Open</Action>
+  </Section>
+  <Modal id="auth-access" title="Login / Sign Up">
+    <Form action="/auth/access">
+      <Input name="username" />
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        modal = screen.children[1]
+        self.assertIsInstance(modal, Modal)
+        self.assertEqual(modal.modal_id, "auth-access")
+        self.assertEqual(modal.title, "Login / Sign Up")
+        self.assertIsInstance(modal.children[0], Form)
+
+    def test_modal_must_be_top_level(self) -> None:
+        markup = """
+<Screen title="Auth">
+  <Section title="Login">
+    <Modal id="auth-access" title="Login / Sign Up">
+      <Text>Inner</Text>
+    </Modal>
+  </Section>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
 
     def test_placeholder_attribute_is_rejected(self) -> None:
         markup = """

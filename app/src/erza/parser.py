@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, Button, Column, Component, Form, Header, Input, Link, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
 
 
 class ParseError(RuntimeError):
@@ -84,32 +84,56 @@ def compile_markup(markup: str) -> Screen:
     if root.tag != "screen":
         raise ParseError("the root .erza component must be <Screen>")
     title = root.attrs.get("title", "erza")
-    return Screen(title=title, children=_convert_children(root))
+    return Screen(title=title, children=_convert_children(root, parent_tag="screen"))
 
 
-def _convert_children(element: Element, *, inside_form: bool = False) -> list[Component]:
+def _convert_children(element: Element, *, parent_tag: str, inside_form: bool = False) -> list[Component]:
     children: list[Component] = []
     for child in element.children:
         if isinstance(child, str):
             if _normalize_text(child):
                 children.append(Text(content=_normalize_text(child)))
             continue
-        children.append(_convert_element(child, inside_form=inside_form))
+        children.append(_convert_element(child, parent_tag=parent_tag, inside_form=inside_form))
     return children
 
 
-def _convert_element(element: Element, *, inside_form: bool = False) -> Component:
+def _convert_element(element: Element, *, parent_tag: str, inside_form: bool = False) -> Component:
     tag = element.tag
     if tag == "section":
         title = element.attrs.get("title", "").strip()
         if not title:
             raise ParseError("<Section> requires a title")
         tone = element.attrs.get("tone", "default").strip() or "default"
-        return Section(title=title, tone=tone, children=_convert_children(element, inside_form=inside_form))
+        return Section(
+            title=title,
+            tone=tone,
+            children=_convert_children(element, parent_tag="section", inside_form=inside_form),
+        )
+    if tag == "modal":
+        if parent_tag != "screen":
+            raise ParseError("<Modal> may only appear directly inside <Screen>")
+        modal_id = element.attrs.get("id", "").strip()
+        if not modal_id:
+            raise ParseError("<Modal> requires an id")
+        title = element.attrs.get("title", "").strip()
+        if not title:
+            raise ParseError("<Modal> requires a title")
+        return Modal(
+            modal_id=modal_id,
+            title=title,
+            children=_convert_children(element, parent_tag="modal", inside_form=inside_form),
+        )
     if tag == "column":
-        return Column(children=_convert_children(element, inside_form=inside_form), gap=_parse_gap(element, default=0))
+        return Column(
+            children=_convert_children(element, parent_tag="column", inside_form=inside_form),
+            gap=_parse_gap(element, default=0),
+        )
     if tag == "row":
-        return Row(children=_convert_children(element, inside_form=inside_form), gap=_parse_gap(element, default=1))
+        return Row(
+            children=_convert_children(element, parent_tag="row", inside_form=inside_form),
+            gap=_parse_gap(element, default=1),
+        )
     if tag == "form":
         if inside_form:
             raise ParseError("<Form> cannot be nested inside another <Form> in v1")
@@ -124,7 +148,7 @@ def _convert_element(element: Element, *, inside_form: bool = False) -> Componen
             action=action,
             method=method,
             submit_button_text=submit_button_text,
-            children=_convert_children(element, inside_form=True),
+            children=_convert_children(element, parent_tag="form", inside_form=True),
         )
     if tag == "input":
         if not inside_form:

@@ -71,9 +71,16 @@ class Section:
 
 
 @dataclass(slots=True)
+class Modal:
+    modal_id: str
+    title: str
+    children: list["Component"]
+
+
+@dataclass(slots=True)
 class Screen:
     title: str
     children: list["Component"]
 
 
-Component = Text | Header | Link | Input | Button | AsciiAnimation | Column | Row | Form | Section
+Component = Text | Header | Link | Input | Button | AsciiAnimation | Column | Row | Form | Section | Modal
