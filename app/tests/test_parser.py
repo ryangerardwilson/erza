@@ -100,6 +100,27 @@ oo
         self.assertIsInstance(form.children[1], Input)
         self.assertEqual(form.children[1].type, "password")
 
+    def test_compiles_nested_sections_for_embedded_panels(self) -> None:
+        markup = """
+<Screen title="Feed">
+  <Section title="Timeline">
+    <Section title="Dispatch">
+      <Text>Hello</Text>
+    </Section>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        timeline = screen.children[0]
+        self.assertIsInstance(timeline, Section)
+        dispatch = timeline.children[0]
+        self.assertIsInstance(dispatch, Section)
+        self.assertEqual(dispatch.title, "Dispatch")
+        self.assertIsInstance(dispatch.children[0], Text)
+        self.assertEqual(dispatch.children[0].content, "Hello")
+
     def test_placeholder_attribute_is_rejected(self) -> None:
         markup = """
 <Screen title="Sign In">

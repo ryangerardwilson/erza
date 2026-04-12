@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from _test_bootstrap import ensure_test_paths
 
@@ -29,6 +30,7 @@ from erza.runtime import (
     build_render_plan,
     compute_scroll_offset,
     compute_section_scroll_offset,
+    draw_loading_overlay,
     next_section_index,
     next_section_line_index,
 )
@@ -147,6 +149,33 @@ class RuntimeTests(unittest.TestCase):
         offset = align_section_top_offset(plan, len(plan.sections) - 1, screen_height=24)
 
         self.assertEqual(offset, plan.sections[-1].y)
+
+    def test_nested_sections_render_as_embedded_boxes(self) -> None:
+        plan = build_render_plan(
+            Screen(
+                title="Feed",
+                children=[
+                    Section(
+                        title="Timeline",
+                        children=[
+                            Section(
+                                title="Dispatch",
+                                children=[
+                                    Text("Hello from the feed."),
+                                    Button(label="Signal", action="feed.like"),
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            )
+        )
+
+        flattened_lines = ["".join(segment.text for segment in line) for line in plan.sections[0].block.lines]
+
+        self.assertTrue(any("[ Dispatch ]" in line for line in flattened_lines))
+        self.assertEqual(len(plan.sections[0].actionables), 1)
+        self.assertEqual(plan.sections[0].actionables[0].label_text, "[ Signal ]")
 
     def test_jump_to_section_boundaries_updates_active_section(self) -> None:
         screen = Screen(
@@ -715,6 +744,19 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(any("Section j / k / arrows" in line for line in lines))
         self.assertTrue(any("?              Toggle the shortcuts modal." in line for line in lines))
 
+    def test_loading_overlay_draws_without_solid_fill(self) -> None:
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_loading_overlay(_DrawingWindow(), message="Loading app", frame_index=0)
+
+        self.assertTrue(any(text == "Loading app" for _, _, text, _, _ in calls))
+        self.assertTrue(any(text.startswith("+-[ Working ]") for _, _, text, _, _ in calls))
+        self.assertFalse(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
+
 
 class _CountingApp:
     def __init__(self, screen: Screen) -> None:
@@ -781,6 +823,14 @@ class _FakeWindow:
         if self.keys:
             return self.keys.pop(0)
         return -1
+
+
+class _DrawingWindow:
+    def getmaxyx(self) -> tuple[int, int]:
+        return (24, 79)
+
+    def refresh(self) -> None:
+        return
 
 
 if __name__ == "__main__":

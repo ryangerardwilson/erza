@@ -526,16 +526,17 @@ def draw_loading_overlay(
     origin_x = _display_origin_x(terminal_width)
     styles = _styles()
 
-    inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 18))
+    max_inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 18))
+    message_text = _truncate_text(message, max_inner_width)
+    frame_text = _truncate_text(LOADING_FRAMES[frame_index % len(LOADING_FRAMES)], max_inner_width)
+    content_width = max(len(message_text), len(frame_text), 12)
+    inner_width = min(max_inner_width, content_width + 4)
     width = inner_width + 4
     title_text = _truncate_text("[ Working ]", inner_width)
     top_border = "+-" + title_text + "-" * max(inner_width + 1 - len(title_text), 0) + "+"
     bottom_border = "+" + "-" * (width - 2) + "+"
     modal_x = origin_x + max((display_width - width) // 2, 0)
-    lines = [
-        _truncate_text(message, inner_width).center(inner_width),
-        LOADING_FRAMES[frame_index % len(LOADING_FRAMES)].center(inner_width),
-    ]
+    lines = [message_text, frame_text]
     modal_height = len(lines) + 2
     top_y = max((visible_height - modal_height) // 2, 0)
 
@@ -546,9 +547,15 @@ def draw_loading_overlay(
         if screen_y >= visible_height:
             break
         _safe_addnstr(stdscr, screen_y, modal_x, "| ", 2, styles["section_border"])
-        _safe_addnstr(stdscr, screen_y, modal_x + 2, " " * inner_width, inner_width, styles["section_fill"])
         _safe_addnstr(stdscr, screen_y, modal_x + width - 2, " |", 2, styles["section_border"])
-        _safe_addnstr(stdscr, screen_y, modal_x + 2, line, inner_width, styles["header"])
+        _safe_addnstr(
+            stdscr,
+            screen_y,
+            modal_x + 2 + max((inner_width - len(line)) // 2, 0),
+            line,
+            len(line),
+            styles["header"],
+        )
 
     bottom_y = top_y + modal_height - 1
     if bottom_y < visible_height:

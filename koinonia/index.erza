@@ -18,11 +18,15 @@
       <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> builders.</Text>
 
       <? for post in timeline ?>
-        <Text><?= post.author ?> @<?= post.handle ?> in <?= post.circle ?></Text>
-        <Text><?= post.body ?></Text>
-        <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
-        <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
-        <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
+        <Section title="<?= post.author ?> @<?= post.handle ?>">
+          <Text>Circle: <?= post.circle ?></Text>
+          <Text><?= post.body ?></Text>
+          <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+          <Row gap="1">
+            <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
+            <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
+          </Row>
+        </Section>
       <? endfor ?>
 
       <Header>Builders near the feed</Header>
@@ -48,8 +52,10 @@
 
       <? if profile.posts ?>
         <? for post in profile.posts ?>
-          <Text><?= post.body ?></Text>
-          <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+          <Section title="Dispatch in <?= post.circle ?>">
+            <Text><?= post.body ?></Text>
+            <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+          </Section>
         <? endfor ?>
       <? else ?>
         <Text>No posts yet. Use the form above to start your profile stream.</Text>
