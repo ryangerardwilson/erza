@@ -399,7 +399,8 @@ def next_section_line_index(section: SectionTarget, current_index: int, delta: i
 def draw_plan(
     stdscr: curses.window,
     plan: RenderPlan,
-    section_index: int | None,
+    header_section_index: int | None,
+    body_section_index: int | None,
     scroll_offset: int,
     footer: str = "",
 ) -> None:
@@ -419,14 +420,14 @@ def draw_plan(
     body_start_y = _draw_header_grid(
         stdscr,
         plan,
-        section_index if section_index is not None else 0,
+        header_section_index if header_section_index is not None else 0,
         scroll_offset,
         visible_height,
         display_width,
         origin_x,
         styles,
     )
-    active_section = plan.sections[section_index if section_index is not None else 0]
+    active_section = plan.sections[body_section_index if body_section_index is not None else 0]
     _draw_section_body(
         stdscr,
         active_section,
@@ -809,6 +810,7 @@ class _RuntimeSession:
         self.modal_line_index = 0
         self.modal_scroll_offset = 0
         self.modal_messages: dict[str, str] = {}
+        self.body_section_index = 0
         self.mode = "page"
         self.show_help = False
         self.section_index = 0
@@ -971,6 +973,7 @@ class _RuntimeSession:
                 stdscr,
                 plan,
                 self.section_index if plan.sections else None,
+                self.body_section_index if plan.sections else None,
                 self.scroll_offset,
                 footer,
             )
@@ -1082,6 +1085,7 @@ class _RuntimeSession:
         if not plan.sections:
             self.mode = "page"
             self.section_index = 0
+            self.body_section_index = 0
             self.scroll_offset = 0
             self.section_line_index = 0
             self.section_scroll_offset = 0
@@ -1092,6 +1096,12 @@ class _RuntimeSession:
             return
 
         self.section_index = min(self.section_index, len(plan.sections) - 1)
+        active_body_index = self._resolved_body_section_index(plan)
+        active_section = plan.sections[self.section_index]
+        if self._is_overlay_section(active_section):
+            self.body_section_index = active_body_index
+        else:
+            self.body_section_index = self.section_index
         active_section = plan.sections[self.section_index]
         self.section_line_index = min(
             self.section_line_index,
@@ -1315,6 +1325,7 @@ class _RuntimeSession:
         self.mode = "page"
         self.show_help = False
         self.section_index = 0
+        self.body_section_index = 0
         self.scroll_offset = 0
         self.section_line_index = 0
         self.section_scroll_offset = 0
@@ -1334,6 +1345,21 @@ class _RuntimeSession:
         if self.active_modal_id is None:
             return None
         return plan.modals.get(self.active_modal_id)
+
+    def _resolved_body_section_index(self, plan: RenderPlan) -> int:
+        if not plan.sections:
+            return 0
+        if 0 <= self.body_section_index < len(plan.sections):
+            candidate = plan.sections[self.body_section_index]
+            if not self._is_overlay_section(candidate):
+                return self.body_section_index
+        for index, section in enumerate(plan.sections):
+            if not self._is_overlay_section(section):
+                return index
+        return min(self.section_index, len(plan.sections) - 1)
+
+    def _is_overlay_section(self, section: SectionTarget) -> bool:
+        return self._is_direct_action_section(section)
 
     def _is_direct_action_section(self, section: SectionTarget) -> bool:
         if _section_content_line_count(section) != 1 or len(section.block.actionables) != 1:

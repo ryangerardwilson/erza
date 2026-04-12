@@ -736,6 +736,64 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(session.active_modal_id, "auth-access")
         self.assertEqual(session.mode, "modal")
 
+    def test_direct_action_tab_keeps_previous_page_body_visible(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(title="Why", children=[Text("Why")]),
+                Section(
+                    title="Login",
+                    children=[Button(label="Open access", action="ui.open_modal", params={"modal_id": "auth-access"})],
+                ),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[Text("Sign in here.")],
+                ),
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session.section_index = 1
+        session._sync_state(plan)
+
+        with patch("erza.runtime.draw_plan") as draw_plan:
+            session._draw_active_view(_DrawingWindow(), plan, "auth")
+
+        self.assertEqual(session.body_section_index, 0)
+        self.assertEqual(draw_plan.call_args.args[2], 1)
+        self.assertEqual(draw_plan.call_args.args[3], 0)
+
+    def test_modal_from_direct_action_tab_renders_over_previous_page(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(title="Why", children=[Text("Why")]),
+                Section(
+                    title="Login",
+                    children=[Button(label="Open access", action="ui.open_modal", params={"modal_id": "auth-access"})],
+                ),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[Text("Sign in here.")],
+                ),
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.section_index = 1
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+
+        with patch("erza.runtime.draw_plan") as draw_plan, patch("erza.runtime.draw_modal_overlay") as draw_modal:
+            session._draw_active_view(_DrawingWindow(), plan, "auth")
+
+        self.assertEqual(session.active_modal_id, "auth-access")
+        self.assertEqual(draw_plan.call_args.args[2], 1)
+        self.assertEqual(draw_plan.call_args.args[3], 0)
+        self.assertTrue(draw_modal.called)
+
     def test_modal_submit_redirect_closes_modal_and_loads_target_screen(self) -> None:
         initial = Screen(
             title="Auth",
