@@ -577,21 +577,20 @@ def draw_loading_overlay(
     origin_x = _display_origin_x(terminal_width)
     styles = _styles()
 
-    max_inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 18))
-    message_text = _truncate_text(message, max_inner_width)
+    del message
+
+    max_inner_width = min(LOADING_MODAL_MAX_WIDTH - 4, max(display_width - 10, 12))
     frame_text = _truncate_text(LOADING_FRAMES[frame_index % len(LOADING_FRAMES)], max_inner_width)
-    content_width = max(len(message_text), len(frame_text), 12)
-    inner_width = min(max_inner_width, content_width + 4)
+    inner_width = min(max_inner_width, max(len(frame_text) + 4, 12))
     width = inner_width + 4
-    title_text = _truncate_text("[ Working ]", inner_width)
-    top_border = "+-" + title_text + "-" * max(inner_width + 1 - len(title_text), 0) + "+"
+    top_border = "+" + "-" * max(width - 2, 0) + "+"
     bottom_border = "+" + "-" * (width - 2) + "+"
     modal_x = origin_x + max((display_width - width) // 2, 0)
-    lines = [message_text, frame_text]
+    lines = [frame_text]
     modal_height = len(lines) + 2
     top_y = max((visible_height - modal_height) // 2, 0)
 
-    _safe_addnstr(stdscr, top_y, modal_x, top_border, width, styles["section_title_active"])
+    _safe_addnstr(stdscr, top_y, modal_x, top_border, width, styles["section_border"])
 
     for index, line in enumerate(lines, start=1):
         screen_y = top_y + index
