@@ -36,6 +36,12 @@ class Button:
 
 
 @dataclass(slots=True)
+class SubmitButton:
+    label: str
+    action: str = ""
+
+
+@dataclass(slots=True)
 class AsciiAnimation:
     frames: list[str]
     fps: int = 4
@@ -57,7 +63,7 @@ class Row:
 
 @dataclass(slots=True)
 class ButtonRow:
-    children: list[Button | Link]
+    children: list[Button | Link | SubmitButton]
     gap: int = 2
     align: str = "center"
 
@@ -90,4 +96,4 @@ class Screen:
     children: list["Component"]
 
 
-Component = Text | Header | Link | Input | Button | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal
+Component = Text | Header | Link | Input | Button | SubmitButton | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal

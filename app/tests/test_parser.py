@@ -6,7 +6,7 @@ from _test_bootstrap import ensure_test_paths
 
 ensure_test_paths()
 
-from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
 from erza.parser import ParseError, compile_markup
 
 
@@ -120,6 +120,48 @@ oo
         self.assertEqual(row.align, "right")
         self.assertIsInstance(row.children[0], Button)
         self.assertEqual(row.children[0].action, "posts.open")
+
+    def test_compiles_form_button_row_with_submit_children(self) -> None:
+        markup = """
+<Screen title="Compose">
+  <Modal id="post-editor" title="New Post">
+    <Form action="/posts/publish">
+      <Input name="body" label="Body" />
+      <ButtonRow align="right">
+        <Submit action="/posts/draft">Save draft</Submit>
+        <Submit>Publish post</Submit>
+      </ButtonRow>
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        form = screen.children[0].children[0]
+        row = form.children[1]
+        self.assertIsInstance(row, ButtonRow)
+        self.assertEqual(row.align, "right")
+        self.assertEqual(len(row.children), 2)
+        self.assertIsInstance(row.children[0], SubmitButton)
+        self.assertEqual(row.children[0].action, "/posts/draft")
+        self.assertEqual(row.children[1].action, "")
+
+    def test_form_button_row_rejects_non_submit_children(self) -> None:
+        markup = """
+<Screen title="Compose">
+  <Modal id="post-editor" title="New Post">
+    <Form action="/posts/publish">
+      <ButtonRow>
+        <Action on:press="posts.publish">Publish</Action>
+      </ButtonRow>
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
 
     def test_button_row_align_must_be_supported_value(self) -> None:
         markup = """

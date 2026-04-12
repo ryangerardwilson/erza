@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
 
 
 class ParseError(RuntimeError):
@@ -182,7 +182,10 @@ def _convert_element(
         )
         if not children:
             raise ParseError("<ButtonRow> requires at least one child")
-        if any(not isinstance(child, (Button, Link)) for child in children):
+        if inside_form:
+            if any(not isinstance(child, SubmitButton) for child in children):
+                raise ParseError("<ButtonRow> inside <Form> only supports <Submit> children")
+        elif any(not isinstance(child, (Button, Link)) for child in children):
             raise ParseError("<ButtonRow> only supports <Action>, <Button>, or <Link> children")
         return ButtonRow(
             children=children,
@@ -227,6 +230,15 @@ def _convert_element(
             value=element.attrs.get("value", ""),
             label=element.attrs.get("label", ""),
             required=_parse_input_required(element),
+        )
+    if tag == "submit":
+        if not inside_form:
+            raise ParseError("<Submit> may only appear inside <Form>")
+        if parent_tag != "buttonrow":
+            raise ParseError("<Submit> may only appear inside <ButtonRow> within <Form>")
+        return SubmitButton(
+            label=_collect_text(element),
+            action=element.attrs.get("action", "").strip(),
         )
     if tag == "text":
         return Text(content=_collect_text(element))

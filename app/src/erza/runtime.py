@@ -10,7 +10,7 @@ import time
 
 from erza.backend import BackendBridge, bind_request_context
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
-from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, SubmitButton, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -1676,6 +1676,9 @@ class _RuntimeSession:
                 self.modal_line_index += 1
                 self.modal_action_index = 0
             else:
+                if self._advance_section_edit(previous_edit):
+                    self.status = ""
+                    return
                 self.section_line_index += 1
                 self.section_action_index = 0
             self.status = ""
@@ -1746,6 +1749,39 @@ class _RuntimeSession:
         for line_index, action_index, target in ordered[current_index + 1 :]:
             self.modal_line_index = line_index
             self.modal_action_index = action_index
+            if isinstance(target.actionable, InputControl):
+                self._begin_edit(target.actionable)
+            return True
+
+        return False
+
+    def _advance_section_edit(self, previous_edit: EditState) -> bool:
+        plan = self._navigation_plan_snapshot()
+        if plan is None or not plan.sections:
+            return False
+
+        section = plan.sections[min(self.section_index, len(plan.sections) - 1)]
+        ordered = _ordered_section_actionables(section)
+        current_index: int | None = None
+        for index, (line_index, action_index, target) in enumerate(ordered):
+            actionable = target.actionable
+            if not isinstance(actionable, InputControl):
+                continue
+            if (
+                actionable.form_key == previous_edit.form_key
+                and actionable.input_name == previous_edit.input_name
+                and line_index == self.section_line_index
+                and action_index == self.section_action_index
+            ):
+                current_index = index
+                break
+
+        if current_index is None:
+            return False
+
+        for line_index, action_index, target in ordered[current_index + 1 :]:
+            self.section_line_index = line_index
+            self.section_action_index = action_index
             if isinstance(target.actionable, InputControl):
                 self._begin_edit(target.actionable)
             return True
@@ -1959,6 +1995,14 @@ def _section_line_actionable(section: SectionTarget, line_index: int) -> Actiona
     return matching[0]
 
 
+def _ordered_section_actionables(section: SectionTarget) -> list[tuple[int, int, ActionableTarget]]:
+    ordered: list[tuple[int, int, ActionableTarget]] = []
+    for line_index in range(_section_content_line_count(section)):
+        for action_index, target in enumerate(_section_line_actionables(section, line_index)):
+            ordered.append((line_index, action_index, target))
+    return ordered
+
+
 def _modal_content_line_count(modal: ModalTarget) -> int:
     return max(len(modal.block.lines) - 2, 1)
 
@@ -2016,6 +2060,7 @@ def _build_block(
     max_width: int,
     render_state: RenderState,
     form_key: str | None = None,
+    form_action: str | None = None,
 ) -> Block:
     if isinstance(component, Modal):
         raise TypeError("<Modal> may only appear at the screen root")
@@ -2041,6 +2086,7 @@ def _build_block(
             max_width=max_width,
             render_state=render_state,
             form_key=form_key,
+            form_action=form_action,
         )
     if isinstance(component, Row):
         return _build_row(
@@ -2049,6 +2095,7 @@ def _build_block(
             max_width=max_width,
             render_state=render_state,
             form_key=form_key,
+            form_action=form_action,
         )
     if isinstance(component, ButtonRow):
         return _build_button_row(
@@ -2057,6 +2104,7 @@ def _build_block(
             max_width=max_width,
             render_state=render_state,
             form_key=form_key,
+            form_action=form_action,
         )
     if isinstance(component, Header):
         return _wrapped_text_block(component.content, style="header", max_width=max_width)
@@ -2093,6 +2141,8 @@ def _build_block(
             )
         )
         return block
+    if isinstance(component, SubmitButton):
+        raise TypeError("<Submit> requires a <ButtonRow> inside <Form>")
     if isinstance(component, AsciiAnimation):
         return _build_animation_block(component, animation_time=animation_time, max_width=max_width)
     raise TypeError(f"unsupported component for layout: {type(component).__name__}")
@@ -2283,16 +2333,22 @@ def _build_form_block(
             max_width=content_width,
             render_state=render_state,
             form_key=form_key,
+            form_action=form.action,
         )
         _merge_block(lines, actionables, body, x=FORM_FIELD_INDENT, y=cursor_y)
         width = max(width, FORM_FIELD_INDENT + body.width)
         animation_interval_ms = _merge_animation_interval(animation_interval_ms, body.animation_interval_ms)
         cursor_y += body.height
 
-    submit_block = _build_form_submit_block(form, form_key=form_key, max_width=max_width)
-    submit_x = max(max_width - submit_block.width, 0)
-    _merge_block(lines, actionables, submit_block, x=submit_x, y=cursor_y)
-    width = max(width, submit_x + submit_block.width)
+    if not _form_has_explicit_submit_controls(form.children):
+        submit_block = _build_form_submit_block(
+            form,
+            form_key=form_key,
+            max_width=max_width,
+            render_state=render_state,
+        )
+        _merge_block(lines, actionables, submit_block, x=0, y=cursor_y)
+        width = max(width, submit_block.width)
 
     return Block(
         width=width,
@@ -2345,19 +2401,35 @@ def _build_input_block(
     return block
 
 
-def _build_form_submit_block(form: Form, *, form_key: str, max_width: int) -> Block:
-    label = _truncate_text(f"[ {form.submit_button_text} ]", max_width)
-    block = _leaf_block(label, style="action")
-    block.actionables.append(
-        ActionableTarget(
-            x=0,
-            y=0,
-            width=len(label),
-            label_text=label,
-            actionable=SubmitControl(form_key=form_key, action=form.action),
-        )
+def _build_form_submit_block(
+    form: Form,
+    *,
+    form_key: str,
+    max_width: int,
+    render_state: RenderState,
+) -> Block:
+    return _build_button_row(
+        ButtonRow(
+            children=[SubmitButton(label=form.submit_button_text, action=form.action)],
+        ),
+        animation_time=0,
+        max_width=max_width,
+        render_state=render_state,
+        form_key=form_key,
+        form_action=form.action,
     )
-    return block
+
+
+def _form_has_explicit_submit_controls(children: list[Component]) -> bool:
+    for child in children:
+        if isinstance(child, SubmitButton):
+            return True
+        if isinstance(child, ButtonRow) and any(isinstance(button, SubmitButton) for button in child.children):
+            return True
+        if isinstance(child, (Column, Row, Section)):
+            if _form_has_explicit_submit_controls(child.children):
+                return True
+    return False
 
 
 def _build_column_like(
@@ -2368,6 +2440,7 @@ def _build_column_like(
     max_width: int,
     render_state: RenderState,
     form_key: str | None = None,
+    form_action: str | None = None,
 ) -> Block:
     lines: list[list[Segment]] = []
     actionables: list[ActionableTarget] = []
@@ -2382,6 +2455,7 @@ def _build_column_like(
             max_width=max_width,
             render_state=render_state,
             form_key=form_key,
+            form_action=form_action,
         )
         _merge_block(lines, actionables, block, x=0, y=cursor_y)
         width = max(width, block.width)
@@ -2408,6 +2482,7 @@ def _build_row(
     max_width: int,
     render_state: RenderState,
     form_key: str | None = None,
+    form_action: str | None = None,
 ) -> Block:
     child_blocks = [
         _build_block(
@@ -2416,6 +2491,7 @@ def _build_row(
             max_width=max_width,
             render_state=render_state,
             form_key=form_key,
+            form_action=form_action,
         )
         for child in row.children
     ]
@@ -2451,6 +2527,7 @@ def _build_button_row(
     max_width: int,
     render_state: RenderState,
     form_key: str | None = None,
+    form_action: str | None = None,
 ) -> Block:
     actionables: list[ActionableTarget] = []
     cursor_x = 0
@@ -2465,13 +2542,23 @@ def _build_button_row(
 
     for index, child in enumerate(row.children):
         label = _truncate_text(f"[ {child.label} ]", inner_width)
+        if isinstance(child, SubmitButton):
+            if form_key is None:
+                raise TypeError("<Submit> requires an enclosing form")
+            submit_action = child.action or form_action or ""
+            actionable: Button | Link | InputControl | SubmitControl = SubmitControl(
+                form_key=form_key,
+                action=submit_action,
+            )
+        else:
+            actionable = child
         actionables.append(
             ActionableTarget(
                 x=2 + cursor_x,
                 y=1,
                 width=len(label),
                 label_text=label,
-                actionable=child,
+                actionable=actionable,
                 action_group="button_row",
                 action_align=row.align,
             )

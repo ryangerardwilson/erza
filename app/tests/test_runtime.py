@@ -10,7 +10,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Text
+from erza.model import AsciiAnimation, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, SubmitButton, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -554,8 +554,46 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(targets[0].x, 6)
         self.assertEqual(targets[1].x, 6)
         self.assertEqual(targets[1].y, targets[0].y + 1)
-        self.assertEqual(targets[2].y, targets[1].y + 1)
-        self.assertGreater(targets[2].x, targets[0].x)
+        self.assertGreater(targets[2].y, targets[1].y)
+        self.assertEqual(targets[2].action_group, "button_row")
+        self.assertEqual(targets[2].action_align, "center")
+
+    def test_build_render_plan_collects_multiple_form_submit_targets_on_one_row(self) -> None:
+        screen = Screen(
+            title="Compose",
+            children=[
+                Modal(
+                    modal_id="post-editor",
+                    title="New Post",
+                    children=[
+                        Form(
+                            action="/posts/publish",
+                            children=[
+                                Input(name="body", label="Body", required=True),
+                                ButtonRow(
+                                    align="right",
+                                    children=[
+                                        SubmitButton(label="Save draft", action="/posts/draft"),
+                                        SubmitButton(label="Publish post"),
+                                    ],
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        modal = plan.modals["post-editor"]
+        submit_targets = [item for item in modal.actionables if isinstance(item.actionable, SubmitControl)]
+
+        self.assertEqual(len(submit_targets), 2)
+        self.assertEqual(submit_targets[0].actionable.action, "/posts/draft")
+        self.assertEqual(submit_targets[1].actionable.action, "/posts/publish")
+        self.assertEqual(submit_targets[0].y, submit_targets[1].y)
+        self.assertTrue(all(item.action_group == "button_row" for item in submit_targets))
+        self.assertTrue(all(item.action_align == "right" for item in submit_targets))
 
     def test_form_input_activation_enters_edit_mode_and_submits(self) -> None:
         screen = Screen(
@@ -629,7 +667,8 @@ class RuntimeTests(unittest.TestCase):
 
         next_plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
 
-        self.assertEqual(session.mode, "section")
+        self.assertEqual(session.mode, "edit")
+        self.assertEqual(session.edit_state.input_name, "password")
         self.assertEqual(session.section_line_index, next_plan.sections[0].block.actionables[1].y - 1)
 
     def test_edit_mode_escape_restores_original_value(self) -> None:
@@ -1158,6 +1197,62 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(session.active_modal_id, "auth-access")
         self.assertEqual(session.mode, "modal")
         self.assertEqual(session.modal_messages["auth-access"], "Invalid password.")
+
+    def test_modal_submit_uses_selected_button_row_action(self) -> None:
+        screen = Screen(
+            title="Compose",
+            children=[
+                Section(
+                    title="Post",
+                    children=[Button(label="New post", action="ui.open_modal", params={"modal_id": "post-editor"})],
+                ),
+                Modal(
+                    modal_id="post-editor",
+                    title="New Post",
+                    children=[
+                        Form(
+                            action="/posts/publish",
+                            children=[
+                                Input(name="body", label="Body"),
+                                ButtonRow(
+                                    align="right",
+                                    children=[
+                                        SubmitButton(label="Save draft", action="/posts/draft"),
+                                        SubmitButton(label="Publish post"),
+                                    ],
+                                ),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+        )
+        app = _SubmittingApp(screen, SubmitResult(type="refresh"))
+        session = _RuntimeSession(app)
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+
+        modal = plan.modals["post-editor"]
+        form_key = next(
+            item.actionable.form_key
+            for item in modal.actionables
+            if isinstance(item.actionable, InputControl)
+        )
+        submit_line = next(
+            item.y - 1
+            for item in modal.actionables
+            if isinstance(item.actionable, SubmitControl)
+        )
+        session.form_values = {form_key: {"body": "Hello"}}
+        session.edit_state = None
+        session.mode = "modal"
+        session.modal_line_index = submit_line
+        session.modal_action_index = 1
+
+        session._activate_modal(plan)
+
+        self.assertEqual(app.submissions, [("/posts/publish", {"body": "Hello"})])
 
     def test_button_row_supports_horizontal_navigation_and_activation(self) -> None:
         screen = Screen(
