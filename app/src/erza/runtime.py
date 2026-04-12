@@ -1483,6 +1483,7 @@ class _RuntimeSession:
         self.show_help = False
         self.pending_g = False
         self.status = ""
+        self._focus_first_modal_input(plan.modals[modal_id])
 
     def _close_modal(self) -> None:
         self.active_modal_id = None
@@ -1665,9 +1666,13 @@ class _RuntimeSession:
             return
         if key in {curses.KEY_ENTER, ord("\n"), ord("\r")}:
             self.form_values[self.edit_state.form_key][self.edit_state.input_name] = value
+            previous_edit = self.edit_state
             self.edit_state = None
             self.mode = "modal" if self.active_modal_id is not None else "section"
             if self.active_modal_id is not None:
+                if self._advance_modal_edit(previous_edit):
+                    self.status = ""
+                    return
                 self.modal_line_index += 1
                 self.modal_action_index = 0
             else:
@@ -1704,6 +1709,64 @@ class _RuntimeSession:
         self.form_values[self.edit_state.form_key][self.edit_state.input_name] = value
         self.edit_state.cursor_index = cursor
         self.status = ""
+
+    def _focus_first_modal_input(self, modal: ModalTarget) -> None:
+        for line_index, action_index, target in _ordered_modal_actionables(modal):
+            if not isinstance(target.actionable, InputControl):
+                continue
+            self.modal_line_index = line_index
+            self.modal_action_index = action_index
+            self._begin_edit(target.actionable)
+            return
+
+    def _advance_modal_edit(self, previous_edit: EditState) -> bool:
+        plan = self._navigation_plan_snapshot()
+        modal = self._active_modal(plan) if plan is not None else None
+        if modal is None:
+            return False
+
+        ordered = _ordered_modal_actionables(modal)
+        current_index: int | None = None
+        for index, (line_index, action_index, target) in enumerate(ordered):
+            actionable = target.actionable
+            if not isinstance(actionable, InputControl):
+                continue
+            if (
+                actionable.form_key == previous_edit.form_key
+                and actionable.input_name == previous_edit.input_name
+                and line_index == self.modal_line_index
+                and action_index == self.modal_action_index
+            ):
+                current_index = index
+                break
+
+        if current_index is None:
+            return False
+
+        for line_index, action_index, target in ordered[current_index + 1 :]:
+            self.modal_line_index = line_index
+            self.modal_action_index = action_index
+            if isinstance(target.actionable, InputControl):
+                self._begin_edit(target.actionable)
+            return True
+
+        return False
+
+    def _navigation_plan_snapshot(self) -> RenderPlan | None:
+        if self._last_plan is not None:
+            return self._last_plan
+        screen = self._screen
+        if screen is None:
+            try:
+                screen = self.app.build_screen()
+            except RuntimeError:
+                return None
+        return build_render_plan(
+            screen,
+            form_values=self.form_values,
+            edit_state=self.edit_state,
+            modal_messages=self.modal_messages,
+        )
 
     def _submit_form(self, plan: RenderPlan, target: SubmitControl, stdscr: curses.window | None = None) -> None:
         if not hasattr(self.app, "submit_form"):
@@ -1912,6 +1975,14 @@ def _modal_line_actionable(modal: ModalTarget, line_index: int) -> ActionableTar
     if not matching:
         return None
     return matching[0]
+
+
+def _ordered_modal_actionables(modal: ModalTarget) -> list[tuple[int, int, ActionableTarget]]:
+    ordered: list[tuple[int, int, ActionableTarget]] = []
+    for line_index in range(_modal_content_line_count(modal)):
+        for action_index, target in enumerate(_modal_line_actionables(modal, line_index)):
+            ordered.append((line_index, action_index, target))
+    return ordered
 
 
 def _normalize_sections(children: list[Component]) -> list[Section]:

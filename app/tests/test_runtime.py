@@ -939,7 +939,64 @@ class RuntimeTests(unittest.TestCase):
         session._enter_section_mode(plan)
 
         self.assertEqual(session.active_modal_id, "auth-access")
-        self.assertEqual(session.mode, "modal")
+        self.assertEqual(session.mode, "edit")
+        self.assertEqual(session.edit_state.input_name, "username")
+        self.assertEqual(
+            session.modal_line_index,
+            next(
+                item.y - 1
+                for item in plan.modals["auth-access"].actionables
+                if isinstance(item.actionable, InputControl)
+                and item.actionable.input_name == "username"
+            ),
+        )
+
+    def test_modal_edit_mode_enter_advances_into_next_input(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(
+                    title="Login",
+                    children=[Button(label="Open access", action="ui.open_modal", params={"modal_id": "auth-access"})],
+                ),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[
+                        Form(
+                            action="/auth/access",
+                            submit_button_text="Enter",
+                            children=[
+                                Input(name="username", label="Username"),
+                                Input(name="password", type="password", label="Password"),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+
+        session._handle_edit_key(ord("a"))
+        session._handle_edit_key(ord("\n"))
+
+        next_plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+
+        self.assertEqual(session.active_modal_id, "auth-access")
+        self.assertEqual(session.mode, "edit")
+        self.assertEqual(session.edit_state.input_name, "password")
+        self.assertEqual(
+            session.modal_line_index,
+            next(
+                item.y - 1
+                for item in next_plan.modals["auth-access"].actionables
+                if isinstance(item.actionable, InputControl)
+                and item.actionable.input_name == "password"
+            ),
+        )
 
     def test_direct_action_tab_keeps_previous_page_body_visible(self) -> None:
         screen = Screen(
