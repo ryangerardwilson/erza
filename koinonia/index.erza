@@ -70,16 +70,22 @@
     <Modal id="profile-description" title="Profile Description">
       <Header>Set your current description.</Header>
       <Text>Keep it short and current. You can change or clear it whenever you want.</Text>
-      <Form action="/profile/bio" submit-button-text="Save description">
+      <Form action="/profile/bio">
         <Input name="bio" type="text" label="Description" value="<?= profile.bio ?>" />
+        <ButtonRow align="right">
+          <Submit>Save description</Submit>
+        </ButtonRow>
       </Form>
     </Modal>
 
     <Modal id="create-post" title="New Post">
       <Header>Publish a new dispatch.</Header>
       <Text>Write a short terminal-native post for the feed.</Text>
-      <Form action="/posts" submit-button-text="Post to Koinonia">
+      <Form action="/posts">
         <Input name="body" type="text" label="Post" required="mandatory" />
+        <ButtonRow align="right">
+          <Submit>Post to Koinonia</Submit>
+        </ButtonRow>
       </Form>
     </Modal>
   <? else ?>
@@ -113,9 +119,12 @@
     <Modal id="auth-access" title="Login / Sign Up">
       <Header>Claim or reopen a username.</Header>
       <Text>One form does both jobs. Enter a username and password. If the username is unclaimed, it becomes yours. If it already exists, the same password gets you back in.</Text>
-      <Form action="/auth/access" submit-button-text="Enter Koinonia">
+      <Form action="/auth/access">
         <Input name="username" type="text" label="Username" required="mandatory" />
         <Input name="password" type="password" label="Password" required="mandatory" />
+        <ButtonRow align="right">
+          <Submit>Enter Koinonia</Submit>
+        </ButtonRow>
       </Form>
     </Modal>
   <? endif ?>
