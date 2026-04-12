@@ -1836,7 +1836,9 @@ def _header_grid_layout(plan: RenderPlan, display_width: int) -> HeaderGridLayou
 
 
 def _section_content_viewport_height(screen_height: int) -> int:
-    return max(_viewport_height(screen_height) - 2, 1)
+    header_height = HEADER_CELL_ROW_HEIGHT + 1
+    section_borders = 2
+    return max(_viewport_height(screen_height) - header_height - section_borders, 1)
 
 
 def _display_width(terminal_width: int) -> int:

@@ -338,6 +338,50 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("[ Action 11 ]", rendered_labels)
         self.assertNotIn("[ Action 0 ]", rendered_labels)
 
+    def test_section_cursor_remains_visible_when_content_scrolls(self) -> None:
+        screen = Screen(
+            title="Long",
+            children=[
+                Section(
+                    title="Feed",
+                    children=[Text(f"Line {index}") for index in range(20)],
+                )
+            ],
+        )
+        plan = build_render_plan(screen)
+        section = plan.sections[0]
+        line_index = 7
+        scroll_offset = compute_section_scroll_offset(section, line_index, 10, 0)
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        class _SmallDrawingWindow:
+            def getmaxyx(self) -> tuple[int, int]:
+                return (10, 79)
+
+            def erase(self) -> None:
+                return
+
+            def refresh(self) -> None:
+                return
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_section_page(
+                _SmallDrawingWindow(),
+                plan,
+                section,
+                0,
+                0,
+                line_index,
+                0,
+                scroll_offset,
+            )
+
+        self.assertGreater(scroll_offset, 0)
+        self.assertTrue(any(text == ">" for _, _, text, _, _ in calls))
+
     def test_jump_to_section_boundaries_updates_active_section(self) -> None:
         screen = Screen(
             title="Bounds",
