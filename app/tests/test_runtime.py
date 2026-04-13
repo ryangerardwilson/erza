@@ -11,7 +11,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Splash, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -36,6 +36,7 @@ from erza.runtime import (
     compute_section_scroll_offset,
     draw_loading_overlay,
     draw_modal_overlay,
+    draw_splash_screen,
     draw_section_page,
     next_section_index,
     next_section_line_index,
@@ -593,6 +594,31 @@ class RuntimeTests(unittest.TestCase):
         self.assertIsNone(session._active_splash(screen))
         self.assertIn("<screen>", session._seen_splash_locations)
         self.assertIsNone(session._active_splash(screen))
+
+    def test_splash_animation_draws_raw_frames_without_box_chrome(self) -> None:
+        splash = Splash(
+            duration_ms=1200,
+            children=[
+                SplashAnimation(
+                    fps=5,
+                    loop=True,
+                    frames=["APP .", "APP .."],
+                )
+            ],
+        )
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            interval = draw_splash_screen(_DrawingWindow(), splash, animation_time=0.3, footer="koinonia")
+
+        rendered = [text for _, _, text, _, _ in calls]
+        self.assertEqual(interval, 200)
+        self.assertIn("APP ..", rendered)
+        self.assertIn("koinonia", rendered)
+        self.assertFalse(any(text.startswith("+") for text in rendered))
 
     def test_build_render_plan_collects_form_input_and_submit_targets(self) -> None:
         screen = Screen(

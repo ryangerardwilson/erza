@@ -83,6 +83,8 @@ Current component direction:
 - `<Action>` dispatches a backend event
 - `<Link>` opens another page
 - `<AsciiAnimation>` renders declarative terminal motion from raw ASCII frames
+- `<Splash>` provides a timed launch surface before the main app
+- `<SplashAnimation>` provides raw unboxed animation frames for launch screens
 - `<Column>` and `<Row>` remain as support layout for nested composition
 
 Example shape:

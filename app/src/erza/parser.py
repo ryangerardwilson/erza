@@ -6,7 +6,7 @@ import re
 import textwrap
 from typing import Any
 
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
 
 
 class ParseError(RuntimeError):
@@ -268,10 +268,18 @@ def _convert_element(
         return Link(label=_collect_text(element), href=href)
     if tag == "asciianimation":
         return AsciiAnimation(
-            frames=_collect_animation_frames(element),
+            frames=_collect_animation_frames(element, owner_tag="AsciiAnimation"),
             fps=_parse_positive_int(element, "fps", default=4),
             loop=_parse_bool(element, "loop", default=True),
             label=element.attrs.get("label", "").strip() or "Animation",
+        )
+    if tag == "splashanimation":
+        if parent_tag != "splash":
+            raise ParseError("<SplashAnimation> may only appear inside <Splash>")
+        return SplashAnimation(
+            frames=_collect_animation_frames(element, owner_tag="SplashAnimation"),
+            fps=_parse_positive_int(element, "fps", default=4),
+            loop=_parse_bool(element, "loop", default=True),
         )
     if tag in {"button", "action"}:
         if inside_form:
@@ -311,32 +319,32 @@ def _collect_text(element: Element) -> str:
     return text
 
 
-def _collect_animation_frames(element: Element) -> list[str]:
+def _collect_animation_frames(element: Element, *, owner_tag: str) -> list[str]:
     frames: list[str] = []
     for child in element.children:
         if isinstance(child, str):
             if child.strip():
-                raise ParseError("<AsciiAnimation> only supports <Frame> children")
+                raise ParseError(f"<{owner_tag}> only supports <Frame> children")
             continue
         if child.tag != "frame":
-            raise ParseError("<AsciiAnimation> only supports <Frame> children")
-        frames.append(_collect_frame_text(child))
+            raise ParseError(f"<{owner_tag}> only supports <Frame> children")
+        frames.append(_collect_frame_text(child, owner_tag=owner_tag))
 
     if not frames:
-        raise ParseError("<AsciiAnimation> requires at least one <Frame>")
+        raise ParseError(f"<{owner_tag}> requires at least one <Frame>")
     return frames
 
 
-def _collect_frame_text(element: Element) -> str:
+def _collect_frame_text(element: Element, *, owner_tag: str) -> str:
     parts: list[str] = []
     for child in element.children:
         if not isinstance(child, str):
-            raise ParseError("<Frame> only supports raw text")
+            raise ParseError(f"<Frame> inside <{owner_tag}> only supports raw text")
         parts.append(child)
 
     raw = textwrap.dedent("".join(parts)).strip("\n")
     if not raw:
-        raise ParseError("<Frame> cannot be empty")
+        raise ParseError(f"<Frame> inside <{owner_tag}> cannot be empty")
     return raw
 
 

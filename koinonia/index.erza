@@ -1,13 +1,34 @@
 <Screen title="Koinonia">
   <Splash duration-ms="1400">
-    <AsciiArt>
+    <SplashAnimation fps="7">
+      <Frame>
  _  __      _                       _
 | |/ /___  (_)___  ____  ____  ____(_)_ _
 |   / __ \/ / __ \/ __ \/ __ \/ __/ /  ' \
 |   / /_/ / / / / / /_/ / / / / /_/ / /| |
 |_|\_\____/_/_/ /_/\____/_/ /_/\__/_/_/ |_|
-    </AsciiArt>
-    <Text>terminal social commons</Text>
+
+terminal social commons .
+      </Frame>
+      <Frame>
+ _  __      _                       _
+| |/ /___  (_)___  ____  ____  ____(_)_ _
+|   / __ \/ / __ \/ __ \/ __ \/ __/ /  ' \
+|   / /_/ / / / / / /_/ / / / / /_/ / /| |
+|_|\_\____/_/_/ /_/\____/_/ /_/\__/_/_/ |_|
+
+terminal social commons ..
+      </Frame>
+      <Frame>
+ _  __      _                       _
+| |/ /___  (_)___  ____  ____  ____(_)_ _
+|   / __ \/ / __ \/ __ \/ __ \/ __/ /  ' \
+|   / /_/ / / / / / /_/ / / / / /_/ / /| |
+|_|\_\____/_/_/ /_/\____/_/ /_/\__/_/_/ |_|
+
+terminal social commons ...
+      </Frame>
+    </SplashAnimation>
   </Splash>
   <? auth = backend("auth.viewer") ?>
   <? status = backend("ui.status") ?>

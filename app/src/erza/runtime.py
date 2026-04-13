@@ -14,7 +14,7 @@ import time
 
 from erza.backend import BackendBridge, bind_request_context
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
 from erza.parser import compile_markup
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
@@ -2300,6 +2300,8 @@ def _build_block(
         raise TypeError("<Submit> requires a <ButtonRow> inside <Form>")
     if isinstance(component, AsciiAnimation):
         return _build_animation_block(component, animation_time=animation_time, max_width=max_width)
+    if isinstance(component, SplashAnimation):
+        return _build_splash_animation_block(component, animation_time=animation_time, max_width=max_width)
     raise TypeError(f"unsupported component for layout: {type(component).__name__}")
 
 
@@ -2459,6 +2461,18 @@ def _build_animation_block(animation: AsciiAnimation, *, animation_time: float, 
         width=block_width,
         height=len(lines),
         lines=lines,
+        animation_interval_ms=_animation_interval_for_fps(animation.fps),
+    )
+
+
+def _build_splash_animation_block(animation: SplashAnimation, *, animation_time: float, max_width: int) -> Block:
+    frame = _select_animation_frame(animation, animation_time)
+    frame_lines = frame.splitlines() or [""]
+    clamped_lines = [_truncate_text(line, max_width) for line in frame_lines]
+    return Block(
+        width=max((len(line) for line in clamped_lines), default=0),
+        height=len(clamped_lines),
+        lines=[[Segment(x=0, text=line, style="animation")] for line in clamped_lines],
         animation_interval_ms=_animation_interval_for_fps(animation.fps),
     )
 
@@ -2932,7 +2946,7 @@ def _resolve_editor_command() -> list[str]:
     return command
 
 
-def _select_animation_frame(animation: AsciiAnimation, animation_time: float) -> str:
+def _select_animation_frame(animation: AsciiAnimation | SplashAnimation, animation_time: float) -> str:
     if len(animation.frames) == 1:
         return animation.frames[0]
 

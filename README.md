@@ -142,6 +142,8 @@ Primary components:
 - `<Form action="/path" submit-button-text="...">`
 - `<Input name="field">`
 - `<AsciiAnimation fps="...">`
+- `<Splash duration-ms="...">`
+- `<SplashAnimation fps="...">`
 
 Support layout components:
 

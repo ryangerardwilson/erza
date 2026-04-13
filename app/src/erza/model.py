@@ -55,6 +55,13 @@ class AsciiAnimation:
 
 
 @dataclass(slots=True)
+class SplashAnimation:
+    frames: list[str]
+    fps: int = 4
+    loop: bool = True
+
+
+@dataclass(slots=True)
 class Column:
     children: list["Component"]
     gap: int = 0
@@ -110,4 +117,4 @@ class Screen:
     splash: Splash | None = None
 
 
-Component = Text | Header | AsciiArt | Link | Input | Button | SubmitButton | AsciiAnimation | Column | Row | ButtonRow | Form | Section | Modal
+Component = Text | Header | AsciiArt | Link | Input | Button | SubmitButton | AsciiAnimation | SplashAnimation | Column | Row | ButtonRow | Form | Section | Modal
