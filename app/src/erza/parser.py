@@ -245,6 +245,7 @@ def _convert_element(
             value=element.attrs.get("value", ""),
             label=element.attrs.get("label", ""),
             required=_parse_input_required(element),
+            max_cols=_parse_input_max_cols(element, input_type=input_type),
         )
     if tag == "submit":
         if not inside_form:
@@ -448,6 +449,21 @@ def _parse_input_required(element: Element) -> bool:
     if normalized in {"optional", "false"}:
         return False
     raise ParseError('<Input> required must be "mandatory" or "optional"')
+
+
+def _parse_input_max_cols(element: Element, *, input_type: str) -> int | None:
+    raw = element.attrs.get("max-cols")
+    if raw is None or raw == "":
+        if input_type == "ascii-art":
+            return 72
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ParseError("<Input> max-cols must be a positive integer") from exc
+    if value <= 0:
+        raise ParseError("<Input> max-cols must be a positive integer")
+    return value
 
 
 def _normalize_param_name(name: str) -> str:

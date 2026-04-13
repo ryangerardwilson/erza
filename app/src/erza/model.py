@@ -31,6 +31,7 @@ class Input:
     value: str = ""
     label: str = ""
     required: bool = False
+    max_cols: int | None = None
 
 
 @dataclass(slots=True)

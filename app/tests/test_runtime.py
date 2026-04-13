@@ -946,6 +946,47 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(app.submissions, [])
         self.assertEqual(session.status, "missing required fields: Email")
 
+    def test_frontend_validation_blocks_ascii_art_wider_than_max_cols(self) -> None:
+        screen = Screen(
+            title="Profile",
+            children=[
+                Modal(
+                    modal_id="profile-edit",
+                    title="Edit Profile",
+                    children=[
+                        Form(
+                            action="/profile/edit",
+                            children=[
+                                Input(name="profile_picture", type="ascii-art", label="Profile Picture", max_cols=72),
+                                ButtonRow(
+                                    align="right",
+                                    children=[SubmitButton(label="Save profile")],
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        app = _SubmittingApp(screen, SubmitResult(type="refresh"))
+        session = _RuntimeSession(app)
+        session.form_values = {"form:0": {"profile_picture": "x" * 73}}
+
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._open_modal(plan, "profile-edit")
+        submit_target = next(
+            item.actionable for item in plan.modals["profile-edit"].actionables if isinstance(item.actionable, SubmitControl)
+        )
+
+        session._submit_form(plan, submit_target)
+
+        self.assertEqual(app.submissions, [])
+        self.assertEqual(
+            session.modal_messages["profile-edit"],
+            "Profile Picture must stay within 72 columns.",
+        )
+
     def test_edit_mode_uses_block_cursor_segment_instead_of_pipe_character(self) -> None:
         screen = Screen(
             title="Sign In",

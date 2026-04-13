@@ -174,6 +174,7 @@ oo
         form = screen.children[0].children[0]
         self.assertIsInstance(form.children[0], Input)
         self.assertEqual(form.children[0].type, "ascii-art")
+        self.assertEqual(form.children[0].max_cols, 72)
 
     def test_compiles_button_row(self) -> None:
         markup = """

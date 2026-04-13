@@ -63,9 +63,28 @@ class KoinoniaBackendTests(unittest.TestCase):
         self.assertEqual(decoded["picture"], " /\\\\\n<__>")
         self.assertEqual(status_messages, ["Updated @ryan's profile."])
 
-    def test_profile_picture_rejects_lines_wider_than_72_columns(self) -> None:
-        with self.assertRaises(ValueError):
-            koinonia_backend._normalize_profile_picture("x" * 73)
+    def test_update_profile_accepts_wide_picture_without_backend_validation(self) -> None:
+        updates: list[dict[str, object]] = []
+
+        def record_update(path: str, *, query: dict[str, object], body: dict[str, object]) -> None:
+            updates.append({"path": path, "query": query, "body": body})
+
+        wide_picture = "x" * 120
+        with (
+            patch.object(koinonia_backend, "_current_account", return_value={"handle": "ryan", "display_name": "Ryan"}),
+            patch.object(koinonia_backend, "_profile_row", return_value={"bio": "Joined through the terminal."}),
+            patch.object(koinonia_backend, "_update", side_effect=record_update),
+            patch.object(koinonia_backend, "_set_status"),
+        ):
+            result = koinonia_backend.update_profile(
+                description="Terminal builder",
+                profile_picture=wide_picture,
+            )
+
+        self.assertIsInstance(result, RedirectResult)
+        payload = str(updates[0]["body"]["bio"])
+        decoded = koinonia_backend._decode_profile_state(payload)
+        self.assertEqual(decoded["picture"], wide_picture)
 
 
 if __name__ == "__main__":

@@ -124,6 +124,7 @@ class RenderPlan:
     modals: dict[str, ModalTarget] = field(default_factory=dict)
     form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
     form_requirements: dict[str, dict[str, str]] = field(default_factory=dict)
+    form_validations: dict[str, dict[str, "InputValidation"]] = field(default_factory=dict)
     animation_interval_ms: int | None = None
 
 
@@ -163,6 +164,13 @@ class RenderState:
     next_form_index: int = 0
     form_defaults: dict[str, dict[str, str]] = field(default_factory=dict)
     form_requirements: dict[str, dict[str, str]] = field(default_factory=dict)
+    form_validations: dict[str, dict[str, "InputValidation"]] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class InputValidation:
+    label: str
+    max_cols: int | None = None
 
 
 class ErzaApp:
@@ -350,6 +358,7 @@ def build_render_plan(
         modals=modal_targets,
         form_defaults=render_state.form_defaults,
         form_requirements=render_state.form_requirements,
+        form_validations=render_state.form_validations,
         animation_interval_ms=animation_interval_ms,
     )
 
@@ -1952,6 +1961,13 @@ class _RuntimeSession:
             else:
                 self.status = message
             return
+        validation_error = _validate_form_values(plan, target.form_key, values)
+        if validation_error:
+            if active_modal_id is not None:
+                self.modal_messages[active_modal_id] = validation_error
+            else:
+                self.status = validation_error
+            return
 
         try:
             result = self._run_with_loading(
@@ -2566,9 +2582,13 @@ def _build_input_block(
     render_state: RenderState,
 ) -> Block:
     render_state.form_defaults.setdefault(form_key, {})[input_component.name] = input_component.value
+    label = input_component.label.strip() or _input_label(input_component.name)
     if input_component.required:
-        render_state.form_requirements.setdefault(form_key, {})[input_component.name] = (
-            input_component.label.strip() or _input_label(input_component.name)
+        render_state.form_requirements.setdefault(form_key, {})[input_component.name] = label
+    if input_component.max_cols is not None:
+        render_state.form_validations.setdefault(form_key, {})[input_component.name] = InputValidation(
+            label=label,
+            max_cols=input_component.max_cols,
         )
     current_value = _current_input_value(form_key, input_component, render_state.form_values)
     is_editing = (
@@ -2808,6 +2828,21 @@ def _boxed_content_line(inner_width: int) -> list[Segment]:
 
 def _current_input_value(form_key: str, input_component: Input, form_values: dict[str, dict[str, str]]) -> str:
     return form_values.get(form_key, {}).get(input_component.name, input_component.value)
+
+
+def _validate_form_values(plan: RenderPlan, form_key: str, values: dict[str, str]) -> str | None:
+    for name, validation in plan.form_validations.get(form_key, {}).items():
+        value = str(values.get(name, ""))
+        if validation.max_cols is not None:
+            max_cols = max(_line_column_widths(value), default=0)
+            if max_cols > validation.max_cols:
+                return f"{validation.label} must stay within {validation.max_cols} columns."
+    return None
+
+
+def _line_column_widths(value: str) -> list[int]:
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+    return [len(line.expandtabs(4)) for line in normalized.split("\n")]
 
 
 def _render_input_line(

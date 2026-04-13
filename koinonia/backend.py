@@ -21,8 +21,6 @@ class SupabaseError(RuntimeError):
 
 PROFILE_STATE_PREFIX = "koinonia-profile-v1:"
 MAX_PROFILE_DESCRIPTION_LENGTH = 160
-MAX_PROFILE_PICTURE_LINES = 12
-MAX_PROFILE_PICTURE_WIDTH = 72
 DEFAULT_PROFILE_PICTURE = "\n".join(
     [
         "  .--.",
@@ -191,17 +189,6 @@ def _normalize_profile_picture(raw_picture: str) -> str:
     normalized = str(raw_picture or "").replace("\r\n", "\n").replace("\r", "\n").expandtabs(4).strip("\n")
     if not normalized.strip():
         return DEFAULT_PROFILE_PICTURE
-
-    lines = normalized.split("\n")
-    if len(lines) > MAX_PROFILE_PICTURE_LINES:
-        raise ValueError(f"Profile picture must stay within {MAX_PROFILE_PICTURE_LINES} lines.")
-
-    max_width = max((len(line) for line in lines), default=0)
-    if max_width > MAX_PROFILE_PICTURE_WIDTH:
-        raise ValueError(f"Profile picture must stay within {MAX_PROFILE_PICTURE_WIDTH} columns.")
-
-    if any(character != "\n" and not 32 <= ord(character) <= 126 for character in normalized):
-        raise ValueError("Profile picture must use printable ASCII only.")
     return normalized
 
 
@@ -713,12 +700,9 @@ def update_profile(description: str | None = None, profile_picture: str | None =
     next_description = (description if description is not None else bio if bio is not None else current_state["description"]).strip()
     if len(next_description) > MAX_PROFILE_DESCRIPTION_LENGTH:
         return error(f"Description must stay within {MAX_PROFILE_DESCRIPTION_LENGTH} characters.")
-    try:
-        next_picture = _normalize_profile_picture(
-            profile_picture if profile_picture is not None else current_state["picture"]
-        )
-    except ValueError as exc:
-        return error(str(exc))
+    next_picture = _normalize_profile_picture(
+        profile_picture if profile_picture is not None else current_state["picture"]
+    )
 
     _update(
         "profiles",
