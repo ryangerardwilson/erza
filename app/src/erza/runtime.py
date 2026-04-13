@@ -2002,7 +2002,7 @@ class _RuntimeSession:
                 self.modal_line_index = 0
                 self.modal_scroll_offset = 0
             self.mode = "page"
-            self._schedule_page_reset()
+            self._schedule_page_reset(self.section_index)
             self.form_values = {}
             self.status = f"opened {result.href}"
             return

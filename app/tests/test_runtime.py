@@ -1582,6 +1582,63 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(next_screen.title, "App")
         self.assertEqual(session.section_index, 1)
 
+    def test_modal_profile_redirect_preserves_current_section_index(self) -> None:
+        initial = Screen(
+            title="App",
+            children=[
+                Section(title="Profile", children=[Button(label="Edit profile", action="ui.open_modal", params={"modal_id": "profile-edit"})], tab_order=0),
+                Section(title="Feed", children=[Text("Feed")], tab_order=1, default_tab=True),
+                Modal(
+                    modal_id="profile-edit",
+                    title="Edit Profile",
+                    children=[
+                        Form(
+                            action="/profile/edit",
+                            children=[Input(name="description", label="Description")],
+                        )
+                    ],
+                ),
+            ],
+        )
+        target = Screen(
+            title="App",
+            children=[
+                Section(title="Profile", children=[Text("Profile")], tab_order=0),
+                Section(title="Feed", children=[Text("Feed")], tab_order=1, default_tab=True),
+            ],
+        )
+        app = _RedirectingSubmittingApp(initial, target, SubmitResult(type="redirect", href="index.erza"))
+        session = _RuntimeSession(app)
+        session.section_index = 0
+        plan = build_render_plan(initial, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._enter_section_mode(plan)
+        session._activate(plan)
+
+        modal = plan.modals["profile-edit"]
+        form_key = next(
+            item.actionable.form_key
+            for item in modal.actionables
+            if isinstance(item.actionable, InputControl)
+        )
+        session.form_values = {form_key: {"description": "Updated"}}
+        session.modal_line_index = next(
+            item.y - 1
+            for item in modal.actionables
+            if isinstance(item.actionable, SubmitControl)
+        )
+
+        session._activate_modal(plan)
+
+        self.assertEqual(session.section_index, 0)
+        self.assertIsNone(session.active_modal_id)
+        self.assertIsNone(session._screen)
+
+        next_screen = session._current_screen()
+
+        self.assertEqual(next_screen.title, "App")
+        self.assertEqual(session.section_index, 0)
+
     def test_help_modal_lines_include_shortcuts(self) -> None:
         lines = _help_modal_lines(63)
 
