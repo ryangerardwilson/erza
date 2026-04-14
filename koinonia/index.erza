@@ -56,7 +56,7 @@ terminal social commons ...
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
               <Action on:press="ui.open_modal" modal:id="feed-thread-<?= post.id ?>">View Replies</Action>
-              <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
+              <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
             </ButtonRow>
           </Section>
         <? endfor ?>
@@ -83,7 +83,7 @@ terminal social commons ...
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
               <Action on:press="ui.open_modal" modal:id="profile-thread-<?= post.id ?>">View Replies</Action>
-              <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply</Action>
+              <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
             </ButtonRow>
           </Section>
         <? endfor ?>
@@ -102,7 +102,7 @@ terminal social commons ...
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
         <ButtonRow align="right">
-          <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
+          <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
         </ButtonRow>
         <? if post.replies ?>
           <? for reply in post.replies ?>
@@ -110,7 +110,7 @@ terminal social commons ...
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
-                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply</Action>
+                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply on Reply Thread</Action>
               </ButtonRow>
 
               <? for nested in reply.replies ?>
@@ -126,8 +126,11 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
-      <Modal id="feed-compose-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
+      <Modal id="feed-compose-post-<?= post.id ?>" title="Reply on Post Thread">
         <Form action="/threads/reply">
+          <Header>@<?= post.handle ?></Header>
+          <Text><?= post.body ?></Text>
+          <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
           <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
           <Input name="body" type="text" label="Reply" required="mandatory" />
           <ButtonRow align="right">
@@ -137,8 +140,12 @@ terminal social commons ...
       </Modal>
 
       <? for reply in post.replies ?>
-        <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
+        <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply on Reply Thread">
           <Form action="/threads/reply">
+            <Header>@<?= post.handle ?></Header>
+            <Text><?= post.body ?></Text>
+            <Text>-> @<?= reply.handle ?></Text>
+            <Text><?= reply.body ?></Text>
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
             <Input name="body" type="text" label="Reply" required="mandatory" />
@@ -156,7 +163,7 @@ terminal social commons ...
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
         <ButtonRow align="right">
-          <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply</Action>
+          <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
         </ButtonRow>
         <? if post.replies ?>
           <? for reply in post.replies ?>
@@ -164,7 +171,7 @@ terminal social commons ...
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
-                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply</Action>
+                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply on Reply Thread</Action>
               </ButtonRow>
 
               <? for nested in reply.replies ?>
@@ -180,8 +187,11 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
-      <Modal id="profile-compose-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
+      <Modal id="profile-compose-post-<?= post.id ?>" title="Reply on Post Thread">
         <Form action="/threads/reply">
+          <Header>@<?= post.handle ?></Header>
+          <Text><?= post.body ?></Text>
+          <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
           <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
           <Input name="body" type="text" label="Reply" required="mandatory" />
           <ButtonRow align="right">
@@ -191,8 +201,12 @@ terminal social commons ...
       </Modal>
 
       <? for reply in post.replies ?>
-        <Modal id="profile-compose-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
+        <Modal id="profile-compose-reply-<?= reply.id ?>" title="Reply on Reply Thread">
           <Form action="/threads/reply">
+            <Header>@<?= post.handle ?></Header>
+            <Text><?= post.body ?></Text>
+            <Text>-> @<?= reply.handle ?></Text>
+            <Text><?= reply.body ?></Text>
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
             <Input name="body" type="text" label="Reply" required="mandatory" />
