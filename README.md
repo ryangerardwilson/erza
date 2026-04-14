@@ -27,8 +27,9 @@ The browser docs at `https://erza.ryangerardwilson.com` and the hosted terminal
 docs at `erza run erza.ryangerardwilson.com` should both be derived from this
 file, not from a separate documentation content model.
 
-That deploy path is automated through GitHub Actions and Vercel. Changes to
-`README.md` or `docs_website/` should redeploy the docs site automatically.
+That deploy path is automated directly by Vercel's Git integration. Pushes
+to `main` that change `README.md` or `docs_website/` should redeploy the docs
+site automatically.
 
 ## Why erza
 
