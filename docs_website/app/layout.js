@@ -6,8 +6,7 @@ export const metadata = {
     default: "erza",
     template: "%s | erza"
   },
-  description:
-    "erza is a terminal-native language project for component-driven interfaces and the future erzanet."
+  description: "Canonical erza documentation rendered directly from the repo README."
 };
 
 export default function RootLayout({ children }) {

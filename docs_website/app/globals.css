@@ -1,1 +1,142 @@
 @import "../erzanet_site/assets/site.css";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+}
+
+.readme-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 72px;
+}
+
+.readme-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+  font-size: 0.92rem;
+  color: rgba(15, 23, 42, 0.78);
+}
+
+.readme-meta a {
+  color: inherit;
+}
+
+.readme-docs {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #0f172a;
+}
+
+.readme-docs h1,
+.readme-docs h2,
+.readme-docs h3,
+.readme-docs h4 {
+  margin-top: 2.25rem;
+  margin-bottom: 0.9rem;
+  line-height: 1.2;
+}
+
+.readme-docs h1 {
+  margin-top: 0;
+  font-size: clamp(2.2rem, 4vw, 3.1rem);
+}
+
+.readme-docs h2 {
+  font-size: 1.5rem;
+}
+
+.readme-docs h3 {
+  font-size: 1.15rem;
+}
+
+.readme-docs p,
+.readme-docs ul,
+.readme-docs ol,
+.readme-docs pre,
+.readme-docs blockquote,
+.readme-docs table {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.readme-docs ul,
+.readme-docs ol {
+  padding-left: 1.4rem;
+}
+
+.readme-docs li + li {
+  margin-top: 0.28rem;
+}
+
+.readme-docs a {
+  color: #0f172a;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.14em;
+}
+
+.readme-docs code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.94em;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 0.12em 0.32em;
+  border-radius: 6px;
+}
+
+.readme-docs pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.readme-docs pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.readme-docs blockquote {
+  padding-left: 16px;
+  border-left: 3px solid rgba(15, 23, 42, 0.18);
+  color: rgba(15, 23, 42, 0.78);
+}
+
+.readme-docs table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.readme-docs th,
+.readme-docs td {
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.readme-docs hr {
+  border: 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.12);
+  margin: 2rem 0;
+}
+
+@media (max-width: 720px) {
+  .readme-shell {
+    padding: 20px 16px 48px;
+  }
+
+  .readme-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
