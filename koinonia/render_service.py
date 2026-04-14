@@ -113,6 +113,9 @@ class _Handler(BaseHTTPRequestHandler):
         except (BackendError, TypeError) as exc:
             self._send_json(404, {"type": "error", "message": str(exc)})
             return
+        except Exception as exc:  # pragma: no cover - defensive server boundary
+            self._send_json(500, {"type": "error", "message": str(exc)})
+            return
 
         self._send_json(200, _result_payload(result))
 

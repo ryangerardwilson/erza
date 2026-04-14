@@ -304,6 +304,21 @@ def _supabase_text_list(values: list[str]) -> str:
     return f"in.({','.join(quoted)})"
 
 
+def _friendly_supabase_error_message(exc: SupabaseError) -> str:
+    raw = str(exc).strip()
+    if not raw:
+        return "Koinonia could not complete that request."
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+    if isinstance(payload, dict):
+        message = str(payload.get("message", "")).strip()
+        if message:
+            return message
+    return raw
+
+
 def _attach_replies(posts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not posts:
         return posts
@@ -528,12 +543,15 @@ def create_post(body: str = ""):
         return error("Sign in first to publish.")
     if not body.strip():
         return error("Post text is required.")
-    _rpc(
-        "create_post",
-        author_name=account["display_name"],
-        profile_handle=account["handle"],
-        body=body.strip(),
-    )
+    try:
+        _rpc(
+            "create_post",
+            author_name=account["display_name"],
+            profile_handle=account["handle"],
+            body=body.strip(),
+        )
+    except SupabaseError as exc:
+        return error(_friendly_supabase_error_message(exc))
     _set_status(f"Posted to the town square as @{account['handle']}.")
     return redirect("index.erza")
 
@@ -558,14 +576,17 @@ def create_thread_reply(
     except ValueError:
         return error("Reply target is invalid.")
 
-    _rpc(
-        "add_thread_reply",
-        thread_slug=thread_slug.strip(),
-        parent_reply_id=parent_id,
-        author_name=account["display_name"],
-        profile_handle=account["handle"],
-        body=body.strip(),
-    )
+    try:
+        _rpc(
+            "add_thread_reply",
+            thread_slug=thread_slug.strip(),
+            parent_reply_id=parent_id,
+            author_name=account["display_name"],
+            profile_handle=account["handle"],
+            body=body.strip(),
+        )
+    except SupabaseError as exc:
+        return error(_friendly_supabase_error_message(exc))
     _set_status(f"Replied as @{account['handle']}.")
     return redirect("index.erza")
 
