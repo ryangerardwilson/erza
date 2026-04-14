@@ -1,16 +1,16 @@
-import SiteFrame from "@/ui/site-frame";
-
 export default function NotFound() {
   return (
-    <SiteFrame footer="back">
-      <section className="hero hero-small">
-        <p className="eyebrow">404</p>
-        <h1>That route is not part of the current erza docs surface.</h1>
-        <p className="lede">
-          Head back to the overview and continue from the current component, pattern, lab, or
-          protocol pages.
+    <main className="readme-shell">
+      <div className="readme-meta">
+        <span>Canonical docs from README.md</span>
+      </div>
+      <article className="readme-docs">
+        <h1>That docs route does not exist.</h1>
+        <p>The documentation site is a single README-driven surface now.</p>
+        <p>
+          Go back to <a href="/">the root docs page</a>.
         </p>
-      </section>
-    </SiteFrame>
+      </article>
+    </main>
   );
 }

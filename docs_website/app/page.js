@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import { readCanonicalReadme, resolveReadmeHref } from "@/lib/readme-docs";
 
 const REPO_URL = "https://github.com/ryangerardwilson/erza";
 
@@ -11,17 +10,8 @@ export const metadata = {
   description: "Canonical erza documentation rendered directly from the repo README."
 };
 
-function resolveMarkdownHref(href = "") {
-  if (!href || href.startsWith("#") || href.startsWith("http://") || href.startsWith("https://")) {
-    return href;
-  }
-  const cleaned = href.replace(/^\.\//, "");
-  const mode = cleaned.endsWith("/") ? "tree" : "blob";
-  return `${REPO_URL}/${mode}/main/${cleaned}`;
-}
-
-export default async function HomePage() {
-  const readme = await readFile(join(process.cwd(), "..", "README.md"), "utf-8");
+export default function HomePage() {
+  const readme = readCanonicalReadme();
 
   return (
     <main className="readme-shell">
@@ -37,7 +27,7 @@ export default async function HomePage() {
           remarkPlugins={[remarkGfm]}
           components={{
             a({ href, children, ...props }) {
-              const resolved = resolveMarkdownHref(href);
+              const resolved = resolveReadmeHref(href);
               const external = Boolean(resolved) && !String(resolved).startsWith("#");
               return (
                 <a

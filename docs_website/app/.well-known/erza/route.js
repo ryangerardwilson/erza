@@ -1,8 +1,8 @@
-import { getErzaPageSource, normalizeErzaPagePath } from "@/lib/erza-pages";
+import { buildReadmeErzaSource, normalizeReadmeErzaPath } from "@/lib/readme-docs";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const requestedPath = normalizeErzaPagePath(searchParams.get("path") || "/");
+  const requestedPath = normalizeReadmeErzaPath(searchParams.get("path") || "/");
   if (!requestedPath) {
     return new Response("invalid erza page path\n", {
       status: 400,
@@ -10,7 +10,7 @@ export async function GET(request) {
     });
   }
 
-  const source = getErzaPageSource(requestedPath);
+  const source = buildReadmeErzaSource(requestedPath);
   if (!source) {
     return new Response("erza page not found\n", {
       status: 404,

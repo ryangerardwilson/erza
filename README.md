@@ -23,8 +23,12 @@ This repository contains:
 
 This `README.md` is the canonical documentation source.
 
-The browser docs at `https://erza.ryangerardwilson.com` should be a rendering of
-this file, not a separate documentation system with its own content model.
+The browser docs at `https://erza.ryangerardwilson.com` and the hosted terminal
+docs at `erza run erza.ryangerardwilson.com` should both be derived from this
+file, not from a separate documentation content model.
+
+That deploy path is automated through GitHub Actions and Vercel. Changes to
+`README.md` or `docs_website/` should redeploy the docs site automatically.
 
 ## Why erza
 
