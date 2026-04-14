@@ -97,7 +97,31 @@ def compile_markup(markup: str) -> Screen:
             splash = _convert_splash(child)
             continue
         children.append(_convert_element(child, parent_tag="screen"))
-    return Screen(title=title, children=children, splash=splash)
+    screen = Screen(title=title, children=children, splash=splash)
+    validate_screen_structure(screen)
+    return screen
+
+
+def validate_screen_structure(screen: Screen, *, error_type: type[Exception] = ParseError) -> None:
+    modals = [child for child in screen.children if isinstance(child, Modal)]
+    modal_map = {modal.modal_id: modal for modal in modals}
+    form_only_modal_ids = {modal.modal_id for modal in modals if _is_form_only_modal(modal)}
+
+    for modal in modals:
+        _validate_modal_children(modal.children, error_type=error_type)
+        if modal.modal_id in form_only_modal_ids:
+            continue
+        for actionable in _iter_modal_actionables(modal.children):
+            if isinstance(actionable, Link):
+                raise error_type("<Modal> without a <Form> may only contain actions that open form-only modals")
+            if actionable.action != "ui.open_modal":
+                raise error_type("<Modal> without a <Form> may only contain actions that open form-only modals")
+            modal_id = str(actionable.params.get("modal_id", "")).strip()
+            if not modal_id:
+                raise error_type("ui.open_modal inside <Modal> requires modal_id")
+            target = modal_map.get(modal_id)
+            if target is None or target.modal_id not in form_only_modal_ids:
+                raise error_type("<Modal> without a <Form> may only open form-only modals")
 
 
 def _convert_children(
@@ -468,12 +492,43 @@ def _parse_input_max_cols(element: Element, *, input_type: str) -> int | None:
     return value
 
 
-def _validate_modal_children(children: list[Component]) -> None:
-    form_children = [child for child in children if isinstance(child, Form)]
-    if not form_children:
+def _validate_modal_children(children: list[Component], *, error_type: type[Exception] = ParseError) -> None:
+    if not any(_component_contains_form(child) for child in children):
         return
-    if len(children) != 1 or len(form_children) != 1 or not isinstance(children[0], Form):
-        raise ParseError("<Modal> containing a <Form> may only contain that single <Form>")
+    if len(children) != 1 or not isinstance(children[0], Form):
+        raise error_type("<Modal> containing a <Form> may only contain that single <Form>")
+
+
+def _is_form_only_modal(modal: Modal) -> bool:
+    return len(modal.children) == 1 and isinstance(modal.children[0], Form)
+
+
+def _component_contains_form(component: Component) -> bool:
+    if isinstance(component, Form):
+        return True
+    if isinstance(component, Section | Column | Row):
+        return any(_component_contains_form(child) for child in component.children)
+    return False
+
+
+def _iter_modal_actionables(children: list[Component]) -> list[Button | Link]:
+    actionables: list[Button | Link] = []
+    for child in children:
+        actionables.extend(_collect_component_actionables(child))
+    return actionables
+
+
+def _collect_component_actionables(component: Component) -> list[Button | Link]:
+    if isinstance(component, Button | Link):
+        return [component]
+    if isinstance(component, ButtonRow):
+        return [child for child in component.children if isinstance(child, Button | Link)]
+    if isinstance(component, Section | Column | Row):
+        actionables: list[Button | Link] = []
+        for child in component.children:
+            actionables.extend(_collect_component_actionables(child))
+        return actionables
+    return []
 
 
 def _normalize_param_name(name: str) -> str:

@@ -55,7 +55,8 @@ terminal social commons ...
             <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
-              <Action on:press="ui.open_modal" modal:id="feed-thread-<?= post.id ?>">Reply</Action>
+              <Action on:press="ui.open_modal" modal:id="feed-thread-<?= post.id ?>">View Replies</Action>
+              <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
             </ButtonRow>
           </Section>
         <? endfor ?>
@@ -81,7 +82,8 @@ terminal social commons ...
             <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
-              <Action on:press="ui.open_modal" modal:id="profile-thread-<?= post.id ?>">Reply</Action>
+              <Action on:press="ui.open_modal" modal:id="profile-thread-<?= post.id ?>">View Replies</Action>
+              <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply</Action>
             </ButtonRow>
           </Section>
         <? endfor ?>
@@ -95,12 +97,11 @@ terminal social commons ...
     </Section>
 
     <? for post in timeline ?>
-      <Modal id="feed-thread-<?= post.id ?>" title="Thread with @<?= post.handle ?>">
+      <Modal id="feed-thread-<?= post.id ?>" title="Replies for @<?= post.handle ?>">
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
         <ButtonRow align="right">
-          <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
           <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
         </ButtonRow>
         <? if post.replies ?>
@@ -109,7 +110,6 @@ terminal social commons ...
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
-                <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
                 <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply</Action>
               </ButtonRow>
 
@@ -117,15 +117,12 @@ terminal social commons ...
                 <Section title="@<?= nested.handle ?>">
                   <Text><?= nested.body ?></Text>
                   <Text><?= nested.likes ?> likes</Text>
-                  <ButtonRow align="right">
-                    <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
-                  </ButtonRow>
                 </Section>
               <? endfor ?>
             </Section>
           <? endfor ?>
         <? else ?>
-          <Text>No replies yet. Start the thread above.</Text>
+          <Text>No replies yet.</Text>
         <? endif ?>
       </Modal>
 
@@ -154,12 +151,11 @@ terminal social commons ...
     <? endfor ?>
 
     <? for post in profile.posts ?>
-      <Modal id="profile-thread-<?= post.id ?>" title="Thread with @<?= post.handle ?>">
+      <Modal id="profile-thread-<?= post.id ?>" title="Replies for @<?= post.handle ?>">
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
         <ButtonRow align="right">
-          <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
           <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply</Action>
         </ButtonRow>
         <? if post.replies ?>
@@ -168,7 +164,6 @@ terminal social commons ...
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
-                <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
                 <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply</Action>
               </ButtonRow>
 
@@ -176,15 +171,12 @@ terminal social commons ...
                 <Section title="@<?= nested.handle ?>">
                   <Text><?= nested.body ?></Text>
                   <Text><?= nested.likes ?> likes</Text>
-                  <ButtonRow align="right">
-                    <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
-                  </ButtonRow>
                 </Section>
               <? endfor ?>
             </Section>
           <? endfor ?>
         <? else ?>
-          <Text>No replies yet. Start the thread above.</Text>
+          <Text>No replies yet.</Text>
         <? endif ?>
       </Modal>
 

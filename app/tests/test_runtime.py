@@ -820,6 +820,23 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             build_render_plan(screen)
 
+    def test_build_render_plan_rejects_view_modal_actions_that_do_not_open_form_modals(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Modal(
+                    modal_id="thread-view",
+                    title="Thread",
+                    children=[
+                        ButtonRow(children=[Button(label="Like", action="feed.like")]),
+                    ],
+                )
+            ],
+        )
+
+        with self.assertRaises(TypeError):
+            build_render_plan(screen)
+
     def test_build_render_plan_preserves_ascii_art_lines(self) -> None:
         screen = Screen(
             title="Profile",

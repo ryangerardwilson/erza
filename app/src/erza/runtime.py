@@ -15,7 +15,7 @@ import time
 from erza.backend import BackendBridge, bind_request_context
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
 from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
-from erza.parser import compile_markup
+from erza.parser import compile_markup, validate_screen_structure
 from erza.remote import RemoteApp, is_remote_source, normalize_remote_url
 from erza.source import SourceResolutionError, resolve_local_source_path, resolve_relative_source
 from erza.template import render_template
@@ -268,6 +268,7 @@ def build_render_plan(
     edit_state: EditState | None = None,
     modal_messages: dict[str, str] | None = None,
 ) -> RenderPlan:
+    validate_screen_structure(screen, error_type=TypeError)
     sections = _normalize_sections(screen.children)
     default_section_index = _default_section_index(sections)
     modals = _collect_modals(screen.children)

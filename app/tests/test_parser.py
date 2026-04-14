@@ -345,6 +345,37 @@ oo
         with self.assertRaises(ParseError):
             compile_markup(markup)
 
+    def test_view_modal_rejects_non_modal_open_action(self) -> None:
+        markup = """
+<Screen title="Auth">
+  <Modal id="thread-view" title="Thread">
+    <ButtonRow>
+      <Action on:press="feed.like">Like</Action>
+    </ButtonRow>
+  </Modal>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
+
+    def test_view_modal_may_only_open_form_only_modals(self) -> None:
+        markup = """
+<Screen title="Auth">
+  <Modal id="thread-view" title="Thread">
+    <ButtonRow>
+      <Action on:press="ui.open_modal" modal:id="reply-view">Reply</Action>
+    </ButtonRow>
+  </Modal>
+  <Modal id="reply-view" title="Reply View">
+    <Text>Not a form.</Text>
+  </Modal>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
+
     def test_placeholder_attribute_is_rejected(self) -> None:
         markup = """
 <Screen title="Sign In">
