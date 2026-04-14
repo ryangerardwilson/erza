@@ -56,7 +56,7 @@ terminal social commons ...
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
               <Action on:press="ui.open_modal" modal:id="feed-thread-<?= post.id ?>">View Replies</Action>
-              <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
+              <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
             </ButtonRow>
           </Section>
         <? endfor ?>
@@ -83,7 +83,7 @@ terminal social commons ...
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
               <Action on:press="ui.open_modal" modal:id="profile-thread-<?= post.id ?>">View Replies</Action>
-              <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
+              <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply</Action>
             </ButtonRow>
           </Section>
         <? endfor ?>
@@ -101,16 +101,13 @@ terminal social commons ...
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
-        <ButtonRow align="right">
-          <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
-        </ButtonRow>
         <? if post.replies ?>
           <? for reply in post.replies ?>
             <Section title="@<?= reply.handle ?>">
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
-                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply on Reply Thread</Action>
+                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply on Thread</Action>
               </ButtonRow>
 
               <? for nested in reply.replies ?>
@@ -126,7 +123,7 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
-      <Modal id="feed-compose-post-<?= post.id ?>" title="Reply on Post Thread">
+      <Modal id="feed-compose-post-<?= post.id ?>" title="Reply">
         <Form action="/threads/reply">
           <Header>@<?= post.handle ?></Header>
           <Text><?= post.body ?></Text>
@@ -140,7 +137,7 @@ terminal social commons ...
       </Modal>
 
       <? for reply in post.replies ?>
-        <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply on Reply Thread">
+        <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply on Thread">
           <Form action="/threads/reply">
             <Header>@<?= post.handle ?></Header>
             <Text><?= post.body ?></Text>
@@ -162,16 +159,13 @@ terminal social commons ...
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
-        <ButtonRow align="right">
-          <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply on Post Thread</Action>
-        </ButtonRow>
         <? if post.replies ?>
           <? for reply in post.replies ?>
             <Section title="@<?= reply.handle ?>">
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
-                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply on Reply Thread</Action>
+                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply on Thread</Action>
               </ButtonRow>
 
               <? for nested in reply.replies ?>
@@ -187,7 +181,7 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
-      <Modal id="profile-compose-post-<?= post.id ?>" title="Reply on Post Thread">
+      <Modal id="profile-compose-post-<?= post.id ?>" title="Reply">
         <Form action="/threads/reply">
           <Header>@<?= post.handle ?></Header>
           <Text><?= post.body ?></Text>
@@ -201,7 +195,7 @@ terminal social commons ...
       </Modal>
 
       <? for reply in post.replies ?>
-        <Modal id="profile-compose-reply-<?= reply.id ?>" title="Reply on Reply Thread">
+        <Modal id="profile-compose-reply-<?= reply.id ?>" title="Reply on Thread">
           <Form action="/threads/reply">
             <Header>@<?= post.handle ?></Header>
             <Text><?= post.body ?></Text>
