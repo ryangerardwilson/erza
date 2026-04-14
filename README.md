@@ -23,9 +23,9 @@ This repository contains:
 
 This `README.md` is the canonical documentation source.
 
-The browser docs at `https://erza.ryangerardwilson.com` and the hosted terminal
-docs at `erza run erza.ryangerardwilson.com` should both be derived from this
-file, not from a separate documentation content model.
+The browser docs at `https://erza.ryangerardwilson.com` now serve this
+`README.md` directly as markdown, and the hosted terminal docs at
+`erza run erza.ryangerardwilson.com` are derived from the same file.
 
 That deploy path is automated directly by Vercel's Git integration. Pushes
 to `main` that change `README.md` or `docs_website/` should redeploy the docs
