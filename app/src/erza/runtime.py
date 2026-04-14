@@ -777,6 +777,7 @@ def draw_modal_overlay(
         if _is_button_row_actionable_line(line_actionables):
             _draw_button_row_actionables(
                 stdscr,
+                line_segments=line,
                 line_actionables=line_actionables,
                 selected_index=action_index,
                 origin_x=modal_x,
@@ -944,6 +945,7 @@ def _draw_section_body(
         if _is_button_row_actionable_line(line_actionables):
             _draw_button_row_actionables(
                 stdscr,
+                line_segments=line,
                 line_actionables=line_actionables,
                 selected_index=action_index,
                 origin_x=block_x,
@@ -3137,6 +3139,7 @@ def _button_row_alignment_offset(align: str, inner_width: int, visible_width: in
 def _draw_button_row_actionables(
     stdscr: curses.window,
     *,
+    line_segments: list[Segment],
     line_actionables: list[ActionableTarget],
     selected_index: int,
     origin_x: int,
@@ -3148,7 +3151,7 @@ def _draw_button_row_actionables(
     if not _is_button_row_actionable_line(line_actionables):
         return
 
-    inner_width = max(max_width - 8, 1)
+    inner_left, inner_width = _button_row_fill_bounds(line_segments, line_actionables, max_width=max_width)
     visible = _button_row_visible_window(
         line_actionables,
         inner_width=inner_width,
@@ -3161,12 +3164,11 @@ def _draw_button_row_actionables(
     align = line_actionables[0].action_align or "center"
     align_offset = _button_row_alignment_offset(align, inner_width, visible_width)
     selected = _selected_actionable(line_actionables, selected_index) if active else None
-    base_content_x = 4
 
     for item in visible:
         relative_x = item.x - visible[0].x
-        screen_x = origin_x + base_content_x + align_offset + relative_x
-        available = max(max_width - (base_content_x + align_offset + relative_x), 0)
+        screen_x = origin_x + inner_left + align_offset + relative_x
+        available = max(inner_width - (align_offset + relative_x), 0)
         if available == 0:
             continue
         style = styles["action_active"] if active and item is selected else styles["action"]
@@ -3178,6 +3180,30 @@ def _draw_button_row_actionables(
             available,
             style,
         )
+
+
+def _button_row_fill_bounds(
+    line_segments: list[Segment],
+    line_actionables: list[ActionableTarget],
+    *,
+    max_width: int,
+) -> tuple[int, int]:
+    if not line_actionables:
+        return 4, max(max_width - 8, 1)
+
+    packed_left = min(item.x for item in line_actionables)
+    packed_right = max(item.x + item.width for item in line_actionables)
+    candidates = [
+        segment
+        for segment in line_segments
+        if segment.style == "section_fill"
+        and segment.x <= packed_left
+        and segment.x + len(segment.text) >= packed_right
+    ]
+    if not candidates:
+        return 4, max(max_width - 8, 1)
+    best = min(candidates, key=lambda segment: len(segment.text))
+    return best.x, max(len(best.text), 1)
 
 
 def _draw_active_actionable(

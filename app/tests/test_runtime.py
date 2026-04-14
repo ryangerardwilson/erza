@@ -373,6 +373,61 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("[ Action 11 ]", rendered_labels)
         self.assertNotIn("[ Action 0 ]", rendered_labels)
 
+    def test_nested_right_aligned_button_row_stays_inside_inner_border(self) -> None:
+        plan = build_render_plan(
+            Screen(
+                title="Feed",
+                children=[
+                    Section(
+                        title="Feed",
+                        children=[
+                            Section(
+                                title="@alina",
+                                children=[
+                                    Text("Root"),
+                                    Section(
+                                        title="@noor",
+                                        children=[
+                                            Text("Reply"),
+                                            ButtonRow(
+                                                align="right",
+                                                children=[
+                                                    Button(label="Like", action="feed.like"),
+                                                    Button(label="Reply", action="threads.reply"),
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            )
+        )
+        target = next(item for item in plan.sections[0].block.actionables if item.label_text == "[ Reply ]")
+        line_index = target.y - 1
+        calls: list[tuple[int, int, str, int, int]] = []
+
+        def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
+            calls.append((y, x, text, max_length, style))
+
+        with patch("erza.runtime._safe_addnstr", side_effect=capture):
+            draw_section_page(
+                _DrawingWindow(),
+                plan,
+                plan.sections[0],
+                0,
+                0,
+                line_index,
+                1,
+                0,
+            )
+
+        border_x = max(x for _, x, text, _, _ in calls if text == " |")
+        reply_call = next((x, text) for _, x, text, _, _ in calls if text == "[ Reply ]")
+        self.assertLess(reply_call[0] + len(reply_call[1]), border_x)
+
     def test_section_cursor_remains_visible_when_content_scrolls(self) -> None:
         screen = Screen(
             title="Long",

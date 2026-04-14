@@ -55,29 +55,8 @@ terminal social commons ...
             <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
-              <Action on:press="ui.open_modal" modal:id="feed-reply-post-<?= post.id ?>">Reply</Action>
+              <Action on:press="ui.open_modal" modal:id="feed-thread-<?= post.id ?>">Reply</Action>
             </ButtonRow>
-
-            <? for reply in post.replies ?>
-              <Section title="@<?= reply.handle ?>">
-                <Text><?= reply.body ?></Text>
-                <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
-                <ButtonRow align="right">
-                  <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
-                  <Action on:press="ui.open_modal" modal:id="feed-reply-reply-<?= reply.id ?>">Reply</Action>
-                </ButtonRow>
-
-                <? for nested in reply.replies ?>
-                  <Section title="@<?= nested.handle ?>">
-                    <Text><?= nested.body ?></Text>
-                    <Text><?= nested.likes ?> likes</Text>
-                    <ButtonRow align="right">
-                      <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
-                    </ButtonRow>
-                  </Section>
-                <? endfor ?>
-              </Section>
-            <? endfor ?>
           </Section>
         <? endfor ?>
       <? else ?>
@@ -102,29 +81,8 @@ terminal social commons ...
             <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
-              <Action on:press="ui.open_modal" modal:id="profile-reply-post-<?= post.id ?>">Reply</Action>
+              <Action on:press="ui.open_modal" modal:id="profile-thread-<?= post.id ?>">Reply</Action>
             </ButtonRow>
-
-            <? for reply in post.replies ?>
-              <Section title="@<?= reply.handle ?>">
-                <Text><?= reply.body ?></Text>
-                <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
-                <ButtonRow align="right">
-                  <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
-                  <Action on:press="ui.open_modal" modal:id="profile-reply-reply-<?= reply.id ?>">Reply</Action>
-                </ButtonRow>
-
-                <? for nested in reply.replies ?>
-                  <Section title="@<?= nested.handle ?>">
-                    <Text><?= nested.body ?></Text>
-                    <Text><?= nested.likes ?> likes</Text>
-                    <ButtonRow align="right">
-                      <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
-                    </ButtonRow>
-                  </Section>
-                <? endfor ?>
-              </Section>
-            <? endfor ?>
           </Section>
         <? endfor ?>
       <? else ?>
@@ -137,9 +95,10 @@ terminal social commons ...
     </Section>
 
     <? for post in timeline ?>
-      <Modal id="feed-reply-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
-        <Header>Reply in the town square.</Header>
-        <Text>Threads stay shallow here: a post, a reply, then one more reply if needed.</Text>
+      <Modal id="feed-thread-<?= post.id ?>" title="Thread with @<?= post.handle ?>">
+        <Header>@<?= post.handle ?></Header>
+        <Text><?= post.body ?></Text>
+        <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
         <Form action="/threads/reply">
           <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
           <Input name="body" type="text" label="Reply" required="mandatory" />
@@ -147,10 +106,34 @@ terminal social commons ...
             <Submit>Post reply</Submit>
           </ButtonRow>
         </Form>
+        <? if post.replies ?>
+          <? for reply in post.replies ?>
+            <Section title="@<?= reply.handle ?>">
+              <Text><?= reply.body ?></Text>
+              <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+              <ButtonRow align="right">
+                <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
+                <Action on:press="ui.open_modal" modal:id="feed-thread-reply-<?= reply.id ?>">Reply</Action>
+              </ButtonRow>
+
+              <? for nested in reply.replies ?>
+                <Section title="@<?= nested.handle ?>">
+                  <Text><?= nested.body ?></Text>
+                  <Text><?= nested.likes ?> likes</Text>
+                  <ButtonRow align="right">
+                    <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
+                  </ButtonRow>
+                </Section>
+              <? endfor ?>
+            </Section>
+          <? endfor ?>
+        <? else ?>
+          <Text>No replies yet. Start the thread above.</Text>
+        <? endif ?>
       </Modal>
 
       <? for reply in post.replies ?>
-        <Modal id="feed-reply-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
+        <Modal id="feed-thread-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
           <Header>Reply one level deeper.</Header>
           <Text>This is the deepest reply level Koinonia allows.</Text>
           <Form action="/threads/reply">
@@ -166,9 +149,10 @@ terminal social commons ...
     <? endfor ?>
 
     <? for post in profile.posts ?>
-      <Modal id="profile-reply-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
-        <Header>Reply in the town square.</Header>
-        <Text>Threads stay shallow here: a post, a reply, then one more reply if needed.</Text>
+      <Modal id="profile-thread-<?= post.id ?>" title="Thread with @<?= post.handle ?>">
+        <Header>@<?= post.handle ?></Header>
+        <Text><?= post.body ?></Text>
+        <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
         <Form action="/threads/reply">
           <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
           <Input name="body" type="text" label="Reply" required="mandatory" />
@@ -176,10 +160,34 @@ terminal social commons ...
             <Submit>Post reply</Submit>
           </ButtonRow>
         </Form>
+        <? if post.replies ?>
+          <? for reply in post.replies ?>
+            <Section title="@<?= reply.handle ?>">
+              <Text><?= reply.body ?></Text>
+              <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+              <ButtonRow align="right">
+                <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
+                <Action on:press="ui.open_modal" modal:id="profile-thread-reply-<?= reply.id ?>">Reply</Action>
+              </ButtonRow>
+
+              <? for nested in reply.replies ?>
+                <Section title="@<?= nested.handle ?>">
+                  <Text><?= nested.body ?></Text>
+                  <Text><?= nested.likes ?> likes</Text>
+                  <ButtonRow align="right">
+                    <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
+                  </ButtonRow>
+                </Section>
+              <? endfor ?>
+            </Section>
+          <? endfor ?>
+        <? else ?>
+          <Text>No replies yet. Start the thread above.</Text>
+        <? endif ?>
       </Modal>
 
       <? for reply in post.replies ?>
-        <Modal id="profile-reply-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
+        <Modal id="profile-thread-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
           <Header>Reply one level deeper.</Header>
           <Text>This is the deepest reply level Koinonia allows.</Text>
           <Form action="/threads/reply">
