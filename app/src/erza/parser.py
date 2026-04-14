@@ -158,15 +158,17 @@ def _convert_element(
         title = element.attrs.get("title", "").strip()
         if not title:
             raise ParseError("<Modal> requires a title")
+        children = _convert_children(
+            element,
+            parent_tag="modal",
+            inside_form=inside_form,
+            inside_modal=True,
+        )
+        _validate_modal_children(children)
         return Modal(
             modal_id=modal_id,
             title=title,
-            children=_convert_children(
-                element,
-                parent_tag="modal",
-                inside_form=inside_form,
-                inside_modal=True,
-            ),
+            children=children,
         )
     if tag == "column":
         return Column(
@@ -464,6 +466,14 @@ def _parse_input_max_cols(element: Element, *, input_type: str) -> int | None:
     if value <= 0:
         raise ParseError("<Input> max-cols must be a positive integer")
     return value
+
+
+def _validate_modal_children(children: list[Component]) -> None:
+    form_children = [child for child in children if isinstance(child, Form)]
+    if not form_children:
+        return
+    if len(children) != 1 or len(form_children) != 1 or not isinstance(children[0], Form):
+        raise ParseError("<Modal> containing a <Form> may only contain that single <Form>")
 
 
 def _normalize_param_name(name: str) -> str:

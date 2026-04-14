@@ -99,13 +99,10 @@ terminal social commons ...
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
-        <Form action="/threads/reply">
-          <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
-          <Input name="body" type="text" label="Reply" required="mandatory" />
-          <ButtonRow align="right">
-            <Submit>Post reply</Submit>
-          </ButtonRow>
-        </Form>
+        <ButtonRow align="right">
+          <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
+          <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
+        </ButtonRow>
         <? if post.replies ?>
           <? for reply in post.replies ?>
             <Section title="@<?= reply.handle ?>">
@@ -113,7 +110,7 @@ terminal social commons ...
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
                 <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
-                <Action on:press="ui.open_modal" modal:id="feed-thread-reply-<?= reply.id ?>">Reply</Action>
+                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply</Action>
               </ButtonRow>
 
               <? for nested in reply.replies ?>
@@ -132,10 +129,18 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
+      <Modal id="feed-compose-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
+        <Form action="/threads/reply">
+          <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
+          <Input name="body" type="text" label="Reply" required="mandatory" />
+          <ButtonRow align="right">
+            <Submit>Post reply</Submit>
+          </ButtonRow>
+        </Form>
+      </Modal>
+
       <? for reply in post.replies ?>
-        <Modal id="feed-thread-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
-          <Header>Reply one level deeper.</Header>
-          <Text>This is the deepest reply level Koinonia allows.</Text>
+        <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
           <Form action="/threads/reply">
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
@@ -153,13 +158,10 @@ terminal social commons ...
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
-        <Form action="/threads/reply">
-          <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
-          <Input name="body" type="text" label="Reply" required="mandatory" />
-          <ButtonRow align="right">
-            <Submit>Post reply</Submit>
-          </ButtonRow>
-        </Form>
+        <ButtonRow align="right">
+          <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
+          <Action on:press="ui.open_modal" modal:id="profile-compose-post-<?= post.id ?>">Reply</Action>
+        </ButtonRow>
         <? if post.replies ?>
           <? for reply in post.replies ?>
             <Section title="@<?= reply.handle ?>">
@@ -167,7 +169,7 @@ terminal social commons ...
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               <ButtonRow align="right">
                 <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
-                <Action on:press="ui.open_modal" modal:id="profile-thread-reply-<?= reply.id ?>">Reply</Action>
+                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply</Action>
               </ButtonRow>
 
               <? for nested in reply.replies ?>
@@ -186,10 +188,18 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
+      <Modal id="profile-compose-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
+        <Form action="/threads/reply">
+          <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
+          <Input name="body" type="text" label="Reply" required="mandatory" />
+          <ButtonRow align="right">
+            <Submit>Post reply</Submit>
+          </ButtonRow>
+        </Form>
+      </Modal>
+
       <? for reply in post.replies ?>
-        <Modal id="profile-thread-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
-          <Header>Reply one level deeper.</Header>
-          <Text>This is the deepest reply level Koinonia allows.</Text>
+        <Modal id="profile-compose-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
           <Form action="/threads/reply">
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
@@ -203,8 +213,6 @@ terminal social commons ...
     <? endfor ?>
 
     <Modal id="profile-edit" title="Edit Profile">
-      <Header>Shape your profile card.</Header>
-      <Text>Description stays short. Profile picture opens in your editor for multi-line ASCII art.</Text>
       <Form action="/profile/edit">
         <Input name="description" type="text" label="Description" value="<?= profile.description ?>" />
         <Input name="profile_picture" type="ascii-art" label="Profile Picture" value="<?= profile.picture ?>" />
@@ -215,8 +223,6 @@ terminal social commons ...
     </Modal>
 
     <Modal id="create-post" title="New Post">
-      <Header>Publish to the town square.</Header>
-      <Text>Keep it short and public. Replies can grow underneath it later.</Text>
       <Form action="/posts">
         <Input name="body" type="text" label="Post" required="mandatory" />
         <ButtonRow align="right">
@@ -240,8 +246,6 @@ terminal social commons ...
     </Section>
 
     <Modal id="auth-access" title="Login / Sign Up">
-      <Header>Claim or reopen a username.</Header>
-      <Text>One form does both jobs. If the username is unclaimed, it becomes yours. If it already exists, the same password gets you back in.</Text>
       <Form action="/auth/access">
         <Input name="username" type="text" label="Username" required="mandatory" />
         <Input name="password" type="password" label="Password" required="mandatory" />

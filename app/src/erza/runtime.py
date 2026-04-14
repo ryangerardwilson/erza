@@ -2381,7 +2381,13 @@ def _build_modal_block(
     message: str = "",
 ) -> Block:
     children: list[Component] = list(modal.children)
-    if message:
+    if _is_form_modal_children(children):
+        if not _has_valid_form_modal_children(children):
+            raise TypeError("<Modal> containing a <Form> may only contain that single <Form>")
+        title = modal.title if not message else f"{modal.title}: {message}"
+    else:
+        title = modal.title
+    if message and not _is_form_modal_children(children):
         children.insert(0, Text(content=message))
     body = _build_column_like(
         children,
@@ -2391,10 +2397,18 @@ def _build_modal_block(
         render_state=render_state,
     )
     return _build_bordered_section_block(
-        Section(title=modal.title, children=[]),
+        Section(title=title, children=[]),
         body=body,
         fixed_inner_width=INTERACTIVE_MODAL_INNER_WIDTH,
     )
+
+
+def _is_form_modal_children(children: list[Component]) -> bool:
+    return any(isinstance(child, Form) for child in children)
+
+
+def _has_valid_form_modal_children(children: list[Component]) -> bool:
+    return len(children) == 1 and isinstance(children[0], Form)
 
 
 def _build_bordered_section_block(

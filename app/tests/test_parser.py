@@ -330,6 +330,21 @@ oo
         with self.assertRaises(ParseError):
             compile_markup(markup)
 
+    def test_form_modal_rejects_extra_content(self) -> None:
+        markup = """
+<Screen title="Auth">
+  <Modal id="auth-access" title="Login / Sign Up">
+    <Header>Open access</Header>
+    <Form action="/auth/access">
+      <Input name="username" />
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        with self.assertRaises(ParseError):
+            compile_markup(markup)
+
     def test_placeholder_attribute_is_rejected(self) -> None:
         markup = """
 <Screen title="Sign In">

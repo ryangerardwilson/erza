@@ -11,7 +11,7 @@ ensure_test_paths()
 
 from erza.backend import BackendBridge
 from erza.local_server import SubmitResult
-from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Input, Link, Modal, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
+from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Form, Header, Input, Link, Modal, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
 from erza.remote import RemoteApp
 from erza.runtime import (
     ALT_B,
@@ -798,6 +798,27 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(submit_targets[0].y, submit_targets[1].y)
         self.assertTrue(all(item.action_group == "button_row" for item in submit_targets))
         self.assertTrue(all(item.action_align == "right" for item in submit_targets))
+
+    def test_build_render_plan_rejects_form_modal_with_extra_content(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[
+                        Header("Open access"),
+                        Form(
+                            action="/auth/access",
+                            children=[Input(name="username", label="Username")],
+                        ),
+                    ],
+                )
+            ],
+        )
+
+        with self.assertRaises(TypeError):
+            build_render_plan(screen)
 
     def test_build_render_plan_preserves_ascii_art_lines(self) -> None:
         screen = Screen(
