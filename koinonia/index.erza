@@ -30,6 +30,7 @@ terminal social commons ...
       </Frame>
     </SplashAnimation>
   </Splash>
+
   <? auth = backend("auth.viewer") ?>
   <? status = backend("ui.status") ?>
   <? overview = backend("network.overview") ?>
@@ -38,37 +39,50 @@ terminal social commons ...
   <? if auth.logged_in ?>
     <? profile = backend("profiles.current") ?>
     <? timeline = backend("feed.timeline") ?>
-    <? people = backend("people.suggested") ?>
 
     <Section title="Feed" tab-order="1" default-tab="true">
-      <Header>Feed for @<?= auth.handle ?></Header>
+      <Header>Town Square</Header>
       <Text><?= status ?></Text>
       <ButtonRow>
         <Action on:press="ui.open_modal" modal:id="create-post">New post</Action>
       </ButtonRow>
-      <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> builders.</Text>
+      <Text><?= overview.posts ?> posts, <?= overview.replies ?> replies, and <?= overview.people ?> residents are live in the square.</Text>
 
-      <? for post in timeline ?>
-        <Section title="<?= post.author ?> @<?= post.handle ?>">
-          <Text>Circle: <?= post.circle ?></Text>
-          <Text><?= post.body ?></Text>
-          <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
-          <ButtonRow align="right">
-            <Action on:press="feed.like" post:id="<?= post.id ?>">Signal</Action>
-            <Action on:press="feed.boost" post:id="<?= post.id ?>">Boost</Action>
-          </ButtonRow>
-        </Section>
-      <? endfor ?>
+      <? if timeline ?>
+        <? for post in timeline ?>
+          <Section title="@<?= post.handle ?>">
+            <Text><?= post.body ?></Text>
+            <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+            <ButtonRow align="right">
+              <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
+              <Action on:press="ui.open_modal" modal:id="feed-reply-post-<?= post.id ?>">Reply</Action>
+            </ButtonRow>
 
-      <Header>Builders near the feed</Header>
-      <? for person in people ?>
-        <Text><?= person.name ?> @<?= person.handle ?></Text>
-        <Text><?= person.description or "No description set yet." ?></Text>
-        <Text>Primary circle: <?= person.primary_circle ?></Text>
-        <? if person.can_follow ?>
-          <Action on:press="people.toggle_follow" handle="<?= person.handle ?>"><?= person.follow_action_label ?></Action>
-        <? endif ?>
-      <? endfor ?>
+            <? for reply in post.replies ?>
+              <Section title="@<?= reply.handle ?>">
+                <Text><?= reply.body ?></Text>
+                <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+                <ButtonRow align="right">
+                  <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
+                  <Action on:press="ui.open_modal" modal:id="feed-reply-reply-<?= reply.id ?>">Reply</Action>
+                </ButtonRow>
+
+                <? for nested in reply.replies ?>
+                  <Section title="@<?= nested.handle ?>">
+                    <Text><?= nested.body ?></Text>
+                    <Text><?= nested.likes ?> likes</Text>
+                    <ButtonRow align="right">
+                      <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
+                    </ButtonRow>
+                  </Section>
+                <? endfor ?>
+              </Section>
+            <? endfor ?>
+          </Section>
+        <? endfor ?>
+      <? else ?>
+        <Text>No posts yet. Open the modal above and start the square.</Text>
+      <? endif ?>
     </Section>
 
     <Section title="Profile" tab-order="0">
@@ -80,24 +94,105 @@ terminal social commons ...
         <Action on:press="ui.open_modal" modal:id="profile-edit">Edit profile</Action>
       </ButtonRow>
       <Text><?= status ?></Text>
-      <Text>Primary circle: <?= profile.primary_circle ?></Text>
-      <Text><?= profile.followers ?> followers</Text>
 
       <? if profile.posts ?>
         <? for post in profile.posts ?>
-          <Section title="Dispatch in <?= post.circle ?>">
+          <Section title="@<?= post.handle ?>">
             <Text><?= post.body ?></Text>
-            <Text><?= post.likes ?> signals | <?= post.boosts ?> boosts | <?= post.reply_count ?> replies</Text>
+            <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+            <ButtonRow align="right">
+              <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
+              <Action on:press="ui.open_modal" modal:id="profile-reply-post-<?= post.id ?>">Reply</Action>
+            </ButtonRow>
+
+            <? for reply in post.replies ?>
+              <Section title="@<?= reply.handle ?>">
+                <Text><?= reply.body ?></Text>
+                <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+                <ButtonRow align="right">
+                  <Action on:press="feed.like" reply:id="<?= reply.id ?>">Like</Action>
+                  <Action on:press="ui.open_modal" modal:id="profile-reply-reply-<?= reply.id ?>">Reply</Action>
+                </ButtonRow>
+
+                <? for nested in reply.replies ?>
+                  <Section title="@<?= nested.handle ?>">
+                    <Text><?= nested.body ?></Text>
+                    <Text><?= nested.likes ?> likes</Text>
+                    <ButtonRow align="right">
+                      <Action on:press="feed.like" reply:id="<?= nested.id ?>">Like</Action>
+                    </ButtonRow>
+                  </Section>
+                <? endfor ?>
+              </Section>
+            <? endfor ?>
           </Section>
         <? endfor ?>
       <? else ?>
-        <Text>No posts yet. Use the form above to start your profile stream.</Text>
+        <Text>No posts yet. Open the modal above and start your thread history.</Text>
       <? endif ?>
     </Section>
 
     <Section title="Logout" tab-order="2">
       <Action on:press="auth.logout">Log out</Action>
     </Section>
+
+    <? for post in timeline ?>
+      <Modal id="feed-reply-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
+        <Header>Reply in the town square.</Header>
+        <Text>Threads stay shallow here: a post, a reply, then one more reply if needed.</Text>
+        <Form action="/threads/reply">
+          <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
+          <Input name="body" type="text" label="Reply" required="mandatory" />
+          <ButtonRow align="right">
+            <Submit>Post reply</Submit>
+          </ButtonRow>
+        </Form>
+      </Modal>
+
+      <? for reply in post.replies ?>
+        <Modal id="feed-reply-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
+          <Header>Reply one level deeper.</Header>
+          <Text>This is the deepest reply level Koinonia allows.</Text>
+          <Form action="/threads/reply">
+            <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
+            <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
+            <Input name="body" type="text" label="Reply" required="mandatory" />
+            <ButtonRow align="right">
+              <Submit>Post reply</Submit>
+            </ButtonRow>
+          </Form>
+        </Modal>
+      <? endfor ?>
+    <? endfor ?>
+
+    <? for post in profile.posts ?>
+      <Modal id="profile-reply-post-<?= post.id ?>" title="Reply to @<?= post.handle ?>">
+        <Header>Reply in the town square.</Header>
+        <Text>Threads stay shallow here: a post, a reply, then one more reply if needed.</Text>
+        <Form action="/threads/reply">
+          <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
+          <Input name="body" type="text" label="Reply" required="mandatory" />
+          <ButtonRow align="right">
+            <Submit>Post reply</Submit>
+          </ButtonRow>
+        </Form>
+      </Modal>
+
+      <? for reply in post.replies ?>
+        <Modal id="profile-reply-reply-<?= reply.id ?>" title="Reply to @<?= reply.handle ?>">
+          <Header>Reply one level deeper.</Header>
+          <Text>This is the deepest reply level Koinonia allows.</Text>
+          <Form action="/threads/reply">
+            <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
+            <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
+            <Input name="body" type="text" label="Reply" required="mandatory" />
+            <ButtonRow align="right">
+              <Submit>Post reply</Submit>
+            </ButtonRow>
+          </Form>
+        </Modal>
+      <? endfor ?>
+    <? endfor ?>
 
     <Modal id="profile-edit" title="Edit Profile">
       <Header>Shape your profile card.</Header>
@@ -112,8 +207,8 @@ terminal social commons ...
     </Modal>
 
     <Modal id="create-post" title="New Post">
-      <Header>Publish a new dispatch.</Header>
-      <Text>Write a short terminal-native post for the feed.</Text>
+      <Header>Publish to the town square.</Header>
+      <Text>Keep it short and public. Replies can grow underneath it later.</Text>
       <Form action="/posts">
         <Input name="body" type="text" label="Post" required="mandatory" />
         <ButtonRow align="right">
@@ -122,26 +217,13 @@ terminal social commons ...
       </Form>
     </Modal>
   <? else ?>
-    <? circles = backend("circles.list") ?>
-    <? signals = backend("signals.list") ?>
-
     <Section title="Why Koinonia">
-      <Header>Koinonia is a terminal-native social commons for erza.</Header>
-      <Text><?= overview.posts ?> dispatches are live across <?= overview.circles ?> circles and <?= overview.people ?> resident builders.</Text>
+      <Header>One terminal-native town square.</Header>
+      <Text><?= overview.posts ?> posts, <?= overview.replies ?> replies, and <?= overview.people ?> residents are already live.</Text>
 
       <? for highlight in highlights ?>
         <Text><?= highlight.title ?></Text>
         <Text><?= highlight.body ?></Text>
-      <? endfor ?>
-
-      <Header>Circles already live here</Header>
-      <? for circle in circles ?>
-        <Text><?= circle.name ?></Text>
-        <Text><?= circle.rhythm ?></Text>
-      <? endfor ?>
-
-      <? for signal in signals ?>
-        <Text>#<?= signal.tag ?> is surfacing in <?= signal.count ?> live dispatches.</Text>
       <? endfor ?>
     </Section>
 
@@ -151,7 +233,7 @@ terminal social commons ...
 
     <Modal id="auth-access" title="Login / Sign Up">
       <Header>Claim or reopen a username.</Header>
-      <Text>One form does both jobs. Enter a username and password. If the username is unclaimed, it becomes yours. If it already exists, the same password gets you back in.</Text>
+      <Text>One form does both jobs. If the username is unclaimed, it becomes yours. If it already exists, the same password gets you back in.</Text>
       <Form action="/auth/access">
         <Input name="username" type="text" label="Username" required="mandatory" />
         <Input name="password" type="password" label="Password" required="mandatory" />

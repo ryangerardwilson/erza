@@ -822,21 +822,27 @@ def _draw_header_grid(
     start_y = 0
     section_start = min(max(scroll_offset, 0), max(len(plan.sections) - layout.visible_slots, 0))
     section_end = min(section_start + layout.visible_slots, len(plan.sections))
-    items_in_row = section_end - section_start
-    row_width = items_in_row * layout.cell_width + max(items_in_row - 1, 0) * HEADER_CELL_GAP
+    visible_sections = plan.sections[section_start:section_end]
+    cell_inner_widths = [
+        _header_cell_inner_width(layout, section.title)
+        for section in visible_sections
+    ]
+    cell_widths = [inner_width + 4 for inner_width in cell_inner_widths]
+    row_width = sum(cell_widths) + max(len(cell_widths) - 1, 0) * HEADER_CELL_GAP
     row_origin_x = origin_x + max((display_width - row_width) // 2, 0)
 
+    cursor_x = row_origin_x
     for slot, section_pos in enumerate(range(section_start, section_end)):
-        x = row_origin_x + slot * (layout.cell_width + HEADER_CELL_GAP)
         _draw_header_cell(
             stdscr,
-            x=x,
+            x=cursor_x,
             y=start_y,
             title=plan.sections[section_pos].title,
-            inner_width=layout.cell_inner_width,
+            inner_width=cell_inner_widths[slot],
             active=section_pos == section_index,
             styles=styles,
         )
+        cursor_x += cell_widths[slot] + HEADER_CELL_GAP
 
     return start_y + HEADER_CELL_ROW_HEIGHT + 1
 
@@ -2107,6 +2113,14 @@ def _header_grid_layout(plan: RenderPlan, display_width: int) -> HeaderGridLayou
     )
 
 
+def _header_cell_inner_width(layout: HeaderGridLayout, title: str) -> int:
+    inner_width = layout.cell_inner_width
+    title_width = min(len(title), inner_width + 2)
+    if inner_width > title_width and (inner_width - title_width) % 2 == 1:
+        return max(title_width, inner_width - 1)
+    return inner_width
+
+
 def _section_content_viewport_height(screen_height: int) -> int:
     header_height = HEADER_CELL_ROW_HEIGHT + 1
     section_borders = 2
@@ -2582,6 +2596,8 @@ def _build_input_block(
     render_state: RenderState,
 ) -> Block:
     render_state.form_defaults.setdefault(form_key, {})[input_component.name] = input_component.value
+    if input_component.type == "hidden":
+        return Block(width=0, height=0, lines=[])
     label = input_component.label.strip() or _input_label(input_component.name)
     if input_component.required:
         render_state.form_requirements.setdefault(form_key, {})[input_component.name] = label

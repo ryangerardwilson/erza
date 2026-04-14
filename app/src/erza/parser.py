@@ -434,8 +434,8 @@ def _parse_bool(element: Element, name: str, *, default: bool) -> bool:
 
 def _parse_input_type(element: Element) -> str:
     input_type = (element.attrs.get("type", "text").strip() or "text").lower()
-    if input_type not in {"text", "password", "ascii-art"}:
-        raise ParseError("<Input> type must be text, password, or ascii-art in v1")
+    if input_type not in {"text", "password", "ascii-art", "hidden"}:
+        raise ParseError("<Input> type must be text, password, ascii-art, or hidden in v1")
     return input_type
 
 

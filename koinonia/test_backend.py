@@ -86,6 +86,82 @@ class KoinoniaBackendTests(unittest.TestCase):
         decoded = koinonia_backend._decode_profile_state(payload)
         self.assertEqual(decoded["picture"], wide_picture)
 
+    def test_attach_replies_nests_second_level_replies_under_direct_reply(self) -> None:
+        posts = [
+            {
+                "id": 1,
+                "slug": "launch-week",
+                "handle": "alina",
+                "body": "Root post",
+                "likes": 3,
+                "reply_count": 2,
+                "replies": [],
+            }
+        ]
+        reply_rows = [
+            {
+                "id": 10,
+                "thread_slug": "launch-week",
+                "parent_reply_id": None,
+                "handle": "noor",
+                "body": "Direct reply",
+                "likes": 2,
+                "reply_count": 1,
+                "created_at": "2026-04-14T10:00:00Z",
+            },
+            {
+                "id": 11,
+                "thread_slug": "launch-week",
+                "parent_reply_id": 10,
+                "handle": "mika",
+                "body": "Nested reply",
+                "likes": 1,
+                "reply_count": 0,
+                "created_at": "2026-04-14T10:05:00Z",
+            },
+        ]
+
+        with patch.object(koinonia_backend, "_rows", return_value=reply_rows):
+            hydrated = koinonia_backend._attach_replies(posts)
+
+        self.assertEqual(len(hydrated[0]["replies"]), 1)
+        self.assertEqual(hydrated[0]["replies"][0]["handle"], "noor")
+        self.assertEqual(len(hydrated[0]["replies"][0]["replies"]), 1)
+        self.assertEqual(hydrated[0]["replies"][0]["replies"][0]["handle"], "mika")
+
+    def test_create_thread_reply_passes_parent_reply_id_to_rpc(self) -> None:
+        rpc_calls: list[dict[str, object]] = []
+        status_messages: list[str] = []
+
+        def record_rpc(name: str, **params: object) -> None:
+            rpc_calls.append({"name": name, "params": params})
+
+        with (
+            patch.object(koinonia_backend, "_current_account", return_value={"handle": "ryan", "display_name": "Ryan"}),
+            patch.object(koinonia_backend, "_rpc", side_effect=record_rpc),
+            patch.object(koinonia_backend, "_set_status", side_effect=status_messages.append),
+        ):
+            result = koinonia_backend.create_thread_reply(
+                thread_slug="launch-week",
+                parent_reply_id="42",
+                body="Nested reply",
+            )
+
+        self.assertIsInstance(result, RedirectResult)
+        self.assertEqual(result.href, "index.erza")
+        self.assertEqual(rpc_calls[0]["name"], "add_thread_reply")
+        self.assertEqual(
+            rpc_calls[0]["params"],
+            {
+                "thread_slug": "launch-week",
+                "parent_reply_id": 42,
+                "author_name": "Ryan",
+                "profile_handle": "ryan",
+                "body": "Nested reply",
+            },
+        )
+        self.assertEqual(status_messages, ["Replied as @ryan."])
+
 
 if __name__ == "__main__":
     unittest.main()

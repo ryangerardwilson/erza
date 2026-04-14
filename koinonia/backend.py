@@ -21,6 +21,8 @@ class SupabaseError(RuntimeError):
 
 PROFILE_STATE_PREFIX = "koinonia-profile-v1:"
 MAX_PROFILE_DESCRIPTION_LENGTH = 160
+MAX_FEED_THREADS = 20
+MAX_PROFILE_THREADS = 8
 DEFAULT_PROFILE_PICTURE = "\n".join(
     [
         "  .--.",
@@ -138,14 +140,6 @@ def _normalize_handle(raw: str) -> str:
     return normalized or "resident"
 
 
-def _profile_link(handle: str) -> str:
-    return "index.erza"
-
-
-def _thread_link(slug: str) -> str:
-    return "index.erza"
-
-
 def _set_status(message: str) -> None:
     session()["ui_status"] = message
 
@@ -153,7 +147,7 @@ def _set_status(message: str) -> None:
 def _status() -> str:
     return session().get(
         "ui_status",
-        "Koinonia now behaves like a single-screen erza app with tabs that shift around your login state.",
+        "Koinonia is a single town square for posts, replies, and small terminal-native threads.",
     )
 
 
@@ -230,7 +224,7 @@ def _profile_row(handle: str) -> dict[str, Any] | None:
     return _one(
         "profiles",
         query={
-            "select": "display_name,handle,bio,primary_circle,followers",
+            "select": "display_name,handle,bio,created_at",
             "handle": f"eq.{handle}",
         },
     )
@@ -279,49 +273,79 @@ def _current_account() -> dict[str, str] | None:
     return {"handle": handle, "display_name": display_name}
 
 
-def _followed_handles(viewer_handle: str | None) -> set[str]:
-    if not viewer_handle:
-        return set()
-    rows = _rows(
-        "follow_relations",
-        query={
-            "select": "followed_handle",
-            "follower_handle": f"eq.{viewer_handle}",
-        },
-    )
-    return {str(row["followed_handle"]) for row in rows}
-
-
-def _following_state(viewer_handle: str | None, target_handle: str) -> bool:
-    if not viewer_handle or viewer_handle == target_handle:
-        return False
-    row = _one(
-        "follow_relations",
-        query={
-            "select": "followed_handle",
-            "follower_handle": f"eq.{viewer_handle}",
-            "followed_handle": f"eq.{target_handle}",
-        },
-    )
-    return row is not None
-
-
 def _post_card(row: dict[str, Any]) -> dict[str, Any]:
-    handle = str(row["handle"])
-    slug = str(row["slug"])
     return {
         "id": int(row["id"]),
-        "slug": slug,
-        "author": str(row["author"]),
-        "handle": handle,
-        "circle": str(row["circle"]),
+        "slug": str(row["slug"]),
+        "handle": str(row["handle"]),
         "body": str(row["body"]),
         "likes": int(row["likes"]),
-        "boosts": int(row["boosts"]),
         "reply_count": int(row["reply_count"]),
-        "profile_link": _profile_link(handle),
-        "thread_link": _thread_link(slug),
+        "replies": [],
     }
+
+
+def _reply_card(row: dict[str, Any]) -> dict[str, Any]:
+    parent_reply_id = row.get("parent_reply_id")
+    return {
+        "id": int(row["id"]),
+        "thread_slug": str(row["thread_slug"]),
+        "parent_reply_id": int(parent_reply_id) if parent_reply_id is not None else None,
+        "handle": str(row["handle"]),
+        "body": str(row["body"]),
+        "likes": int(row["likes"]),
+        "reply_count": int(row["reply_count"]),
+        "replies": [],
+    }
+
+
+def _supabase_text_list(values: list[str]) -> str:
+    quoted = ['"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"' for value in values]
+    return f"in.({','.join(quoted)})"
+
+
+def _attach_replies(posts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not posts:
+        return posts
+
+    slugs = [str(post["slug"]) for post in posts]
+    reply_rows = _rows(
+        "thread_replies_view",
+        query={
+            "select": "id,thread_slug,parent_reply_id,handle,body,likes,reply_count,created_at",
+            "thread_slug": _supabase_text_list(slugs),
+            "order": "created_at.asc",
+        },
+    )
+
+    top_level_by_thread: dict[str, list[dict[str, Any]]] = {slug: [] for slug in slugs}
+    top_level_by_id: dict[int, dict[str, Any]] = {}
+    for row in reply_rows:
+        reply = _reply_card(row)
+        parent_reply_id = reply["parent_reply_id"]
+        if parent_reply_id is None:
+            top_level_by_thread.setdefault(reply["thread_slug"], []).append(reply)
+            top_level_by_id[reply["id"]] = reply
+            continue
+        parent = top_level_by_id.get(parent_reply_id)
+        if parent is not None:
+            parent["replies"].append(reply)
+
+    for post in posts:
+        post["replies"] = top_level_by_thread.get(str(post["slug"]), [])
+    return posts
+
+
+def _load_posts(*, limit: int, author_handle: str | None = None) -> list[dict[str, Any]]:
+    query = {
+        "select": "id,slug,handle,body,likes,reply_count,created_at",
+        "order": "created_at.desc",
+        "limit": str(limit),
+    }
+    if author_handle is not None:
+        query["handle"] = f"eq.{author_handle}"
+    rows = _rows("feed_timeline_view", query=query)
+    return _attach_replies([_post_card(row) for row in rows])
 
 
 @handler("ui.status")
@@ -343,7 +367,7 @@ def auth_viewer() -> dict[str, Any]:
         "logged_in": True,
         "handle": account["handle"],
         "display_name": account["display_name"],
-        "profile_link": _profile_link(account["handle"]),
+        "profile_link": "index.erza",
     }
 
 
@@ -367,12 +391,6 @@ def profiles_current() -> dict[str, Any]:
             "description": "",
             "bio": "",
             "picture": DEFAULT_PROFILE_PICTURE,
-            "primary_circle": "",
-            "followers": 0,
-            "following": False,
-            "can_follow": False,
-            "is_self": False,
-            "follow_action_label": "Follow",
             "posts": [],
         }
     return profiles_by_handle(account["handle"])
@@ -382,160 +400,36 @@ def profiles_current() -> dict[str, Any]:
 def network_overview() -> dict[str, int]:
     row = _one(
         "network_overview_view",
-        query={"select": "posts,circles,people"},
+        query={"select": "posts,replies,people"},
     )
     if row is None:
-        return {"posts": 0, "circles": 0, "people": 0}
+        return {"posts": 0, "replies": 0, "people": 0}
     return {
         "posts": int(row["posts"]),
-        "circles": int(row["circles"]),
+        "replies": int(row["replies"]),
         "people": int(row["people"]),
     }
 
 
 @handler("feed.timeline")
 def feed_timeline() -> list[dict[str, Any]]:
-    rows = _rows(
-        "feed_timeline_view",
-        query={
-            "select": "id,slug,author,handle,circle,body,likes,boosts,reply_count,created_at",
-            "order": "created_at.desc",
-        },
-    )
-    return [_post_card(row) for row in rows]
-
-
-@handler("circles.list")
-def circles_list() -> list[dict[str, str]]:
-    rows = _rows(
-        "circles",
-        query={"select": "name,rhythm", "order": "sort_order.asc"},
-    )
-    return [{"name": str(row["name"]), "rhythm": str(row["rhythm"])} for row in rows]
-
-
-@handler("people.suggested")
-def people_suggested() -> list[dict[str, Any]]:
-    account = _current_account()
-    viewer_handle = account["handle"] if account is not None else None
-    followed_handles = _followed_handles(viewer_handle)
-    rows = _rows(
-        "profiles",
-        query={
-            "select": "display_name,handle,bio,primary_circle,followers",
-            "order": "followers.desc",
-            "limit": "3",
-        },
-    )
-    people = []
-    for row in rows:
-        handle = str(row["handle"])
-        can_follow = viewer_handle is not None and viewer_handle != handle
-        following = handle in followed_handles
-        profile_state = _decode_profile_state(str(row["bio"]))
-        people.append(
-            {
-                "name": str(row["display_name"]),
-                "handle": handle,
-                "description": profile_state["description"],
-                "bio": profile_state["description"],
-                "picture": profile_state["picture"],
-                "primary_circle": str(row["primary_circle"]),
-                "following": following,
-                "can_follow": can_follow,
-                "follow_action_label": "Unfollow" if following else "Follow",
-                "profile_link": _profile_link(handle),
-            }
-        )
-    return people
-
-
-@handler("signals.list")
-def signals_list() -> list[dict[str, Any]]:
-    rows = _rows(
-        "signals_view",
-        query={"select": "tag,count", "order": "count.desc", "limit": "6"},
-    )
-    return [{"tag": str(row["tag"]), "count": int(row["count"])} for row in rows]
-
-
-@handler("threads.by_slug")
-def threads_by_slug(slug: str) -> dict[str, Any]:
-    row = _one(
-        "feed_timeline_view",
-        query={
-            "select": "id,slug,author,handle,circle,body,likes,boosts,reply_count,created_at",
-            "slug": f"eq.{slug}",
-        },
-    )
-    if row is None:
-        return {
-            "id": 0,
-            "slug": slug,
-            "author": "Unavailable",
-            "handle": "missing",
-            "circle": "unknown",
-            "body": "That thread has not landed in this prototype yet.",
-            "likes": 0,
-            "boosts": 0,
-            "reply_count": 0,
-            "profile_link": "index.erza",
-            "thread_link": "index.erza",
-            "replies": [],
-        }
-
-    replies = _rows(
-        "replies",
-        query={
-            "select": "author_name,author_handle,body,created_at",
-            "thread_slug": f"eq.{slug}",
-            "order": "created_at.asc",
-        },
-    )
-    thread = _post_card(row)
-    thread["replies"] = [
-        {
-            "author": str(reply["author_name"]),
-            "handle": str(reply["author_handle"]),
-            "body": str(reply["body"]),
-        }
-        for reply in replies
-    ]
-    return thread
+    return _load_posts(limit=MAX_FEED_THREADS)
 
 
 @handler("profiles.by_handle")
 def profiles_by_handle(handle: str) -> dict[str, Any]:
     normalized = _normalize_handle(handle)
-    account = _current_account()
-    viewer_handle = account["handle"] if account is not None else None
     profile = _profile_row(normalized)
     if profile is None:
         return {
-            "name": "Unknown resident",
+            "name": normalized,
             "handle": normalized,
             "description": "",
-            "bio": "This profile has not been authored yet.",
+            "bio": "",
             "picture": DEFAULT_PROFILE_PICTURE,
-            "primary_circle": "unassigned",
-            "followers": 0,
-            "following": False,
-            "can_follow": False,
-            "is_self": False,
-            "follow_action_label": "Follow",
             "posts": [],
         }
 
-    posts = _rows(
-        "feed_timeline_view",
-        query={
-            "select": "id,slug,author,handle,circle,body,likes,boosts,reply_count,created_at",
-            "handle": f"eq.{normalized}",
-            "order": "created_at.desc",
-        },
-    )
-    is_self = viewer_handle == normalized
-    following = _following_state(viewer_handle, normalized)
     profile_state = _decode_profile_state(str(profile["bio"]))
     return {
         "name": str(profile["display_name"]),
@@ -543,13 +437,7 @@ def profiles_by_handle(handle: str) -> dict[str, Any]:
         "description": profile_state["description"],
         "bio": profile_state["description"],
         "picture": profile_state["picture"],
-        "primary_circle": str(profile["primary_circle"]),
-        "followers": int(profile["followers"]),
-        "following": following,
-        "can_follow": viewer_handle is not None and not is_self,
-        "is_self": is_self,
-        "follow_action_label": "Unfollow builder" if following else "Follow builder",
-        "posts": [_post_card(post) for post in posts],
+        "posts": _load_posts(limit=MAX_PROFILE_THREADS, author_handle=normalized),
     }
 
 
@@ -557,61 +445,35 @@ def profiles_by_handle(handle: str) -> dict[str, Any]:
 def mission_highlights() -> list[dict[str, str]]:
     return [
         {
-            "title": "One screen, clear tabs",
-            "body": "Koinonia now stays in one erza file and lets the top tabs shift with the viewer's state instead of hopping between linked pages.",
+            "title": "One town square",
+            "body": "Every post lands in the same shared feed instead of disappearing into circles or sub-communities.",
         },
         {
-            "title": "Claimed identities",
-            "body": "Any unclaimed username can be claimed once. After that, the same password is required to reopen that account.",
+            "title": "Simple identity",
+            "body": "Any unclaimed username can be claimed once, and the same password reopens that account later.",
         },
         {
-            "title": "Post from where you are",
-            "body": "Both the feed and profile tabs open with a post form so the social loop starts inside the active page, not in a separate compose route.",
+            "title": "Shallow threads",
+            "body": "Replies can target a post or a reply, but the nesting stops there so each thread stays readable in the terminal.",
         },
     ]
 
 
 @handler("feed.like")
-def feed_like(post_id: int) -> None:
+def feed_like(post_id: int | None = None, reply_id: int | None = None) -> None:
     account = _current_account()
     if account is None:
-        _set_status("Sign in first to signal dispatches.")
+        _set_status("Sign in first to like posts and replies.")
         return
-    _rpc("increment_post_like", post_id=int(post_id))
-    _set_status(f"@{account['handle']} signaled dispatch {post_id}.")
-
-
-@handler("feed.boost")
-def feed_boost(post_id: int) -> None:
-    account = _current_account()
-    if account is None:
-        _set_status("Sign in first to boost dispatches.")
+    if post_id is not None:
+        _rpc("increment_post_like", post_id=int(post_id))
+        _set_status(f"@{account['handle']} liked post {int(post_id)}.")
         return
-    _rpc("increment_post_boost", post_id=int(post_id))
-    _set_status(f"@{account['handle']} boosted dispatch {post_id}.")
-
-
-@handler("people.toggle_follow")
-def people_toggle_follow(handle: str) -> None:
-    account = _current_account()
-    if account is None:
-        _set_status("Sign in first to follow builders.")
+    if reply_id is not None:
+        _rpc("increment_reply_like", reply_id=int(reply_id))
+        _set_status(f"@{account['handle']} liked reply {int(reply_id)}.")
         return
-    normalized = _normalize_handle(handle)
-    if normalized == account["handle"]:
-        _set_status("That account is already you.")
-        return
-    result = _rpc(
-        "toggle_profile_follow",
-        viewer_handle=account["handle"],
-        profile_handle=normalized,
-    )
-    state = False
-    if isinstance(result, bool):
-        state = result
-    elif isinstance(result, str):
-        state = result.lower() == "true"
-    _set_status(f"{'Following' if state else 'Stopped following'} @{normalized}.")
+    _set_status("Nothing to like.")
 
 
 def _access_account(username: str = "", password: str = ""):
@@ -659,30 +521,52 @@ def auth_access(username: str = "", password: str = ""):
     return _access_account(username, password)
 
 
-@route("/auth/signup")
-def auth_signup(username: str = "", password: str = ""):
-    return _access_account(username, password)
-
-
-@route("/auth/login")
-def auth_login(username: str = "", password: str = ""):
-    return _access_account(username, password)
-
-
 @route("/posts")
 def create_post(body: str = ""):
     account = _current_account()
     if account is None:
         return error("Sign in first to publish.")
     if not body.strip():
-        return error("Dispatch is required.")
+        return error("Post text is required.")
     _rpc(
-        "create_dispatch",
+        "create_post",
         author_name=account["display_name"],
         profile_handle=account["handle"],
         body=body.strip(),
     )
-    _set_status(f"Published a new dispatch as @{account['handle']}.")
+    _set_status(f"Posted to the town square as @{account['handle']}.")
+    return redirect("index.erza")
+
+
+@route("/threads/reply")
+def create_thread_reply(
+    thread_slug: str = "",
+    parent_reply_id: str = "",
+    body: str = "",
+):
+    account = _current_account()
+    if account is None:
+        return error("Sign in first to reply.")
+    if not thread_slug.strip():
+        return error("Thread target is required.")
+    if not body.strip():
+        return error("Reply text is required.")
+
+    parent_value = parent_reply_id.strip()
+    try:
+        parent_id = int(parent_value) if parent_value else None
+    except ValueError:
+        return error("Reply target is invalid.")
+
+    _rpc(
+        "add_thread_reply",
+        thread_slug=thread_slug.strip(),
+        parent_reply_id=parent_id,
+        author_name=account["display_name"],
+        profile_handle=account["handle"],
+        body=body.strip(),
+    )
+    _set_status(f"Replied as @{account['handle']}.")
     return redirect("index.erza")
 
 
@@ -697,7 +581,9 @@ def update_profile(description: str | None = None, profile_picture: str | None =
         "description": "",
         "picture": DEFAULT_PROFILE_PICTURE,
     }
-    next_description = (description if description is not None else bio if bio is not None else current_state["description"]).strip()
+    next_description = (
+        description if description is not None else bio if bio is not None else current_state["description"]
+    ).strip()
     if len(next_description) > MAX_PROFILE_DESCRIPTION_LENGTH:
         return error(f"Description must stay within {MAX_PROFILE_DESCRIPTION_LENGTH} characters.")
     next_picture = _normalize_profile_picture(
@@ -710,36 +596,4 @@ def update_profile(description: str | None = None, profile_picture: str | None =
         body={"bio": _encode_profile_state(next_description, next_picture)},
     )
     _set_status(f"Updated @{account['handle']}'s profile.")
-    return redirect("index.erza")
-
-
-@route("/profile/bio")
-def update_profile_bio(bio: str = ""):
-    return update_profile(description=bio)
-
-
-@route("/threads/launch-week/reply")
-def reply_launch_week(body: str = ""):
-    return _append_reply("launch-week", body)
-
-
-@route("/threads/pattern-language/reply")
-def reply_pattern_language(body: str = ""):
-    return _append_reply("pattern-language", body)
-
-
-def _append_reply(slug: str, body: str):
-    account = _current_account()
-    if account is None:
-        return error("Sign in first to reply.")
-    if not body.strip():
-        return error("Reply text is required.")
-    _rpc(
-        "add_thread_reply",
-        thread_slug=slug,
-        author_name=account["display_name"],
-        profile_handle=account["handle"],
-        body=body.strip(),
-    )
-    _set_status(f"Replied to {slug} as @{account['handle']}.")
     return redirect("index.erza")

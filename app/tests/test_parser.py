@@ -176,6 +176,26 @@ oo
         self.assertEqual(form.children[0].type, "ascii-art")
         self.assertEqual(form.children[0].max_cols, 72)
 
+    def test_compiles_hidden_input_type(self) -> None:
+        markup = """
+<Screen title="Reply">
+  <Modal id="reply-post" title="Reply">
+    <Form action="/threads/reply">
+      <Input name="thread_slug" type="hidden" value="launch-week" />
+      <Input name="body" label="Reply" />
+    </Form>
+  </Modal>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        form = screen.children[0].children[0]
+        self.assertIsInstance(form.children[0], Input)
+        self.assertEqual(form.children[0].type, "hidden")
+        self.assertEqual(form.children[0].value, "launch-week")
+        self.assertIsNone(form.children[0].max_cols)
+
     def test_compiles_button_row(self) -> None:
         markup = """
 <Screen title="Feed">

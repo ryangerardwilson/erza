@@ -27,6 +27,7 @@ from erza.runtime import (
     _RuntimeSession,
     _decode_edit_key,
     _display_origin_x,
+    _header_cell_inner_width,
     _draw_header_cell,
     _header_grid_layout,
     _help_modal_lines,
@@ -305,6 +306,36 @@ class RuntimeTests(unittest.TestCase):
         right_padding = (panel_left + panel_inner_width) - content_right
         self.assertGreater(left_padding, right_padding)
 
+    def test_hidden_form_inputs_submit_defaults_without_rendering_controls(self) -> None:
+        screen = Screen(
+            title="Reply",
+            children=[
+                Section(title="Feed", children=[Text("Ready")]),
+                Modal(
+                    modal_id="reply-post",
+                    title="Reply",
+                    children=[
+                        Form(
+                            action="/threads/reply",
+                            children=[
+                                Input(name="thread_slug", type="hidden", value="launch-week"),
+                                Input(name="body", label="Reply"),
+                                ButtonRow(children=[SubmitButton(label="Post reply")], align="right"),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        modal = plan.modals["reply-post"]
+
+        self.assertEqual(plan.form_defaults["form:0"]["thread_slug"], "launch-week")
+        self.assertEqual(len(modal.actionables), 2)
+        self.assertIsInstance(modal.actionables[0].actionable, InputControl)
+        self.assertIsInstance(modal.actionables[1].actionable, SubmitControl)
+
     def test_button_row_scrolls_to_keep_selected_action_visible(self) -> None:
         screen = Screen(
             title="Profile",
@@ -460,6 +491,24 @@ class RuntimeTests(unittest.TestCase):
             )
 
         self.assertIn((1, 1, "   Feed  ", 9, 0), calls)
+
+    def test_header_grid_uses_parity_sensitive_cell_widths(self) -> None:
+        plan = build_render_plan(
+            Screen(
+                title="App",
+                children=[
+                    Section(title="Profile", children=[Text("Profile")], tab_order=0),
+                    Section(title="Feed", children=[Text("Feed")], tab_order=1),
+                    Section(title="Logout", children=[Text("Logout")], tab_order=2),
+                ],
+            )
+        )
+
+        layout = _header_grid_layout(plan, 79)
+
+        self.assertEqual(_header_cell_inner_width(layout, "Profile"), 7)
+        self.assertEqual(_header_cell_inner_width(layout, "Feed"), 6)
+        self.assertEqual(_header_cell_inner_width(layout, "Logout"), 6)
 
     def test_header_grid_navigation_moves_across_rows_and_columns(self) -> None:
         screen = Screen(
