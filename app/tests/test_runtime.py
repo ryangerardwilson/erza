@@ -1788,7 +1788,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(any("Section j / k / arrows" in line for line in lines))
         self.assertTrue(any("?              Toggle the shortcuts modal." in line for line in lines))
 
-    def test_loading_overlay_draws_without_solid_fill(self) -> None:
+    def test_loading_overlay_redraws_fill_each_frame(self) -> None:
         calls: list[tuple[int, int, str, int, int]] = []
 
         def capture(stdscr, y: int, x: int, text: str, max_length: int, style: int) -> None:
@@ -1801,7 +1801,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(any(any(glyph in text for glyph in ":.'") for _, _, text, _, _ in calls))
         self.assertTrue(any(text.startswith("+---") for _, _, text, _, _ in calls))
         self.assertFalse(any(text == "Loading app" for _, _, text, _, _ in calls))
-        self.assertFalse(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
+        self.assertTrue(any(text and set(text) == {" "} for _, _, text, _, _ in calls))
 
     def test_modal_overlay_draws_fill_to_cover_underlying_page(self) -> None:
         screen = Screen(

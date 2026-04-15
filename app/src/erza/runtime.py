@@ -648,6 +648,7 @@ def draw_loading_overlay(
         if screen_y >= visible_height:
             break
         _safe_addnstr(stdscr, screen_y, modal_x, "| ", 2, styles["section_border"])
+        _safe_addnstr(stdscr, screen_y, modal_x + 2, " " * inner_width, inner_width, styles["section_fill"])
         _safe_addnstr(stdscr, screen_y, modal_x + width - 2, " |", 2, styles["section_border"])
         line_style = styles["help"] if index in {1, len(lines)} else styles["header"]
         _safe_addnstr(
