@@ -1836,6 +1836,56 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(marker_styles)
         self.assertTrue(all(style & curses.A_REVERSE for style in marker_styles))
 
+    def test_form_modal_structural_sections_use_full_modal_width(self) -> None:
+        screen = Screen(
+            title="Reply",
+            children=[
+                Modal(
+                    modal_id="reply-thread",
+                    title="Reply on Thread",
+                    children=[
+                        Form(
+                            action="/threads/reply",
+                            children=[
+                                Section(
+                                    title="@outer",
+                                    children=[
+                                        Text("Post body"),
+                                        Section(title="@inner", children=[Text("Reply body")]),
+                                    ],
+                                ),
+                                Input(name="body", label="Reply"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        plan = build_render_plan(screen)
+        modal = plan.modals["reply-thread"]
+        outer_x = next(
+            segment.x
+            for line in modal.block.lines
+            for segment in line
+            if segment.text.startswith("+-[ @outer ]")
+        )
+        inner_x = next(
+            segment.x
+            for line in modal.block.lines
+            for segment in line
+            if segment.text.startswith("+-[ @inner ]")
+        )
+        input_x = next(
+            item.x
+            for item in modal.actionables
+            if isinstance(item.actionable, InputControl)
+        )
+
+        self.assertEqual(outer_x, 2)
+        self.assertEqual(inner_x, 4)
+        self.assertEqual(input_x, 6)
+
 
 class _CountingApp:
     def __init__(self, screen: Screen) -> None:

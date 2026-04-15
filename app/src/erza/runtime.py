@@ -2543,7 +2543,6 @@ def _build_form_block(
 ) -> Block:
     form_key = f"form:{render_state.next_form_index}"
     render_state.next_form_index += 1
-    content_width = max(max_width - FORM_FIELD_INDENT, 8)
     field_children, action_children = _split_form_children(form.children)
 
     lines: list[list[Segment]] = []
@@ -2552,20 +2551,23 @@ def _build_form_block(
     cursor_y = 0
     animation_interval_ms: int | None = None
 
-    if field_children:
-        body = _build_column_like(
-            field_children,
-            gap=0,
+    for child in field_children:
+        indent = _form_field_indent(child)
+        child_max_width = max(max_width - indent, 1)
+        if isinstance(child, Input):
+            child_max_width = max(child_max_width, 8)
+        block = _build_block(
+            child,
             animation_time=animation_time,
-            max_width=content_width,
+            max_width=child_max_width,
             render_state=render_state,
             form_key=form_key,
             form_action=form.action,
         )
-        _merge_block(lines, actionables, body, x=FORM_FIELD_INDENT, y=cursor_y)
-        width = max(width, FORM_FIELD_INDENT + body.width)
-        animation_interval_ms = _merge_animation_interval(animation_interval_ms, body.animation_interval_ms)
-        cursor_y += body.height
+        _merge_block(lines, actionables, block, x=indent, y=cursor_y)
+        width = max(width, indent + block.width)
+        animation_interval_ms = _merge_animation_interval(animation_interval_ms, block.animation_interval_ms)
+        cursor_y += block.height
 
     if action_children:
         if cursor_y > 0:
@@ -2603,6 +2605,20 @@ def _build_form_block(
         actionables=actionables,
         animation_interval_ms=animation_interval_ms,
     )
+
+
+def _form_field_indent(component: Component) -> int:
+    return FORM_FIELD_INDENT if _uses_form_field_indent(component) else 0
+
+
+def _uses_form_field_indent(component: Component) -> bool:
+    if isinstance(component, Input):
+        return True
+    if isinstance(component, Column):
+        return bool(component.children) and all(_uses_form_field_indent(child) for child in component.children)
+    if isinstance(component, Row):
+        return bool(component.children) and all(_uses_form_field_indent(child) for child in component.children)
+    return False
 
 
 def _build_input_block(
