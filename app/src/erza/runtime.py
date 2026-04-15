@@ -416,6 +416,8 @@ def draw_plan(
     body_section_index: int | None,
     scroll_offset: int,
     footer: str = "",
+    *,
+    refresh: bool = True,
 ) -> None:
     stdscr.erase()
     height, terminal_width = stdscr.getmaxyx()
@@ -427,7 +429,8 @@ def draw_plan(
     if not plan.sections:
         if footer and height > 0:
             _safe_addnstr(stdscr, height - 1, origin_x, footer, display_width, styles["status"])
-        stdscr.refresh()
+        if refresh:
+            stdscr.refresh()
         return
 
     body_start_y = _draw_header_grid(
@@ -465,7 +468,8 @@ def draw_plan(
             styles["status"],
         )
 
-    stdscr.refresh()
+    if refresh:
+        stdscr.refresh()
 
 
 def draw_splash_screen(
@@ -525,6 +529,8 @@ def draw_section_page(
     action_index: int,
     scroll_offset: int,
     footer: str = "",
+    *,
+    refresh: bool = True,
 ) -> None:
     stdscr.erase()
     height, terminal_width = stdscr.getmaxyx()
@@ -566,13 +572,15 @@ def draw_section_page(
             styles["status"],
         )
 
-    stdscr.refresh()
+    if refresh:
+        stdscr.refresh()
 
 
 def draw_shortcuts_modal(
     stdscr: curses.window,
     *,
     footer: str = "",
+    refresh: bool = True,
 ) -> None:
     height, terminal_width = stdscr.getmaxyx()
     visible_height = _viewport_height(height)
@@ -615,7 +623,8 @@ def draw_shortcuts_modal(
             styles["status"],
         )
 
-    stdscr.refresh()
+    if refresh:
+        stdscr.refresh()
 
 
 def draw_loading_overlay(
@@ -717,6 +726,7 @@ def draw_modal_overlay(
     line_index: int,
     action_index: int,
     scroll_offset: int,
+    refresh: bool = True,
 ) -> None:
     height, terminal_width = stdscr.getmaxyx()
     visible_height = _viewport_height(height)
@@ -814,7 +824,8 @@ def draw_modal_overlay(
                 styles["selection_marker_active"],
             )
 
-    stdscr.refresh()
+    if refresh:
+        stdscr.refresh()
 
 
 def _draw_header_grid(
@@ -1172,6 +1183,8 @@ class _RuntimeSession:
                 continue
 
     def _draw_active_view(self, stdscr: curses.window, plan: RenderPlan, footer: str) -> None:
+        active_modal = self._active_modal(plan)
+        has_overlay = active_modal is not None or self.show_help
         base_mode = self.modal_base_mode if self.active_modal_id is not None else self.mode
         if base_mode in {"section", "edit"} and plan.sections:
             self._sync_section_scroll(plan, stdscr.getmaxyx()[0])
@@ -1185,6 +1198,7 @@ class _RuntimeSession:
                 self.section_action_index,
                 self.section_scroll_offset,
                 footer,
+                refresh=not has_overlay,
             )
         else:
             screen_height, terminal_width = stdscr.getmaxyx()
@@ -1196,8 +1210,8 @@ class _RuntimeSession:
                 self.body_section_index if plan.sections else None,
                 self.scroll_offset,
                 footer,
+                refresh=not has_overlay,
             )
-        active_modal = self._active_modal(plan)
         if active_modal is not None:
             self._sync_modal_scroll(plan, stdscr.getmaxyx()[0])
             draw_modal_overlay(
@@ -1206,9 +1220,12 @@ class _RuntimeSession:
                 line_index=self.modal_line_index,
                 action_index=self.modal_action_index,
                 scroll_offset=self.modal_scroll_offset,
+                refresh=False,
             )
         if self.show_help:
-            draw_shortcuts_modal(stdscr, footer=footer)
+            draw_shortcuts_modal(stdscr, footer=footer, refresh=False)
+        if has_overlay:
+            stdscr.refresh()
 
     def _current_screen(self, stdscr: curses.window | None = None) -> Screen:
         if self._screen is None:

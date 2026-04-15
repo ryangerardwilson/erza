@@ -1498,6 +1498,28 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(draw_plan.call_args.args[3], 0)
         self.assertTrue(draw_modal.called)
 
+    def test_modal_overlay_frame_refreshes_once(self) -> None:
+        screen = Screen(
+            title="Auth",
+            children=[
+                Section(title="Why", children=[Text("Why")]),
+                Modal(
+                    modal_id="auth-access",
+                    title="Login / Sign Up",
+                    children=[Text("Sign in here."), Text("Second line")],
+                ),
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        plan = build_render_plan(screen, form_values=session.form_values, edit_state=session.edit_state)
+        session._sync_state(plan)
+        session._open_modal(plan, "auth-access")
+        window = _RefreshCountingWindow()
+
+        session._draw_active_view(window, plan, "auth")
+
+        self.assertEqual(window.refresh_count, 1)
+
     def test_modal_submit_redirect_closes_modal_and_loads_target_screen(self) -> None:
         initial = Screen(
             title="Auth",
@@ -2016,6 +2038,17 @@ class _RasterWindow(_DrawingWindow):
 
     def render(self) -> list[str]:
         return ["".join(row) for row in self.rows]
+
+
+class _RefreshCountingWindow(_DrawingWindow):
+    def __init__(self) -> None:
+        self.refresh_count = 0
+
+    def addnstr(self, y: int, x: int, text: str, max_length: int, style: int) -> None:
+        return
+
+    def refresh(self) -> None:
+        self.refresh_count += 1
 
 
 if __name__ == "__main__":
