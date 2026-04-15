@@ -58,7 +58,7 @@ class MainContractTests(unittest.TestCase):
         self.assertIn("flags:\n", result.stdout)
         self.assertIn("commands:\n", result.stdout)
         self.assertIn("examples:\n", result.stdout)
-        self.assertIn("erza run [source] [--backend <path>]", result.stdout)
+        self.assertIn("erza run [source] [--backend <path>] [-u <username> -p <password>]", result.stdout)
         self.assertNotIn("usage:", result.stdout.lower())
 
     def test_dash_v_prints_runtime_version_exactly(self) -> None:

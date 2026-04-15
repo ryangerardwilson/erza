@@ -95,6 +95,38 @@ class RemoteTests(unittest.TestCase):
         finally:
             server.close()
 
+    def test_remote_app_supports_standardized_login(self) -> None:
+        _RemoteMutationHandler.reset()
+        server = _TestServer(_RemoteMutationHandler)
+        try:
+            app = RemoteApp(server.url)
+
+            result = app.authenticate("alpha", "pw")
+            self.assertEqual(result.type, "redirect")
+            self.assertEqual(result.href, "index.erza")
+            self.assertEqual(app.current_url, f"{server.url}index.erza")
+
+            screen = app.build_screen()
+            self.assertEqual(screen.children[0].children[1].content, "Signed in as @alpha.")
+            session_state = next(iter(_RemoteMutationHandler.sessions.values()))
+            self.assertEqual(session_state["last_auth_path"], "/.well-known/erza/auth")
+        finally:
+            server.close()
+
+    def test_remote_app_reports_missing_standardized_login_endpoint(self) -> None:
+        server = _TestServer(_ErzaHandler)
+        try:
+            app = RemoteApp(server.url)
+            with self.assertRaises(RemoteError) as exc:
+                app.authenticate("alpha", "pw")
+        finally:
+            server.close()
+
+        self.assertEqual(
+            str(exc.exception),
+            f"remote source does not support standardized login: {server.url}",
+        )
+
 
 class _HtmlHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
@@ -158,6 +190,10 @@ class _ErzaHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(encoded)
 
+    def do_POST(self) -> None:  # noqa: N802
+        self.send_response(404)
+        self.end_headers()
+
     def log_message(self, format: str, *args: object) -> None:
         return
 
@@ -210,8 +246,9 @@ class _RemoteMutationHandler(BaseHTTPRequestHandler):
         raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
         payload = json.loads(raw.decode("utf-8")) if raw else {}
 
-        if parsed.path == "/auth/login":
+        if parsed.path in {"/auth/login", "/.well-known/erza/auth"}:
             state["status"] = f"Signed in as @{payload['username']}."
+            state["last_auth_path"] = parsed.path
             return self._send_json({"type": "redirect", "href": "index.erza"})
 
         if parsed.path == "/.well-known/erza/action":

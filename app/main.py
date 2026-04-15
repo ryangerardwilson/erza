@@ -27,7 +27,7 @@ flags:
     upgrade through install.sh
 
 commands:
-  erza run [source] [--backend <path>]
+  erza run [source] [--backend <path>] [-u <username> -p <password>]
     open a local .erza file, directory, URL, or bare domain
 
 examples:

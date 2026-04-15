@@ -26,8 +26,12 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("--backend is only supported for local .erza sources")
         if args.backend is not None and not args.backend.exists():
             parser.error(f"backend module does not exist: {args.backend}")
+        if (args.username is None) != (args.password is None):
+            parser.error("--username and --password must be provided together")
+        if not isinstance(source, str) and (args.username is not None or args.password is not None):
+            parser.error("--username and --password are only supported for remote sources")
         try:
-            app = _build_app(source, args.backend)
+            app = _build_app(source, args.backend, username=args.username, password=args.password)
         except RemoteError as exc:
             parser.error(str(exc))
         try:
@@ -56,6 +60,16 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="optional Python backend module; defaults to backend.py next to the source",
     )
+    run.add_argument(
+        "-u",
+        "--username",
+        help="remote app username for standardized login",
+    )
+    run.add_argument(
+        "-p",
+        "--password",
+        help="remote app password for standardized login",
+    )
 
     return parser
 
@@ -74,12 +88,21 @@ def _resolve_source_path(source: str) -> AppSource:
     return resolve_local_source_path(path_source)
 
 
-def _build_app(source: AppSource, backend: Path | None) -> ErzaApp | RemoteApp | StaticScreenApp:
+def _build_app(
+    source: AppSource,
+    backend: Path | None,
+    *,
+    username: str | None = None,
+    password: str | None = None,
+) -> ErzaApp | RemoteApp | StaticScreenApp:
     if isinstance(source, Path):
         loaded_backend = _load_backend(source, backend)
         return ErzaApp(source, backend=loaded_backend, backend_path=backend)
 
-    return RemoteApp(source)
+    app = RemoteApp(source)
+    if username is not None and password is not None:
+        app.authenticate(username, password)
+    return app
 
 
 def _load_backend(source: Path, backend: Path | None) -> BackendBridge:

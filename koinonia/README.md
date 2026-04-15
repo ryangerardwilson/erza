@@ -47,7 +47,12 @@ After deploy, the hosted app is reachable with:
 
 ```bash
 erza run <your-render-host>
+python app/main.py run <your-render-host> -u <username> -p <password>
 ```
+
+The host also exposes the standardized remote auth endpoint:
+
+- `POST /.well-known/erza/auth`
 
 Before the first deploy, set these Render environment variables:
 

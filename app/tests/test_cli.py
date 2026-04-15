@@ -47,6 +47,28 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(resolved, "https://example.com/docs")
 
+    def test_run_accepts_standardized_remote_login_flags(self) -> None:
+        parser = _build_parser()
+
+        args = parser.parse_args(["run", "example.com", "-u", "alpha", "-p", "pw"])
+
+        self.assertEqual(args.username, "alpha")
+        self.assertEqual(args.password, "pw")
+
+    def test_remote_credentials_are_forwarded_to_build_app(self) -> None:
+        with patch("erza.cli._build_app", return_value=object()) as build_app, patch(
+            "erza.cli.run_curses_app"
+        ):
+            self.assertEqual(main(["run", "example.com", "-u", "alpha", "-p", "pw"]), 0)
+
+        build_app.assert_called_once_with("https://example.com", None, username="alpha", password="pw")
+
+    def test_remote_login_flags_must_be_provided_together(self) -> None:
+        with self.assertRaises(SystemExit) as exc:
+            main(["run", "example.com", "-u", "alpha"])
+
+        self.assertEqual(exc.exception.code, 2)
+
     def test_remote_runtime_error_is_reported_as_cli_error(self) -> None:
         with patch("erza.cli._build_app", return_value=object()), patch(
             "erza.cli.run_curses_app",

@@ -102,7 +102,7 @@ Canonical CLI surface:
 ```bash
 python app/main.py -h
 python app/main.py -v
-python app/main.py run <source> [--backend <path>]
+python app/main.py run <source> [--backend <path>] [-u <username> -p <password>]
 ```
 
 `source` may be:
@@ -115,6 +115,13 @@ python app/main.py run <source> [--backend <path>]
 
 `erza` automatically loads `backend.py` from the same directory as the entry
 file unless `--backend` is provided explicitly.
+
+For remote apps that implement standardized auth, you can sign in before the
+first render:
+
+```bash
+python app/main.py run koinonia-9xr5.onrender.com -u ryan -p ainiwmn
+```
 
 ## A Minimal App
 
@@ -304,6 +311,11 @@ remote protocol is:
 
 - `GET /.well-known/erza?path=/requested/path`
 - `POST /.well-known/erza/action?path=/requested/path`
+- `POST /.well-known/erza/auth`
+
+The standardized auth endpoint accepts JSON credentials shaped as
+`{"username": "...", "password": "..."}` and returns the same JSON result
+contract as form submits: `refresh`, `redirect`, or `error`.
 
 If a host does not expose a terminal-native `erza` surface, the client can fall
 back to HTML rendering.

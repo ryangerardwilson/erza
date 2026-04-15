@@ -60,6 +60,48 @@ class RemoteApp:
     def follow_link(self, href: str) -> "RemoteApp":
         return RemoteApp(urljoin(self.current_url, href), opener=self._opener)
 
+    def authenticate(self, username: str, password: str) -> SubmitResult:
+        request = Request(
+            _erza_auth_url(self.current_url),
+            data=json.dumps({"username": username, "password": password}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": REMOTE_USER_AGENT,
+            },
+            method="POST",
+        )
+        try:
+            document = _fetch_document_with_dns_fallback(
+                request,
+                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                opener=self._opener,
+            )
+        except HTTPError as exc:
+            if exc.code == 404:
+                raise RemoteError(f"remote source does not support standardized login: {self.current_url}") from exc
+            raise RemoteError(f"failed to authenticate with remote source: {self.current_url}") from exc
+        except (URLError, OSError, TimeoutError) as exc:
+            raise RemoteError(f"failed to authenticate with remote source: {self.current_url}") from exc
+        if document is None:
+            raise RemoteError(f"failed to authenticate with remote source: {self.current_url}")
+
+        try:
+            payload = json.loads(document.body)
+        except json.JSONDecodeError as exc:
+            raise RemoteError("remote auth returned invalid JSON") from exc
+
+        result = SubmitResult(
+            type=str(payload.get("type", "refresh")),
+            href=_optional_string(payload.get("href")),
+            message=_optional_string(payload.get("message")),
+        )
+        if result.type == "error":
+            raise RemoteError(result.message or "remote login failed")
+        if result.href:
+            self.current_url = urljoin(self.current_url, result.href)
+        return result
+
     def submit_form(self, action: str, values: dict[str, str]) -> SubmitResult:
         target_url = urljoin(self.current_url, action)
         request = Request(
@@ -241,6 +283,16 @@ def _erza_action_url(url: str) -> str:
         path="/.well-known/erza/action",
         params="",
         query=urlencode({"path": request_path}),
+        fragment="",
+    ).geturl()
+
+
+def _erza_auth_url(url: str) -> str:
+    parsed = urlparse(url)
+    return parsed._replace(
+        path="/.well-known/erza/auth",
+        params="",
+        query="",
         fragment="",
     ).geturl()
 

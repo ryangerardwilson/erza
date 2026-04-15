@@ -536,6 +536,11 @@ def auth_access(username: str = "", password: str = ""):
     return _access_account(username, password)
 
 
+@route("/.well-known/erza/auth")
+def erza_auth(username: str = "", password: str = ""):
+    return _access_account(username, password)
+
+
 @route("/posts")
 def create_post(body: str = ""):
     account = _current_account()
