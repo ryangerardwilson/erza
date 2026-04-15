@@ -106,16 +106,16 @@ terminal social commons ...
             <Section title="@<?= reply.handle ?>">
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
-              <ButtonRow align="right">
-                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply on Thread</Action>
-              </ButtonRow>
-
               <? for nested in reply.replies ?>
                 <Section title="@<?= nested.handle ?>">
                   <Text><?= nested.body ?></Text>
                   <Text><?= nested.likes ?> likes</Text>
                 </Section>
               <? endfor ?>
+
+              <ButtonRow align="right">
+                <Action on:press="ui.open_modal" modal:id="feed-compose-reply-<?= reply.id ?>">Reply on Thread</Action>
+              </ButtonRow>
             </Section>
           <? endfor ?>
         <? else ?>
@@ -164,16 +164,16 @@ terminal social commons ...
             <Section title="@<?= reply.handle ?>">
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
-              <ButtonRow align="right">
-                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply on Thread</Action>
-              </ButtonRow>
-
               <? for nested in reply.replies ?>
                 <Section title="@<?= nested.handle ?>">
                   <Text><?= nested.body ?></Text>
                   <Text><?= nested.likes ?> likes</Text>
                 </Section>
               <? endfor ?>
+
+              <ButtonRow align="right">
+                <Action on:press="ui.open_modal" modal:id="profile-compose-reply-<?= reply.id ?>">Reply on Thread</Action>
+              </ButtonRow>
             </Section>
           <? endfor ?>
         <? else ?>
