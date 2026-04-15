@@ -139,10 +139,15 @@ terminal social commons ...
       <? for reply in post.replies ?>
         <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply on Thread">
           <Form action="/threads/reply">
-            <Header>@<?= post.handle ?></Header>
-            <Text><?= post.body ?></Text>
-            <Text>-> @<?= reply.handle ?></Text>
-            <Text><?= reply.body ?></Text>
+            <Section title="@<?= post.handle ?>">
+              <Text><?= post.body ?></Text>
+              <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
+              <Section title="@<?= reply.handle ?>">
+                <Text><?= reply.body ?></Text>
+                <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+              </Section>
+            </Section>
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
             <Input name="body" type="text" label="Reply" required="mandatory" />
@@ -197,10 +202,15 @@ terminal social commons ...
       <? for reply in post.replies ?>
         <Modal id="profile-compose-reply-<?= reply.id ?>" title="Reply on Thread">
           <Form action="/threads/reply">
-            <Header>@<?= post.handle ?></Header>
-            <Text><?= post.body ?></Text>
-            <Text>-> @<?= reply.handle ?></Text>
-            <Text><?= reply.body ?></Text>
+            <Section title="@<?= post.handle ?>">
+              <Text><?= post.body ?></Text>
+              <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
+              <Section title="@<?= reply.handle ?>">
+                <Text><?= reply.body ?></Text>
+                <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+              </Section>
+            </Section>
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
             <Input name="body" type="text" label="Reply" required="mandatory" />
