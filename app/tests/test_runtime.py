@@ -1835,6 +1835,8 @@ class RuntimeTests(unittest.TestCase):
         marker_styles = [style for _, _, text, _, style in calls if text == ">"]
         self.assertTrue(marker_styles)
         self.assertTrue(all(style & curses.A_REVERSE for style in marker_styles))
+        marker_clears = [(x, text) for _, x, text, _, _ in calls if text == " "]
+        self.assertTrue(marker_clears)
 
     def test_form_modal_structural_sections_use_full_modal_width(self) -> None:
         screen = Screen(

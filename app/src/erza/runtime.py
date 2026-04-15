@@ -756,6 +756,8 @@ def draw_modal_overlay(
         screen_y = top_y + body_y
         if screen_y >= visible_height:
             break
+        marker_x = max(modal_x - 1, 0)
+        _safe_addnstr(stdscr, screen_y, marker_x, " ", 1, styles["section_fill"])
         active_content_line = active_y == body_y
         current_line_index: int | None = None
         if body_y != 0 and body_y != len(visible_lines) - 1:
