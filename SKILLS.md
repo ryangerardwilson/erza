@@ -33,7 +33,7 @@ The standard app shape is:
 ```text
 my_app/
   index.erza
-  backend.py        # optional, but typical today
+  backend.py        # Python local prototype backend, optional today
 ```
 
 ## If You Only Remember 12 Things
@@ -205,8 +205,9 @@ it speaks this contract.
 
 ## Backend Model
 
-Today, the reference backend is Python. The product boundary is still meant to be
-language-agnostic.
+Today, the built-in local backend path is Python, but the product boundary is
+still language-agnostic. Node.js and other languages fit through the remote
+protocol cleanly.
 
 Read side:
 
@@ -218,8 +219,8 @@ Write side:
 - backend actions handle `on:press="some.action"`
 - `session()` exposes per-user session state
 
-Use Python first if you want the fastest path. Treat other languages as valid if
-you are willing to implement the protocol yourself.
+Use Python first if you want the fastest local path. Use Node.js or another
+language when you are building a remote host that implements the protocol.
 
 ## Start Building
 
@@ -255,7 +256,7 @@ Start with one `index.erza`.
 
 ### 2. Add a backend
 
-Create `backend.py` next to `index.erza`.
+Python local example using `backend.py`:
 
 ```python
 from erza.backend import handler, redirect, route, session
@@ -270,6 +271,50 @@ def ui_status() -> str:
 def create_post(body: str = ""):
     session()["status"] = f"Posted: {body.strip()}"
     return redirect("index.erza")
+```
+
+Node.js remote-host example using the protocol:
+
+```js
+import express from "express";
+
+const app = express();
+app.use(express.json());
+
+let status = "Welcome to erza.";
+
+app.get("/.well-known/erza", (req, res) => {
+  res.type("application/erza").send(`
+<Screen title="Town Square">
+  <Section title="Feed" default-tab="true">
+    <Header>Town Square</Header>
+    <Text>${status}</Text>
+    <ButtonRow align="right">
+      <Action on:press="ui.open_modal" modal:id="new-post">New post</Action>
+    </ButtonRow>
+  </Section>
+
+  <Modal id="new-post" title="New Post">
+    <Form action="/posts">
+      <Input name="body" type="text" label="Post" required="mandatory" />
+      <ButtonRow align="right">
+        <Submit>Publish</Submit>
+      </ButtonRow>
+    </Form>
+  </Modal>
+</Screen>`);
+});
+
+app.post("/posts", (req, res) => {
+  status = `Posted: ${String(req.body.body || "").trim()}`;
+  res.json({ type: "redirect", href: "index.erza" });
+});
+
+app.post("/.well-known/erza/action", (req, res) => {
+  res.json({ type: "refresh" });
+});
+
+app.listen(3000);
 ```
 
 ### 3. Read backend state in the template
@@ -298,6 +343,13 @@ app in under `300` lines, including:
 - profile editing
 - reply/view-replies modal flows
 - thread viewing
+
+### 6. Keep the backend distinction straight
+
+Do not confuse these two backend paths:
+
+- `backend.py` is the built-in Python local prototype path in this repo
+- Node.js is supported by implementing the remote `erza` protocol on your host
 
 ## Core Authoring Rules
 

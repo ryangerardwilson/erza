@@ -18,7 +18,8 @@ terminal.
 The project currently includes:
 
 - the `.erza` language surface
-- the Python template/parser/runtime prototype
+- the Python template/parser/runtime prototype for local in-process apps
+- a language-agnostic remote protocol that backends like Node.js can implement
 - local and remote app support
 - example apps
 - `koinonia`, a larger social-app prototype built in `erza`
@@ -109,7 +110,9 @@ python app/main.py run <source> [--backend <path>] [-u <username> -p <password>]
 - omitted entirely, in which case `erza run` uses the current directory
 
 `erza` automatically loads `backend.py` from the same directory as the entry
-file unless `--backend` is provided explicitly.
+file unless `--backend` is provided explicitly. That local auto-loading is
+Python-only today. Non-Python backends, including Node.js, fit through the
+remote protocol instead of a local `backend.py` hook.
 
 For remote apps that implement standardized auth, you can sign in before the
 first render:
@@ -148,7 +151,7 @@ python app/main.py run koinonia-singapore.onrender.com -u ryan -p secret
 </Screen>
 ```
 
-Matching `backend.py`:
+Matching local `backend.py` in Python:
 
 ```python
 from erza.backend import handler, redirect, route, session
@@ -165,10 +168,55 @@ def create_post(body: str = ""):
     return redirect("index.erza")
 ```
 
+Equivalent remote backend example in Node.js using the protocol:
+
+```js
+import express from "express";
+
+const app = express();
+app.use(express.json());
+
+let status = "Welcome to erza.";
+
+app.get("/.well-known/erza", (req, res) => {
+  res.type("application/erza").send(`
+<Screen title="Town Square">
+  <Section title="Feed" default-tab="true">
+    <Header>Town Square</Header>
+    <Text>${status}</Text>
+    <ButtonRow align="right">
+      <Action on:press="ui.open_modal" modal:id="new-post">New post</Action>
+    </ButtonRow>
+  </Section>
+
+  <Modal id="new-post" title="New Post">
+    <Form action="/posts">
+      <Input name="body" type="text" label="Post" required="mandatory" />
+      <ButtonRow align="right">
+        <Submit>Publish</Submit>
+      </ButtonRow>
+    </Form>
+  </Modal>
+</Screen>`);
+});
+
+app.post("/posts", (req, res) => {
+  status = `Posted: ${String(req.body.body || "").trim()}`;
+  res.json({ type: "redirect", href: "index.erza" });
+});
+
+app.post("/.well-known/erza/action", (req, res) => {
+  res.json({ type: "refresh" });
+});
+
+app.listen(3000);
+```
+
 ## Local and Remote Model
 
 Locally, `erza` can run a file or directory with an optional Python backend.
-Remotely, `erza` can open a host directly by domain or URL.
+Remotely, `erza` can open a host directly by domain or URL, which is where
+Node.js and other backend languages fit cleanly today.
 
 The current remote protocol is:
 
