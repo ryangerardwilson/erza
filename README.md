@@ -1,242 +1,140 @@
 # erza
 
-`erza` is a terminal-native UI language, runtime, and thin app protocol for
-docs, tools, and small product surfaces.
+`erza` is a terminal-native UI language and runtime for docs, tools, and small
+product surfaces.
 
-This `README.md` is the canonical documentation source. The docs site at
-`https://erza.ryangerardwilson.com` serves this file directly as markdown, and
-`erza run erza.ryangerardwilson.com` is derived from the same source.
+If you are an AI agent, do not use this file as your primary guide. Read
+`SKILLS.md` instead:
 
-## Read This First
+`https://erza.ryangerardwilson.com/skills`
 
-If you are an AI agent with no prior context, treat this file as the operating
-manual.
+The repo also contains that same guide directly at [SKILLS.md](./SKILLS.md).
 
-`erza` is:
+## What erza Is
 
-- a frontend-first application framework for the terminal
-- a `.erza` authoring language
-- a curses runtime
-- a thin backend protocol for actions, forms, auth, and remote app loading
+`erza` moves small interactive surfaces out of the browser and into the
+terminal.
 
-`erza` is not:
+The project currently includes:
 
-- a browser UI framework
-- a generic CLI scaffolding tool
-- a full backend framework with opinions about databases, jobs, or infra
+- the `.erza` language surface
+- the Python template/parser/runtime prototype
+- local and remote app support
+- example apps
+- `koinonia`, a larger social-app prototype built in `erza`
 
-The standard app shape is:
+The long-term direction is `erzanet`: apps and documents that can be opened as
+`erza example.com` instead of “open a browser tab and hunt around.”
 
-```text
-my_app/
-  index.erza
-  backend.py        # optional, but typical today
+## Why erza
+
+Use `erza` when the browser is the wrong container.
+
+- docs should open without tab sprawl, cookie banners, or popover junk
+- a tool should feel local, keyboard-first, and terminal-native
+- a workflow should survive slow links, large monitors, and minimal machines
+- a remote product surface should be reachable as `erza example.com`
+
+## Current Product Model
+
+The current design direction is intentionally opinionated.
+
+- A typical app should be a single `index.erza` file.
+- Top-level `<Section>` blocks act like tabs.
+- Selecting a tab changes the active page within the same screen.
+- Tabs can be conditional, so login state can change which tabs exist.
+- Tabs can declare `tab-order` and `default-tab`.
+- Forms are modal-only.
+- A modal is either:
+  - a single-form modal
+  - a view modal whose actions may only open form-only modals
+- `ButtonRow` is the standard action surface inside pages and forms.
+- Direct-action tabs are allowed for flows like `Logout`.
+- Splash screens and splash animations are first-class.
+
+In other words: `erza` apps are moving closer to a terminal-native React-like
+single-surface model than to a folder of loosely connected pages.
+
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ryangerardwilson/erza/main/app/install.sh | bash
 ```
 
-## If You Only Remember 12 Things
+If `~/.local/bin` is not already on your `PATH`, add it once and reload:
 
-1. Build a single `index.erza`, not a folder of pages.
-2. Top-level `<Section>` blocks are tabs.
-3. Tabs render within one screen, not as separate documents.
-4. Forms are modal-only.
-5. A modal is either a single-form modal or a view modal that only opens form modals.
-6. `ButtonRow` is the standard action surface.
-7. `ui.*` actions are runtime-local. They do not call the backend.
-8. Non-`ui.*` actions are backend actions.
-9. `<Form action="/path">` is for backend writes with explicit route paths.
-10. `<Link href="...">` is for navigation.
-11. Use `hjkl` as the primary interaction model. Arrow keys are secondary aliases.
-12. Default visual direction is terminal-native, keyboard-first, and low-chrome.
-
-## Mental Model
-
-An `erza` app is usually one terminal surface with these layers:
-
-- `<Screen>`: the root container
-- `<Splash>`: optional startup screen shown before the main app
-- top-level `<Section>`: tabs across the app
-- top-level `<Modal>`: overlays opened from tabs or page actions
-- `<Form>`: write flows inside modals
-- `backend(...)`: read-side template access
-- actions and routes: write-side interaction contract
-
-Think of it like this:
-
-- `Screen` is the app shell
-- `Section` is a tab/page inside that shell
-- `Modal` is the overlay system
-- `Form` is the write surface
-- `ButtonRow` is the canonical action strip
-
-Directionally, `erza` is closer to a terminal-native single-surface React app than
-to a multi-page website.
-
-## Build Rules
-
-When authoring an app, follow these rules.
-
-- Prefer one `index.erza` file per app.
-- Put app-level tabs at the top level with `<Section>`.
-- Use `tab-order` to set tab order.
-- Use `default-tab="true"` to choose the first selected tab.
-- Use direct-action tabs only for things like `Logout`.
-- Put read-only context in pages or view modals.
-- Put write flows in form-only modals.
-- Use `ButtonRow` instead of scattering ad-hoc actions through content.
-- Keep nested boxes meaningful. Use them to show hierarchy, not decoration.
-- Keep backgrounds transparent or terminal-default.
-- Do not assume a custom font.
-- Keep the UI usable with `hjkl` alone.
-
-## Action Contract
-
-This is the most important thing to understand if `erza` feels unusual.
-
-`on:press` is an action name, not always a URL.
-
-There are four different write/navigation paths:
-
-### 1. Runtime-local UI actions
-
-Example:
-
-```erza
-<Action on:press="ui.open_modal" modal:id="new-post">New post</Action>
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+source ~/.bashrc
 ```
 
-This does not call the backend. The runtime intercepts `ui.open_modal` and opens
-a modal locally.
+## Quick Start
 
-The `ui.*` namespace is reserved for runtime behavior.
+Open the hosted docs:
 
-### 2. Backend actions
-
-Example:
-
-```erza
-<Action on:press="feed.like" post:id="42">Like</Action>
+```bash
+erza run erza.ryangerardwilson.com
 ```
 
-This is a backend action.
+Open local examples from a checkout:
 
-- in local apps, the runtime dispatches it directly through the backend bridge
-- in remote apps, the runtime sends it to the standardized action endpoint
-
-You do not see a route path inline because backend actions are command-based, not
-route-based.
-
-### 3. Form routes
-
-Example:
-
-```erza
-<Form action="/posts">
+```bash
+python app/main.py run app/examples/docs
+python app/main.py run app/examples/forms
+python app/main.py run app/examples/animation
+python app/main.py run app/examples/tasks/app.erza
+python app/main.py run app/examples/greetings
 ```
 
-This is route-based. Forms always submit to explicit paths.
+Open the `koinonia` prototype locally:
 
-### 4. Links
-
-Example:
-
-```erza
-<Link href="docs.erza">Docs</Link>
+```bash
+python app/main.py run koinonia
 ```
 
-Links are explicit navigation targets.
+Canonical CLI surface:
 
-## Remote Protocol
-
-A remote `erza` app is opened by host or URL. The current protocol is:
-
-- `GET /.well-known/erza?path=/requested/path`
-- `POST /.well-known/erza/action?path=/requested/path`
-- `POST /.well-known/erza/auth`
-
-Remote form submits post JSON directly to the form `action` URL.
-
-### Remote action request
-
-```json
-{
-  "action": "feed.like",
-  "params": {"post_id": 42}
-}
+```bash
+python app/main.py -h
+python app/main.py -v
+python app/main.py run <source> [--backend <path>] [-u <username> -p <password>]
 ```
 
-### Remote auth request
+`source` may be:
 
-```json
-{
-  "username": "ryan",
-  "password": "secret"
-}
+- a single `.erza` file
+- a directory, in which case `erza` resolves `index.erza`
+- an `http(s)` URL
+- a bare domain like `erza.ryangerardwilson.com`
+- omitted entirely, in which case `erza run` uses the current directory
+
+`erza` automatically loads `backend.py` from the same directory as the entry
+file unless `--backend` is provided explicitly.
+
+For remote apps that implement standardized auth, you can sign in before the
+first render:
+
+```bash
+python app/main.py run koinonia-singapore.onrender.com -u ryan -p secret
 ```
 
-### Standard result contract
-
-Forms and auth use the same result shape:
-
-```json
-{
-  "type": "refresh"
-}
-```
-
-```json
-{
-  "type": "redirect",
-  "href": "index.erza"
-}
-```
-
-```json
-{
-  "type": "error",
-  "message": "Something went wrong"
-}
-```
-
-This is the key portability boundary. A backend can be written in any language if
-it speaks this contract.
-
-## Backend Model
-
-Today, the reference backend is Python. The product boundary is still meant to be
-language-agnostic.
-
-Read side:
-
-- `@handler("name")` exposes a function to templates through `backend("name")`
-
-Write side:
-
-- `@route("/path")` handles form submissions
-- backend actions handle `on:press="some.action"`
-- `session()` exposes per-user session state
-
-Use Python first if you want the fastest path. Treat other languages as valid if
-you are willing to implement the protocol yourself.
-
-## Start Building
-
-### 1. Create the app shell
-
-Start with one `index.erza`.
+## A Minimal App
 
 ```erza
 <Screen title="Town Square">
-  <Section title="Profile" tab-order="0">
-    <Header>@ryan</Header>
-    <Text>No description yet.</Text>
-  </Section>
+  <? status = backend("ui.status") ?>
 
   <Section title="Feed" tab-order="1" default-tab="true">
     <Header>Town Square</Header>
-    <Text>Welcome to erza.</Text>
+    <Text><?= status ?></Text>
     <ButtonRow align="right">
       <Action on:press="ui.open_modal" modal:id="new-post">New post</Action>
     </ButtonRow>
+  </Section>
+
+  <Section title="Profile" tab-order="0">
+    <Header>@ryan</Header>
+    <Text>No description set yet.</Text>
   </Section>
 
   <Modal id="new-post" title="New Post">
@@ -250,9 +148,7 @@ Start with one `index.erza`.
 </Screen>
 ```
 
-### 2. Add a backend
-
-Create `backend.py` next to `index.erza`.
+Matching `backend.py`:
 
 ```python
 from erza.backend import handler, redirect, route, session
@@ -269,148 +165,48 @@ def create_post(body: str = ""):
     return redirect("index.erza")
 ```
 
-### 3. Read backend state in the template
+## Local and Remote Model
 
-```erza
-<? status = backend("ui.status") ?>
-<Text><?= status ?></Text>
-```
+Locally, `erza` can run a file or directory with an optional Python backend.
+Remotely, `erza` can open a host directly by domain or URL.
 
-### 4. Run it
+The current remote protocol is:
 
-```bash
-python app/main.py run path/to/app
-```
+- `GET /.well-known/erza?path=/requested/path`
+- `POST /.well-known/erza/action?path=/requested/path`
+- `POST /.well-known/erza/auth`
 
-If `path/to/app` is a directory, `erza` resolves `index.erza` automatically.
+Remote form submits post JSON directly to the form `action` URL.
 
-## Core Authoring Rules
+The key design point is that `erza` is frontend-first, but not frontend-only:
+there is a small backend contract for reads, writes, auth, and action dispatch.
 
-### Screen
+## Language Surface
 
-`<Screen title="...">` is the root.
+Supported root-level structure today:
 
-Supported root structure today:
-
-- zero or one `<Splash>`
+- `<Screen title="...">`
+- zero or one `<Splash duration-ms="...">`
 - top-level `<Section>` tabs
 - top-level `<Modal>` overlays
 
-### Sections
+Common components:
 
-Top-level sections are tabs.
-
-- use `tab-order="N"` for ordering
-- use `default-tab="true"` for default activation
-- use conditional template logic to change tabs by login state
-- use a direct action section for flows like `Logout`
-
-### Modals
-
-There are only two valid modal types.
-
-#### Form modal
-
-A form modal contains exactly one `<Form>`.
-
-Use it for:
-
-- login
-- signup
-- compose
-- edit profile
-- reply
-- any other write flow
-
-#### View modal
-
-A view modal contains no form.
-
-It may only contain actions that open form-only modals.
-
-Use it for:
-
-- viewing replies
-- viewing context
-- choosing a next write action without mixing reading and writing
-
-### Forms
-
-Forms are modal-only.
-
-Current form behavior:
-
-- opening a form modal auto-focuses the first input
-- `Enter` commits the current input and moves into the next input when possible
-- submit buttons live in a `ButtonRow`
-- multi-submit forms are supported with multiple `<Submit>` buttons
-- `ascii-art` inputs enforce a frontend width limit of `72` columns
-
-### ButtonRow
-
-`ButtonRow` is the standard action strip.
-
-- it is full-width
-- it is horizontally scrollable
-- alignment can be `left`, `center`, or `right`
-- inside a form, it should contain `<Submit>` buttons
-- outside a form, it may contain actions or links
-
-### Splash
-
-Use `<Splash>` for startup screens and `<SplashAnimation>` for ASCII logo motion.
-
-```erza
-<Splash duration-ms="1400">
-  <SplashAnimation fps="7">
-    <Frame>...</Frame>
-    <Frame>...</Frame>
-  </SplashAnimation>
-</Splash>
-```
-
-## Template Model
-
-`.erza` files use HTML-like tags plus PHP-style template blocks.
-
-Supported template features:
-
-- `<?= expr ?>`
-- `<? name = expr ?>`
-- `<? if expr ?> ... <? else ?> ... <? endif ?>`
-- `<? for item in items ?> ... <? endfor ?>`
-- `backend("handler.name", **kwargs)` inside expressions
-
-The expression language is intentionally small.
-
-It supports:
-
-- literals
-- lists and dictionaries
-- attribute access like `post.title`
-- boolean logic
-- simple comparisons
-- `backend(...)` calls
-
-## Component Reference
-
-Common authoring components:
-
-- `<Screen title="...">`
 - `<Section title="...">`
 - `<Header>`
 - `<Text>`
 - `<AsciiArt>`
 - `<Link href="...">`
-- `<Action on:press="..."></Action>`
+- `<Action on:press="handler.name">`
+- `<Button on:press="handler.name">`
 - `<ButtonRow align="left|center|right">`
 - `<Modal id="..." title="...">`
 - `<Form action="/path">`
-- `<Input name="..." type="text|password|ascii-art|hidden">`
+- `<Input name="field" type="text|password|ascii-art|hidden">`
 - `<Submit>`
+- `<AsciiAnimation fps="...">`
 - `<Splash duration-ms="...">`
 - `<SplashAnimation fps="...">`
-- `<AsciiAnimation fps="...">`
 - `<Column gap="...">`
 - `<Row gap="...">`
 
@@ -420,96 +216,48 @@ Global movement:
 
 - `h` / left: previous tab or previous button in a row
 - `l` / right: next tab or next button in a row
-- `j` / down: move down inside a page or modal
-- `k` / up: move up inside a page or modal
-- arrow keys work as aliases
+- `j` / down: move down inside a page
+- `k` / up: move up inside a page
+- arrow keys work as alternatives to `hjkl`
 - `Enter`: activate current target or enter the active page
-- `Esc`: leave page/edit mode or close a modal
+- `Esc`: leave page/edit mode or close modal focus back toward the page
 - `Backspace`: go back
 - `gg`: jump to the first top-level section
 - `G`: jump to the last top-level section
 - `Ctrl+D` / `Ctrl+U`: half-page movement
 - `?`: shortcuts/help
 
-## Commands
+## Where to Go Next
 
-Install:
+Humans should continue from:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/ryangerardwilson/erza/main/app/install.sh | bash
-```
+- [SKILLS.md](./SKILLS.md) if you want the agent-style operating manual
+- `app/examples/` for small runnable examples
+- `koinonia/` for a larger end-to-end app
+- `app/tests/` if you want to see what the runtime actually guarantees
 
-CLI:
+## Repo Layout
 
-```bash
-python app/main.py -h
-python app/main.py -v
-python app/main.py run <source> [--backend <path>] [-u <username> -p <password>]
-```
-
-`source` may be:
-
-- a single `.erza` file
-- a directory, in which case `erza` resolves `index.erza`
-- an `http(s)` URL
-- a bare domain like `erza.ryangerardwilson.com`
-- omitted, in which case the current directory is used
-
-Examples:
-
-```bash
-python app/main.py run erza.ryangerardwilson.com
-python app/main.py run app/examples/docs
-python app/main.py run app/examples/forms
-python app/main.py run app/examples/animation
-python app/main.py run app/examples/tasks/app.erza
-python app/main.py run app/examples/greetings
-python app/main.py run koinonia
-python app/main.py run koinonia-singapore.onrender.com -u ryan -p secret
-```
-
-## Common Mistakes
-
-Avoid these.
-
-- Do not spread one app across many `.erza` pages unless there is a real need.
-- Do not put `<Form>` directly inside a page section.
-- Do not mix read-only context and form editing in the same modal.
-- Do not treat `ui.open_modal` like a backend route.
-- Do not assume `on:press` always means a URL.
-- Do not default to mouse-first or arrow-only interaction.
-- Do not force backgrounds or fonts.
-- Do not model `erza` as a browser-first framework.
-
-## Examples Worth Reading
-
-- `app/examples/docs/`: docs-shaped app
-- `app/examples/forms/`: local form flow and routes
-- `app/examples/animation/`: ASCII animation and splash direction
-- `app/examples/tasks/`: task-oriented app flow
-- `koinonia/`: larger social app using auth, tabs, modals, replies, profile editing, remote deploy, and Supabase-backed state
-
-## Repo Map
-
-- `README.md`: canonical docs source
+- `README.md`: human-facing introduction and overview
+- `SKILLS.md`: AI-agent guide to building with `erza`
 - `AGENTS.md`: repo guardrails for coding agents
 - `PRODUCT_SPEC.md`: current product direction
-- `FORMS_SPEC.md`: older form notes
+- `FORMS_SPEC.md`: older form-focused notes
 - `app/main.py`: canonical CLI entrypoint
-- `app/install.sh`: install and upgrade path
+- `app/install.sh`: installer and upgrade path
 - `app/src/erza/template.py`: template engine
-- `app/src/erza/parser.py`: markup compiler
+- `app/src/erza/parser.py`: markup-to-component compiler
 - `app/src/erza/runtime.py`: curses runtime and renderer
-- `app/src/erza/backend.py`: backend bridge, routes, sessions
-- `app/src/erza/remote.py`: remote fetch, remote forms, remote actions, auth
+- `app/src/erza/backend.py`: backend bridge and route/session primitives
+- `app/src/erza/remote.py`: remote fetch and remote app client
 - `app/examples/`: runnable examples
 - `app/tests/`: unit tests
 - `koinonia/`: larger end-to-end example app
-- `docs_website/`: browser shell for serving this README and terminal docs
+- `docs_website/`: browser shell that serves `README.md` and `SKILLS.md`
 
 ## Development
 
-Run the app tests:
+Run the app test suite:
 
 ```bash
 cd app/tests
@@ -531,23 +279,23 @@ npm install
 npm run dev
 ```
 
-## Current Status
+## Status
 
-This repo is intentionally small and still fluid.
+This is still an intentionally small, opinionated prototype.
 
-What it already proves:
+What the current repo already proves:
 
-- `.erza` is readable as a TUI authoring language
-- single-file app surfaces are practical
+- `.erza` can serve as a readable TUI authoring language
+- one-file app surfaces are practical
 - tabbed section navigation works well in the terminal
-- modal-only forms simplify write flows
-- runtime-local UI actions and backend actions can coexist cleanly
+- modal-only forms keep write flows cleaner
+- backend reads and writes can share the same runtime surface
 - remote apps can be opened directly by domain
-- splash screens and ASCII motion can be first-class
+- animated splash screens and ASCII motion can be first-class terminal UI
 
 What is still fluid:
 
-- the final long-term language surface
-- the full `erzanet` capability model
-- how broad the component vocabulary should become
+- the exact long-term language surface
+- the remote transport and capability model for `erzanet`
 - how much browser fallback should exist beside true terminal-native hosts
+- how much more structure should be added to the app/layout vocabulary

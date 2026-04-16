@@ -5,27 +5,66 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
-const README_CANDIDATES = [join(process.cwd(), "README.md"), join(process.cwd(), "..", "README.md")];
-const README_PATH = README_CANDIDATES.find((candidate) => existsSync(candidate)) || README_CANDIDATES[0];
 const REPO_URL = "https://github.com/ryangerardwilson/erza";
 const ROOT_SECTION_TITLE = "Overview";
-const PATH_ALIASES = {
+
+function resolveDocPath(filename) {
+  const candidates = [join(process.cwd(), filename), join(process.cwd(), "..", filename)];
+  return candidates.find((candidate) => existsSync(candidate)) || candidates[0];
+}
+
+const README_PATH = resolveDocPath("README.md");
+const SKILLS_PATH = resolveDocPath("SKILLS.md");
+
+const README_PATH_ALIASES = {
   "/": "/",
   "/install": "/install",
   "/first-run": "/quick-start",
   "/first-file": "/a-minimal-app",
+  "/remote": "/local-and-remote-model",
   "/components": "/language-surface",
-  "/backend": "/backend-model",
-  "/remote": "/remote-apps",
-  "/examples": "/examples",
+  "/controls": "/runtime-controls",
+  "/next": "/where-to-go-next",
   "/reference": "/repo-layout",
-  "/patterns": "/current-product-model",
-  "/labs": "/current-status",
-  "/protocol": "/remote-apps"
+  "/development": "/development",
+  "/status": "/status"
+};
+
+const SKILLS_PATH_ALIASES = {
+  "/": "/",
+  "/rules": "/build-rules",
+  "/actions": "/action-contract",
+  "/protocol": "/remote-protocol",
+  "/build": "/start-building",
+  "/components": "/component-reference",
+  "/commands": "/commands",
+  "/mistakes": "/common-mistakes",
+  "/reference": "/repo-map",
+  "/development": "/development",
+  "/status": "/current-status"
+};
+
+const DOC_CONFIG = {
+  readme: {
+    filePath: README_PATH,
+    mountPath: "/",
+    pathAliases: README_PATH_ALIASES,
+    screenTitleFallback: "erza"
+  },
+  skills: {
+    filePath: SKILLS_PATH,
+    mountPath: "/skills",
+    pathAliases: SKILLS_PATH_ALIASES,
+    screenTitleFallback: "erza skills"
+  }
 };
 
 export function readCanonicalReadme() {
   return readFileSync(README_PATH, "utf8");
+}
+
+export function readCanonicalSkills() {
+  return readFileSync(SKILLS_PATH, "utf8");
 }
 
 export function resolveReadmeHref(href = "") {
@@ -37,7 +76,7 @@ export function resolveReadmeHref(href = "") {
   return `${REPO_URL}/${mode}/main/${cleaned}`;
 }
 
-export function normalizeReadmeErzaPath(value = "/") {
+export function normalizeDocsErzaPath(value = "/") {
   const trimmed = (value || "/").trim();
   if (!trimmed || trimmed === "/") {
     return "/";
@@ -53,20 +92,27 @@ export function normalizeReadmeErzaPath(value = "/") {
   return `/${segments.join("/")}`;
 }
 
-export function buildReadmeErzaSource(requestedPath = "/") {
-  const normalized = normalizeReadmeErzaPath(requestedPath);
+export const normalizeReadmeErzaPath = normalizeDocsErzaPath;
+
+export function buildDocsErzaSource(requestedPath = "/") {
+  const normalized = normalizeDocsErzaPath(requestedPath);
   if (!normalized) {
     return null;
   }
 
-  const sections = parseReadmeSections(readCanonicalReadme());
-  const aliasResolved = PATH_ALIASES[normalized] || normalized;
-  const selectedPath = sections.some((section) => section.path === aliasResolved) ? aliasResolved : normalized === "/" ? "/" : null;
+  const { config, docPath } = resolveDocRequest(normalized);
+  const sections = parseMarkdownSections(readFileSync(config.filePath, "utf8"), config.screenTitleFallback);
+  const aliasResolved = config.pathAliases[docPath] || docPath;
+  const selectedPath = sections.some((section) => section.path === aliasResolved)
+    ? aliasResolved
+    : docPath === "/"
+      ? "/"
+      : null;
   if (selectedPath === null) {
     return null;
   }
 
-  const lines = [`<Screen title="${escapeAttribute(sections[0]?.screenTitle || "erza")}">`];
+  const lines = [`<Screen title="${escapeAttribute(sections[0]?.screenTitle || config.screenTitleFallback)}">`];
   for (const [index, section] of sections.entries()) {
     const attrs = [`title="${escapeAttribute(section.title)}"`, `tab-order="${index}"`];
     if (section.path === selectedPath) {
@@ -92,10 +138,26 @@ export function buildReadmeErzaSource(requestedPath = "/") {
   return lines.join("\n");
 }
 
-function parseReadmeSections(markdown) {
+export const buildReadmeErzaSource = buildDocsErzaSource;
+
+function resolveDocRequest(normalizedPath) {
+  if (normalizedPath === DOC_CONFIG.skills.mountPath || normalizedPath.startsWith(`${DOC_CONFIG.skills.mountPath}/`)) {
+    const suffix = normalizedPath.slice(DOC_CONFIG.skills.mountPath.length);
+    return {
+      config: DOC_CONFIG.skills,
+      docPath: suffix ? (suffix.startsWith("/") ? suffix : `/${suffix}`) : "/"
+    };
+  }
+  return {
+    config: DOC_CONFIG.readme,
+    docPath: normalizedPath
+  };
+}
+
+function parseMarkdownSections(markdown, screenTitleFallback) {
   const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
   const sections = [];
-  let screenTitle = "erza";
+  let screenTitle = screenTitleFallback;
   let current = createSection(ROOT_SECTION_TITLE, "/", screenTitle);
 
   for (const node of tree.children || []) {
@@ -196,7 +258,6 @@ function appendNodeToSection(section, node) {
     if (rendered) {
       section.blocks.push({ kind: "ascii", text: rendered });
     }
-    return;
   }
 }
 
