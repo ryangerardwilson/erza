@@ -287,6 +287,18 @@ python app/main.py run path/to/app
 
 If `path/to/app` is a directory, `erza` resolves `index.erza` automatically.
 
+### 5. Read a real app
+
+If you want a realistic reference instead of a toy example, read `koinonia/index.erza`.
+It is currently `268` lines and shows that `erza` can express a small social-media
+app in under `300` lines, including:
+
+- auth-gated tabs
+- post compose flows
+- profile editing
+- reply/view-replies modal flows
+- thread viewing
+
 ## Core Authoring Rules
 
 ### Screen
@@ -490,6 +502,7 @@ Avoid these.
 - `app/examples/forms/`: local form flow and routes
 - `app/examples/animation/`: ASCII animation and splash direction
 - `app/examples/tasks/`: task-oriented app flow
+- `koinonia/index.erza`: a `268`-line social-media app example that shows how far a single `index.erza` file can go
 - `koinonia/`: larger social app using auth, tabs, modals, replies, profile editing, remote deploy, and Supabase-backed state
 
 ## Repo Map
