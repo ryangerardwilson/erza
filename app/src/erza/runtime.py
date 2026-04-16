@@ -39,7 +39,6 @@ HEADER_CELL_GAP = 2
 HEADER_CELL_ROW_HEIGHT = 3
 LOADING_MODAL_MAX_WIDTH = 28
 INTERACTIVE_MODAL_INNER_WIDTH = 51
-MODAL_SELECTION_GUTTER_WIDTH = 2
 LOADING_FRAME_INTERVAL_MS = 90
 LOADING_DISPLAY_DELAY_SECONDS = 0.12
 LOADING_MATRIX_ROWS = 4
@@ -736,9 +735,7 @@ def draw_modal_overlay(
 
     block_width = min(modal.block.width, display_width)
     available_height = min(max(visible_height - 2, 3), modal.block.height)
-    gutter_width = min(MODAL_SELECTION_GUTTER_WIDTH, max(display_width - block_width, 0))
-    overlay_width = min(block_width + gutter_width, display_width)
-    modal_x = origin_x + max((display_width - overlay_width) // 2, 0) + gutter_width
+    modal_x = origin_x + max((display_width - block_width) // 2, 0)
     top_y = max((visible_height - available_height) // 2, 0)
     content_lines = modal.block.lines[1:-1] or [[]]
 
@@ -769,9 +766,8 @@ def draw_modal_overlay(
         screen_y = top_y + body_y
         if screen_y >= visible_height:
             break
-        gutter_x = max(modal_x - gutter_width, 0)
-        if gutter_width > 0:
-            _safe_addnstr(stdscr, screen_y, gutter_x, " " * gutter_width, gutter_width, styles["section_fill"])
+        marker_x = max(modal_x - 1, 0)
+        _safe_addnstr(stdscr, screen_y, marker_x, " ", 1, styles["section_fill"])
         active_content_line = active_y == body_y
         current_line_index: int | None = None
         if body_y != 0 and body_y != len(visible_lines) - 1:
@@ -814,11 +810,11 @@ def draw_modal_overlay(
                 max_width=block_width,
                 styles=styles,
             )
-        if active_content_line and gutter_width > 0:
+        if active_content_line:
             _safe_addnstr(
                 stdscr,
                 screen_y,
-                gutter_x,
+                marker_x,
                 ">",
                 1,
                 styles["selection_marker_active"],

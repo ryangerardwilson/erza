@@ -1911,33 +1911,6 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(inner_x, 4)
         self.assertEqual(input_x, 6)
 
-    def test_modal_overlay_reserves_gutter_for_selection_marker(self) -> None:
-        screen = Screen(
-            title="Auth",
-            children=[
-                Section(title="Why", children=[Text("viewer page"), Text("other line")]),
-                Modal(
-                    modal_id="auth-access",
-                    title="Login / Sign Up",
-                    children=[Text("Sign in here."), Text("Second line")],
-                ),
-            ],
-        )
-        plan = build_render_plan(screen)
-        modal = plan.modals["auth-access"]
-        window = _RasterWindow()
-
-        draw_plan(window, plan, 0, 0, 0, "auth")
-        draw_modal_overlay(window, modal, line_index=1, action_index=0, scroll_offset=0)
-        rendered = window.render()
-        marker_row = next(i for i, row in enumerate(rendered) if ">" in row)
-        row = rendered[marker_row]
-        marker_index = row.index(">")
-
-        self.assertEqual(row[marker_index + 1], " ")
-        self.assertEqual(row[marker_index + 2], "|")
-
-
 class _CountingApp:
     def __init__(self, screen: Screen) -> None:
         self.screen = screen
@@ -2014,30 +1987,6 @@ class _DrawingWindow:
 
     def refresh(self) -> None:
         return
-
-
-class _RasterWindow(_DrawingWindow):
-    def __init__(self, height: int = 24, width: int = 79) -> None:
-        self.height = height
-        self.width = width
-        self.rows = [[" "] * width for _ in range(height)]
-
-    def getmaxyx(self) -> tuple[int, int]:
-        return (self.height, self.width)
-
-    def erase(self) -> None:
-        self.rows = [[" "] * self.width for _ in range(self.height)]
-
-    def addnstr(self, y: int, x: int, text: str, max_length: int, style: int) -> None:
-        if y < 0 or y >= self.height:
-            return
-        for index, char in enumerate(text[:max_length]):
-            target_x = x + index
-            if 0 <= target_x < self.width:
-                self.rows[y][target_x] = char
-
-    def render(self) -> list[str]:
-        return ["".join(row) for row in self.rows]
 
 
 class _RefreshCountingWindow(_DrawingWindow):
