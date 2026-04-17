@@ -9,8 +9,6 @@ export default function DocsShell({ activeSlug = "readme" }) {
 
   return (
     <main className="docs-scene">
-      <div className="docs-ambient docs-ambient-one" aria-hidden="true" />
-      <div className="docs-ambient docs-ambient-two" aria-hidden="true" />
       <section className="docs-shell">
         <nav className="docs-tabs" aria-label="Documentation files">
           {tabs.map((tab) => {
