@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import CopyDocsButton from "@/app/components/copy-docs-button";
 import { getDocPageData, getDocsTabs } from "@/lib/readme-docs";
 
 const REPO_URL = "https://github.com/ryangerardwilson/erza";
@@ -52,6 +53,7 @@ export default function DocsShell({ activeSlug = "readme" }) {
             >
               <GitHubMark />
             </a>
+            <CopyDocsButton content={normalizedContent} fileName={fileName} />
             <a
               className="docs-author-link"
               href={AUTHOR_URL}

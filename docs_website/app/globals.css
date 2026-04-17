@@ -30,6 +30,10 @@ a {
   text-decoration: none;
 }
 
+button {
+  font: inherit;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -102,6 +106,7 @@ a {
 }
 
 .docs-icon-link,
+.docs-copy-button,
 .docs-author-link {
   display: inline-flex;
   align-items: center;
@@ -122,12 +127,20 @@ a {
   height: 1rem;
 }
 
+.docs-copy-button {
+  padding: 0.72rem 0.95rem;
+  background: var(--bg);
+  cursor: pointer;
+}
+
 .docs-author-link {
   padding: 0.72rem 0.95rem;
 }
 
 .docs-icon-link:hover,
 .docs-icon-link:focus-visible,
+.docs-copy-button:hover,
+.docs-copy-button:focus-visible,
 .docs-author-link:hover,
 .docs-author-link:focus-visible {
   border-color: var(--line);
@@ -192,6 +205,7 @@ a {
     justify-content: space-between;
   }
 
+  .docs-copy-button,
   .docs-author-link {
     flex: 1 1 auto;
   }
