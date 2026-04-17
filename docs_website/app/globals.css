@@ -53,12 +53,21 @@ a {
   padding: 0.75rem 0 0.9rem;
 }
 
+.docs-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding-bottom: 0.6rem;
+}
+
 .docs-tabs {
   display: flex;
   gap: 0.55rem;
   overflow-x: auto;
-  padding: 0 0 0.6rem;
+  padding: 0;
   margin: 0;
+  flex: 1 1 auto;
   scrollbar-width: none;
 }
 
@@ -83,6 +92,23 @@ a {
   display: block;
   font-size: 0.95rem;
   line-height: 1;
+}
+
+.docs-repo-link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.65rem;
+  padding: 0.72rem 0.95rem;
+  border: 1px solid var(--line-soft);
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.docs-repo-link:hover,
+.docs-repo-link:focus-visible {
+  border-color: var(--line);
+  outline: none;
 }
 
 .docs-panel {
@@ -123,12 +149,26 @@ a {
     padding-bottom: 0.55rem;
   }
 
+  .docs-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .docs-repo-link {
+    align-self: flex-end;
+  }
+
   .docs-code-scroll {
     max-height: calc(100vh - 4.3rem);
   }
 }
 
 @media (max-width: 640px) {
+  .docs-repo-link {
+    width: 100%;
+    justify-content: center;
+  }
+
   .docs-tab {
     min-width: 8rem;
     padding: 0.72rem 0.85rem;
