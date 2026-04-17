@@ -25,7 +25,7 @@ export default function DocsShell({ activeSlug = "readme" }) {
   return (
     <main className="docs-scene">
       <section className="docs-shell">
-        <header className="docs-topbar">
+        <div className="docs-topbar">
           <nav className="docs-tabs" aria-label="Documentation files">
             {tabs.map((tab) => {
               const isActive = tab.slug === activeSlug;
@@ -42,27 +42,29 @@ export default function DocsShell({ activeSlug = "readme" }) {
             })}
           </nav>
 
-          <div className="docs-header-links">
+          <section className="docs-utility" aria-label="Quick links">
             <a
-              className="docs-icon-link"
+              className="docs-utility-link"
+              href={AUTHOR_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="About the Author"
+              title="About the Author"
+            >
+              About the Author
+            </a>
+            <a
+              className="docs-utility-link docs-utility-icon"
               href={REPO_URL}
               target="_blank"
               rel="noreferrer"
-              aria-label="Open the erza GitHub repository"
+              aria-label="GitHub"
               title="GitHub"
             >
               <GitHubMark />
             </a>
-            <a
-              className="docs-author-link"
-              href={AUTHOR_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              About the Author
-            </a>
-          </div>
-        </header>
+          </section>
+        </div>
 
         <section className="docs-panel" aria-label={`${fileName} source`}>
           <h1 className="sr-only">{fileName}</h1>
