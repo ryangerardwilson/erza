@@ -1,5 +1,11 @@
+<!--
+  This file is also the source for the docs site's EXAMPLE.md tab.
+  The comments are valid erza source comments and are ignored by the compiler.
+-->
 <Screen title="Koinonia">
+  <!-- Splash runs before the main screen and is useful for app identity. -->
   <Splash duration-ms="1400">
+    <!-- SplashAnimation is an unboxed ASCII frame animation. -->
     <SplashAnimation fps="7">
       <Frame>
  _  __      _                       _
@@ -31,29 +37,39 @@ terminal social commons ...
     </SplashAnimation>
   </Splash>
 
+  <!-- backend(...) pulls read-side data into the template scope. -->
   <? auth = backend("auth.viewer") ?>
   <? status = backend("ui.status") ?>
   <? overview = backend("network.overview") ?>
   <? highlights = backend("mission.highlights") ?>
 
+  <!-- PHP-style template delimiters drive branching and loops. -->
   <? if auth.logged_in ?>
     <? profile = backend("profiles.current") ?>
     <? timeline = backend("feed.timeline") ?>
 
+    <!-- Top-level Section blocks are app tabs. -->
     <Section title="Feed" tab-order="1" default-tab="true">
       <Header>Town Square</Header>
       <Text><?= status ?></Text>
+
+      <!-- ButtonRow is the standard horizontal action strip. -->
       <ButtonRow>
+        <!-- ui.open_modal is handled by the runtime, not the backend. -->
         <Action on:press="ui.open_modal" modal:id="create-post">New post</Action>
       </ButtonRow>
+
       <Text><?= overview.posts ?> posts, <?= overview.replies ?> replies, and <?= overview.people ?> residents are live in the square.</Text>
 
       <? if timeline ?>
         <? for post in timeline ?>
+          <!-- Nested Section blocks become boxed content panels. -->
           <Section title="@<?= post.handle ?>">
             <Text><?= post.body ?></Text>
             <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
             <ButtonRow align="right">
+              <!-- Non-ui action names are backend commands. -->
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
               <Action on:press="ui.open_modal" modal:id="feed-thread-<?= post.id ?>">View Replies</Action>
               <Action on:press="ui.open_modal" modal:id="feed-compose-post-<?= post.id ?>">Reply</Action>
@@ -66,13 +82,16 @@ terminal social commons ...
     </Section>
 
     <Section title="Profile" tab-order="0">
+      <!-- AsciiArt preserves whitespace exactly, which is ideal for profile pictures. -->
       <AsciiArt><?= profile.picture ?></AsciiArt>
       <Header>@<?= profile.handle ?></Header>
       <Text><?= profile.description or "No description set yet." ?></Text>
+
       <ButtonRow>
         <Action on:press="ui.open_modal" modal:id="create-post">New post</Action>
         <Action on:press="ui.open_modal" modal:id="profile-edit">Edit profile</Action>
       </ButtonRow>
+
       <Text><?= status ?></Text>
 
       <? if profile.posts ?>
@@ -80,6 +99,7 @@ terminal social commons ...
           <Section title="@<?= post.handle ?>">
             <Text><?= post.body ?></Text>
             <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
             <ButtonRow align="right">
               <Action on:press="feed.like" post:id="<?= post.id ?>">Like</Action>
               <Action on:press="ui.open_modal" modal:id="profile-thread-<?= post.id ?>">View Replies</Action>
@@ -92,20 +112,24 @@ terminal social commons ...
       <? endif ?>
     </Section>
 
+    <!-- Direct-action tabs are valid when the tab triggers behavior immediately. -->
     <Section title="Logout" tab-order="2">
       <Action on:press="auth.logout">Log out</Action>
     </Section>
 
     <? for post in timeline ?>
+      <!-- View modals may contain read-only content and buttons that open form-only modals. -->
       <Modal id="feed-thread-<?= post.id ?>" title="Replies for @<?= post.handle ?>">
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
         <? if post.replies ?>
           <? for reply in post.replies ?>
             <Section title="@<?= reply.handle ?>">
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+
               <? for nested in reply.replies ?>
                 <Section title="@<?= nested.handle ?>">
                   <Text><?= nested.body ?></Text>
@@ -123,13 +147,18 @@ terminal social commons ...
         <? endif ?>
       </Modal>
 
+      <!-- Form modals contain exactly one Form. -->
       <Modal id="feed-compose-post-<?= post.id ?>" title="Reply">
         <Form action="/threads/reply">
           <Header>@<?= post.handle ?></Header>
           <Text><?= post.body ?></Text>
           <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
+          <!-- Hidden inputs pass thread state without rendering visible fields. -->
           <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
           <Input name="body" type="text" label="Reply" required="mandatory" />
+
+          <!-- Inside forms, ButtonRow contains Submit buttons. -->
           <ButtonRow align="right">
             <Submit>Post reply</Submit>
           </ButtonRow>
@@ -137,6 +166,7 @@ terminal social commons ...
       </Modal>
 
       <? for reply in post.replies ?>
+        <!-- Reply-on-reply shows boxed context before the actual form fields. -->
         <Modal id="feed-compose-reply-<?= reply.id ?>" title="Reply on Thread">
           <Form action="/threads/reply">
             <Section title="@<?= post.handle ?>">
@@ -148,6 +178,7 @@ terminal social commons ...
                 <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
               </Section>
             </Section>
+
             <Input name="thread_slug" type="hidden" value="<?= post.slug ?>" />
             <Input name="parent_reply_id" type="hidden" value="<?= reply.id ?>" />
             <Input name="body" type="text" label="Reply" required="mandatory" />
@@ -159,16 +190,19 @@ terminal social commons ...
       <? endfor ?>
     <? endfor ?>
 
+    <!-- The Profile tab mirrors much of the Feed thread UI with profile-scoped modal ids. -->
     <? for post in profile.posts ?>
       <Modal id="profile-thread-<?= post.id ?>" title="Replies for @<?= post.handle ?>">
         <Header>@<?= post.handle ?></Header>
         <Text><?= post.body ?></Text>
         <Text><?= post.likes ?> likes | <?= post.reply_count ?> replies</Text>
+
         <? if post.replies ?>
           <? for reply in post.replies ?>
             <Section title="@<?= reply.handle ?>">
               <Text><?= reply.body ?></Text>
               <Text><?= reply.likes ?> likes | <?= reply.reply_count ?> replies</Text>
+
               <? for nested in reply.replies ?>
                 <Section title="@<?= nested.handle ?>">
                   <Text><?= nested.body ?></Text>
@@ -222,6 +256,7 @@ terminal social commons ...
       <? endfor ?>
     <? endfor ?>
 
+    <!-- Edit profile shows both a plain text input and an ascii-art input. -->
     <Modal id="profile-edit" title="Edit Profile">
       <Form action="/profile/edit">
         <Input name="description" type="text" label="Description" value="<?= profile.description ?>" />
@@ -240,7 +275,9 @@ terminal social commons ...
         </ButtonRow>
       </Form>
     </Modal>
+
   <? else ?>
+    <!-- Logged-out users get a different tab set, driven by the same file. -->
     <Section title="Why Koinonia">
       <Header>One terminal-native town square.</Header>
       <Text><?= overview.posts ?> posts, <?= overview.replies ?> replies, and <?= overview.people ?> residents are already live.</Text>

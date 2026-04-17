@@ -17,6 +17,7 @@ const DOCS = {
   readme: {
     slug: "readme",
     fileName: "README.md",
+    repoPath: "README.md",
     filePath: resolveDocPath("README.md"),
     route: "/",
     mountPath: "/",
@@ -40,6 +41,7 @@ const DOCS = {
   skills: {
     slug: "skills",
     fileName: "SKILLS.md",
+    repoPath: "SKILLS.md",
     filePath: resolveDocPath("SKILLS.md"),
     route: "/skills",
     mountPath: "/skills",
@@ -63,12 +65,13 @@ const DOCS = {
   example: {
     slug: "example",
     fileName: "EXAMPLE.md",
-    filePath: resolveDocPath("EXAMPLE.md"),
+    repoPath: "koinonia/index.erza",
+    filePath: resolveDocPath("koinonia/index.erza"),
     route: "/example",
     mountPath: "/example",
     screenTitleFallback: "erza example",
     eyebrow: "Worked Example",
-    summary: "Annotated Koinonia social app source with inline .erza comments.",
+    summary: "Usable Koinonia index.erza source with inline .erza comments.",
     pathAliases: {
       "/": "/",
       "/comments": "/comment-syntax",
@@ -94,7 +97,7 @@ export function getDocsTabs() {
       label: doc.fileName,
       eyebrow: doc.eyebrow,
       summary: doc.summary,
-      repoHref: `${REPO_URL}/blob/main/${doc.fileName}`
+      repoHref: `${REPO_URL}/blob/main/${doc.repoPath || doc.fileName}`
     };
   });
 }
@@ -108,7 +111,7 @@ export function getDocPageData(slug = "readme") {
     eyebrow: doc.eyebrow,
     summary: doc.summary,
     content: readFileSync(doc.filePath, "utf8"),
-    repoHref: `${REPO_URL}/blob/main/${doc.fileName}`
+    repoHref: `${REPO_URL}/blob/main/${doc.repoPath || doc.fileName}`
   };
 }
 
@@ -158,7 +161,16 @@ export function buildDocsErzaSource(requestedPath = "/") {
   }
 
   const { config, docPath } = resolveDocRequest(normalized);
-  const sections = parseMarkdownSections(readFileSync(config.filePath, "utf8"), config.screenTitleFallback);
+  const source = readFileSync(config.filePath, "utf8");
+
+  if (config.slug === "example") {
+    if (docPath !== "/") {
+      return null;
+    }
+    return buildSourceCodeErzaScreen(config.fileName, source, config.screenTitleFallback);
+  }
+
+  const sections = parseMarkdownSections(source, config.screenTitleFallback);
   const aliasResolved = config.pathAliases[docPath] || docPath;
   const selectedPath = sections.some((section) => section.path === aliasResolved)
     ? aliasResolved
@@ -192,6 +204,20 @@ export function buildDocsErzaSource(requestedPath = "/") {
     lines.push("  </Section>");
   }
   lines.push("</Screen>");
+  return lines.join("\n");
+}
+
+function buildSourceCodeErzaScreen(fileName, source, screenTitleFallback) {
+  const title = escapeAttribute(fileName || screenTitleFallback);
+  const lines = [
+    `<Screen title="${title}">`,
+    '  <Section title="Source" tab-order="0" default-tab="true">',
+    '    <AsciiArt>',
+    indentAscii(source.replace(/\r\n?/g, "\n").trimEnd(), 6),
+    '    </AsciiArt>',
+    '  </Section>',
+    '</Screen>'
+  ];
   return lines.join("\n");
 }
 
