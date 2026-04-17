@@ -8,6 +8,10 @@ If you are an AI agent, do not use this file as your primary guide. Read
 
 `https://erza.ryangerardwilson.com/skills`
 
+The hosted docs shell also includes a worked example at:
+
+`https://erza.ryangerardwilson.com/example`
+
 The repo also contains that same guide directly at [SKILLS.md](./SKILLS.md).
 
 ## What erza Is

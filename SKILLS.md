@@ -8,6 +8,9 @@ This `SKILLS.md` file is the AI-agent guide for `erza`.
 Browser URL:
 `https://erza.ryangerardwilson.com/skills`
 
+Worked example URL:
+`https://erza.ryangerardwilson.com/example`
+
 The human-facing overview lives in `README.md`.
 
 ## Read This First

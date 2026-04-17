@@ -13,58 +13,116 @@ function resolveDocPath(filename) {
   return candidates.find((candidate) => existsSync(candidate)) || candidates[0];
 }
 
-const README_PATH = resolveDocPath("README.md");
-const SKILLS_PATH = resolveDocPath("SKILLS.md");
-
-const README_PATH_ALIASES = {
-  "/": "/",
-  "/install": "/install",
-  "/first-run": "/quick-start",
-  "/first-file": "/a-minimal-app",
-  "/remote": "/local-and-remote-model",
-  "/components": "/language-surface",
-  "/controls": "/runtime-controls",
-  "/next": "/where-to-go-next",
-  "/reference": "/repo-layout",
-  "/development": "/development",
-  "/status": "/status"
-};
-
-const SKILLS_PATH_ALIASES = {
-  "/": "/",
-  "/rules": "/build-rules",
-  "/actions": "/action-contract",
-  "/protocol": "/remote-protocol",
-  "/build": "/start-building",
-  "/components": "/component-reference",
-  "/commands": "/commands",
-  "/mistakes": "/common-mistakes",
-  "/reference": "/repo-map",
-  "/development": "/development",
-  "/status": "/current-status"
-};
-
-const DOC_CONFIG = {
+const DOCS = {
   readme: {
-    filePath: README_PATH,
+    slug: "readme",
+    fileName: "README.md",
+    filePath: resolveDocPath("README.md"),
+    route: "/",
     mountPath: "/",
-    pathAliases: README_PATH_ALIASES,
-    screenTitleFallback: "erza"
+    screenTitleFallback: "erza docs",
+    eyebrow: "Human Guide",
+    summary: "Project overview, philosophy, install flow, and the main product model.",
+    pathAliases: {
+      "/": "/",
+      "/install": "/install",
+      "/first-run": "/quick-start",
+      "/first-file": "/a-minimal-app",
+      "/remote": "/local-and-remote-model",
+      "/components": "/language-surface",
+      "/controls": "/runtime-controls",
+      "/next": "/where-to-go-next",
+      "/reference": "/repo-layout",
+      "/development": "/development",
+      "/status": "/status"
+    }
   },
   skills: {
-    filePath: SKILLS_PATH,
+    slug: "skills",
+    fileName: "SKILLS.md",
+    filePath: resolveDocPath("SKILLS.md"),
+    route: "/skills",
     mountPath: "/skills",
-    pathAliases: SKILLS_PATH_ALIASES,
-    screenTitleFallback: "erza skills"
+    screenTitleFallback: "erza skills",
+    eyebrow: "Agent Guide",
+    summary: "The operating manual for AI agents building with erza.",
+    pathAliases: {
+      "/": "/",
+      "/rules": "/build-rules",
+      "/actions": "/action-contract",
+      "/protocol": "/remote-protocol",
+      "/build": "/start-building",
+      "/components": "/component-reference",
+      "/commands": "/commands",
+      "/mistakes": "/common-mistakes",
+      "/reference": "/repo-map",
+      "/development": "/development",
+      "/status": "/current-status"
+    }
+  },
+  example: {
+    slug: "example",
+    fileName: "EXAMPLE.md",
+    filePath: resolveDocPath("EXAMPLE.md"),
+    route: "/example",
+    mountPath: "/example",
+    screenTitleFallback: "erza example",
+    eyebrow: "Worked Example",
+    summary: "One small app shown with a local Python backend and a remote Node.js backend.",
+    pathAliases: {
+      "/": "/",
+      "/app": "/minimal-social-app",
+      "/erza": "/index-erza",
+      "/python": "/python-local-backend",
+      "/node": "/node-js-remote-backend",
+      "/proof": "/what-this-proves"
+    }
   }
 };
 
+const DOC_ORDER = ["readme", "skills", "example"];
+
+function getDocConfig(slug = "readme") {
+  return DOCS[slug] || DOCS.readme;
+}
+
+export function getDocsTabs() {
+  return DOC_ORDER.map((slug) => {
+    const doc = DOCS[slug];
+    return {
+      slug,
+      href: doc.route,
+      label: doc.fileName.toLowerCase(),
+      eyebrow: doc.eyebrow,
+      summary: doc.summary,
+      repoHref: `${REPO_URL}/blob/main/${doc.fileName}`
+    };
+  });
+}
+
+export function getDocPageData(slug = "readme") {
+  const doc = getDocConfig(slug);
+  return {
+    slug: doc.slug,
+    href: doc.route,
+    fileName: doc.fileName,
+    eyebrow: doc.eyebrow,
+    summary: doc.summary,
+    content: readFileSync(doc.filePath, "utf8"),
+    repoHref: `${REPO_URL}/blob/main/${doc.fileName}`
+  };
+}
+
 export function readCanonicalReadme() {
-  return readFileSync(README_PATH, "utf8");
+  return readFileSync(DOCS.readme.filePath, "utf8");
 }
 
 export function readCanonicalSkills() {
-  return readFileSync(SKILLS_PATH, "utf8");
+  return readFileSync(DOCS.skills.filePath, "utf8");
+}
+
+export function readCanonicalExample() {
+  return readFileSync(DOCS.example.filePath, "utf8");
 }
 
 export function resolveReadmeHref(href = "") {
@@ -141,15 +199,18 @@ export function buildDocsErzaSource(requestedPath = "/") {
 export const buildReadmeErzaSource = buildDocsErzaSource;
 
 function resolveDocRequest(normalizedPath) {
-  if (normalizedPath === DOC_CONFIG.skills.mountPath || normalizedPath.startsWith(`${DOC_CONFIG.skills.mountPath}/`)) {
-    const suffix = normalizedPath.slice(DOC_CONFIG.skills.mountPath.length);
-    return {
-      config: DOC_CONFIG.skills,
-      docPath: suffix ? (suffix.startsWith("/") ? suffix : `/${suffix}`) : "/"
-    };
+  const nonRootDocs = DOC_ORDER.map((slug) => DOCS[slug]).filter((doc) => doc.mountPath !== "/");
+  for (const doc of nonRootDocs) {
+    if (normalizedPath === doc.mountPath || normalizedPath.startsWith(`${doc.mountPath}/`)) {
+      const suffix = normalizedPath.slice(doc.mountPath.length);
+      return {
+        config: doc,
+        docPath: suffix ? (suffix.startsWith("/") ? suffix : `/${suffix}`) : "/"
+      };
+    }
   }
   return {
-    config: DOC_CONFIG.readme,
+    config: DOCS.readme,
     docPath: normalizedPath
   };
 }
