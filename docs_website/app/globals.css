@@ -111,6 +111,9 @@ a {
   line-height: 1.55;
   color: var(--fg);
   white-space: pre;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0, "clig" 0, "dlig" 0;
+  font-kerning: none;
 }
 
 @media (max-width: 960px) {
