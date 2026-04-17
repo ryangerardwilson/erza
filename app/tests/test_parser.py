@@ -132,6 +132,28 @@ oo
         self.assertIsInstance(art, AsciiArt)
         self.assertEqual(art.content, "<o_o>\n /|\\\n / \\")
 
+    def test_html_comments_are_ignored(self) -> None:
+        markup = """
+<!-- screen comment -->
+<Screen title="Docs">
+  <!-- section comment -->
+  <Section title="Overview">
+    <!-- text comment -->
+    <Text>Intro</Text>
+  </Section>
+</Screen>
+"""
+
+        screen = compile_markup(markup)
+
+        self.assertIsInstance(screen, Screen)
+        self.assertEqual(screen.title, "Docs")
+        section = screen.children[0]
+        self.assertIsInstance(section, Section)
+        self.assertEqual(section.title, "Overview")
+        self.assertIsInstance(section.children[0], Text)
+        self.assertEqual(section.children[0].content, "Intro")
+
     def test_compiles_form_and_self_closing_inputs(self) -> None:
         markup = """
 <Screen title="Sign In">

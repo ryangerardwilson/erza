@@ -93,6 +93,7 @@ When authoring an app, follow these rules.
 - Keep backgrounds transparent or terminal-default.
 - Do not assume a custom font.
 - Keep the UI usable with `hjkl` alone.
+- Use `<!-- ... -->` for source comments when you need to annotate a real `.erza` file.
 
 ## Action Contract
 

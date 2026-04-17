@@ -68,14 +68,13 @@ const DOCS = {
     mountPath: "/example",
     screenTitleFallback: "erza example",
     eyebrow: "Worked Example",
-    summary: "One small app shown with a local Python backend and a remote Node.js backend.",
+    summary: "Annotated Koinonia social app source with inline .erza comments.",
     pathAliases: {
       "/": "/",
-      "/app": "/minimal-social-app",
-      "/erza": "/index-erza",
-      "/python": "/python-local-backend",
-      "/node": "/node-js-remote-backend",
-      "/proof": "/what-this-proves"
+      "/comments": "/comment-syntax",
+      "/koinonia": "/annotated-koinonia-index-erza",
+      "/syntax": "/syntax-patterns-to-notice",
+      "/backend": "/what-the-backend-needs-to-provide"
     }
   }
 };
@@ -92,7 +91,7 @@ export function getDocsTabs() {
     return {
       slug,
       href: doc.route,
-      label: doc.fileName.toLowerCase(),
+      label: doc.fileName,
       eyebrow: doc.eyebrow,
       summary: doc.summary,
       repoHref: `${REPO_URL}/blob/main/${doc.fileName}`

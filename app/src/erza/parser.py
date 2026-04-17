@@ -68,6 +68,9 @@ class _MarkupParser(HTMLParser):
             return
         self.stack[-1].children.append(data)
 
+    def handle_comment(self, data: str) -> None:
+        return
+
     def close(self) -> Element:
         super().close()
         if self.stack:

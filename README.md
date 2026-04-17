@@ -261,6 +261,7 @@ Common components:
 - `<SplashAnimation fps="...">`
 - `<Column gap="...">`
 - `<Row gap="...">`
+- HTML comments `<!-- like this -->` are valid source comments and are ignored by the compiler/runtime.
 
 ## Runtime Controls
 
@@ -305,7 +306,7 @@ Humans should continue from:
 - `app/examples/`: runnable examples
 - `app/tests/`: unit tests
 - `koinonia/`: larger end-to-end example app
-- `docs_website/`: browser shell that serves `README.md` and `SKILLS.md`
+- `docs_website/`: browser shell that serves `README.md`, `SKILLS.md`, and `EXAMPLE.md`
 
 ## Development
 
