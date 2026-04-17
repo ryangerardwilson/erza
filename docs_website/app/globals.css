@@ -106,7 +106,6 @@ button {
 }
 
 .docs-icon-link,
-.docs-copy-button,
 .docs-author-link {
   display: inline-flex;
   align-items: center;
@@ -127,20 +126,12 @@ button {
   height: 1rem;
 }
 
-.docs-copy-button {
-  padding: 0.72rem 0.95rem;
-  background: var(--bg);
-  cursor: pointer;
-}
-
 .docs-author-link {
   padding: 0.72rem 0.95rem;
 }
 
 .docs-icon-link:hover,
 .docs-icon-link:focus-visible,
-.docs-copy-button:hover,
-.docs-copy-button:focus-visible,
 .docs-author-link:hover,
 .docs-author-link:focus-visible {
   border-color: var(--line);
@@ -153,9 +144,54 @@ button {
   overflow: hidden;
 }
 
+.docs-panel-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.82rem 1rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.docs-panel-command,
+.docs-panel-route,
+.docs-panel-copy {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.docs-panel-command {
+  white-space: nowrap;
+}
+
+.docs-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.docs-panel-route {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.docs-panel-copy {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+.docs-panel-copy:hover,
+.docs-panel-copy:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 .docs-code-scroll {
   overflow: auto;
-  max-height: calc(100vh - 4.85rem);
+  max-height: calc(100vh - 8rem);
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -195,7 +231,7 @@ button {
   }
 
   .docs-code-scroll {
-    max-height: calc(100vh - 4.3rem);
+    max-height: calc(100vh - 7.6rem);
   }
 }
 
@@ -205,7 +241,6 @@ button {
     justify-content: space-between;
   }
 
-  .docs-copy-button,
   .docs-author-link {
     flex: 1 1 auto;
   }
@@ -213,6 +248,16 @@ button {
   .docs-tab {
     min-width: 8rem;
     padding: 0.72rem 0.85rem;
+  }
+
+  .docs-panel-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .docs-panel-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .docs-code-block {

@@ -47,12 +47,12 @@ export default function CopyDocsButton({ content, fileName }) {
     }, 1600);
   }
 
-  const label = status === "copied" ? "Copied" : status === "failed" ? "Retry" : "Copy";
+  const label = status === "copied" ? "copied" : status === "failed" ? "retry" : "copy";
 
   return (
     <button
       type="button"
-      className="docs-copy-button"
+      className="docs-panel-copy"
       onClick={handleClick}
       aria-label={`Copy ${fileName} to the clipboard`}
       title={`Copy ${fileName}`}

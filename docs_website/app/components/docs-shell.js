@@ -18,7 +18,7 @@ function GitHubMark() {
 }
 
 export default function DocsShell({ activeSlug = "readme" }) {
-  const { content, fileName } = getDocPageData(activeSlug);
+  const { content, fileName, href } = getDocPageData(activeSlug);
   const tabs = getDocsTabs();
   const normalizedContent = content.replace(/\r\n?/g, "\n").replace(/\n$/, "");
 
@@ -53,7 +53,6 @@ export default function DocsShell({ activeSlug = "readme" }) {
             >
               <GitHubMark />
             </a>
-            <CopyDocsButton content={normalizedContent} fileName={fileName} />
             <a
               className="docs-author-link"
               href={AUTHOR_URL}
@@ -67,6 +66,13 @@ export default function DocsShell({ activeSlug = "readme" }) {
 
         <section className="docs-panel" aria-label={`${fileName} source`}>
           <h1 className="sr-only">{fileName}</h1>
+          <div className="docs-panel-meta">
+            <span className="docs-panel-command">cat {fileName}</span>
+            <div className="docs-panel-actions">
+              <span className="docs-panel-route">{href}</span>
+              <CopyDocsButton content={normalizedContent} fileName={fileName} />
+            </div>
+          </div>
           <div className="docs-code-scroll">
             <pre className="docs-code-block">
               <code>{normalizedContent}</code>
