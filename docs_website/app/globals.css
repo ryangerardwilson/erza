@@ -155,7 +155,7 @@ button {
 
 .docs-panel-command,
 .docs-panel-route,
-.docs-panel-copy {
+.docs-copy-button {
   font-size: 0.95rem;
   line-height: 1;
 }
@@ -174,18 +174,25 @@ button {
   color: rgba(255, 255, 255, 0.78);
 }
 
-.docs-panel-copy {
-  padding: 0;
-  border: 0;
-  background: transparent;
+.docs-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.46rem 0.68rem;
+  border: 1px solid var(--line-soft);
+  background: var(--bg);
   color: var(--fg);
   cursor: pointer;
-  text-transform: lowercase;
 }
 
-.docs-panel-copy:hover,
-.docs-panel-copy:focus-visible {
-  text-decoration: underline;
+.docs-copy-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.docs-copy-button:hover,
+.docs-copy-button:focus-visible {
+  border-color: var(--line);
   outline: none;
 }
 
