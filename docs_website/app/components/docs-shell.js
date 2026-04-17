@@ -70,7 +70,7 @@ export default function DocsShell({ activeSlug = "readme" }) {
             <span className="docs-panel-command">cat {fileName}</span>
             <div className="docs-panel-actions">
               <span className="docs-panel-route">{href}</span>
-              <CopyDocsButton content={normalizedContent} fileName={fileName} />
+              <CopyDocsButton content={normalizedContent} />
             </div>
           </div>
           <div className="docs-code-scroll">
