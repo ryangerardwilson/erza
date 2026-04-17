@@ -3,9 +3,9 @@ import Link from "next/link";
 import { getDocPageData, getDocsTabs } from "@/lib/readme-docs";
 
 export default function DocsShell({ activeSlug = "readme" }) {
-  const { content } = getDocPageData(activeSlug);
+  const { content, fileName } = getDocPageData(activeSlug);
   const tabs = getDocsTabs();
-  const lines = content.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
+  const normalizedContent = content.replace(/\r\n?/g, "\n").replace(/\n$/, "");
 
   return (
     <main className="docs-scene">
@@ -26,17 +26,11 @@ export default function DocsShell({ activeSlug = "readme" }) {
           })}
         </nav>
 
-        <section className="docs-panel" aria-label="source viewer">
+        <section className="docs-panel" aria-label={`${fileName} source`}>
+          <h1 className="sr-only">{fileName}</h1>
           <div className="docs-code-scroll">
             <pre className="docs-code-block">
-              <code>
-                {lines.map((line, index) => (
-                  <span className="docs-code-line" key={`${activeSlug}-${index + 1}`}>
-                    <span className="docs-code-number">{String(index + 1).padStart(3, "0")}</span>
-                    <span className="docs-code-text">{line || " "}</span>
-                  </span>
-                ))}
-              </code>
+              <code>{normalizedContent}</code>
             </pre>
           </div>
         </section>

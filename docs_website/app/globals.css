@@ -3,7 +3,6 @@
   --fg: #ffffff;
   --line: #ffffff;
   --line-soft: rgba(255, 255, 255, 0.22);
-  --line-dim: rgba(255, 255, 255, 0.42);
   --mono: "Courier New", Courier, monospace;
 }
 
@@ -29,6 +28,18 @@ body::selection,
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .docs-scene {
@@ -94,31 +105,12 @@ a {
 .docs-code-block {
   margin: 0;
   min-width: max(100%, 56rem);
-  padding: 0.9rem 0;
+  padding: 0.95rem 1rem 1rem;
   font-family: var(--mono);
   font-size: clamp(0.86rem, 0.83rem + 0.1vw, 0.98rem);
   line-height: 1.55;
   color: var(--fg);
-}
-
-.docs-code-line {
-  display: grid;
-  grid-template-columns: 4.4rem minmax(0, 1fr);
-  align-items: start;
-}
-
-.docs-code-number {
-  user-select: none;
-  padding: 0 0.95rem 0 0.8rem;
-  text-align: right;
-  color: var(--line-dim);
-  border-right: 1px solid var(--line-soft);
-}
-
-.docs-code-text {
-  display: block;
   white-space: pre;
-  padding: 0 1rem;
 }
 
 @media (max-width: 960px) {
@@ -143,18 +135,6 @@ a {
     min-width: max(100%, 40rem);
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
-  }
-
-  .docs-code-line {
-    grid-template-columns: 3.55rem minmax(0, 1fr);
-  }
-
-  .docs-code-number {
-    padding-left: 0.45rem;
-    padding-right: 0.55rem;
-  }
-
-  .docs-code-text {
     padding-left: 0.75rem;
     padding-right: 0.85rem;
   }
