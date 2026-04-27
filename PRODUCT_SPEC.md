@@ -86,6 +86,8 @@ Current component direction:
 - `<Splash>` provides a timed launch surface before the main app
 - `<SplashAnimation>` provides raw unboxed animation frames for launch screens
 - `<Column>` and `<Row>` remain as support layout for nested composition
+- `erza.chat` provides a Python runtime surface for chat-style apps while the
+  declarative chat syntax settles
 
 Example shape:
 
@@ -222,6 +224,45 @@ The current prototype proves the model with:
 
 The prototype should stay easy to inspect and easy to revise while the
 component model and erzanet transport shape settle.
+
+## Chat Surface Direction
+
+Chat-style apps are a distinct enough shape that they should not force every
+host app to write its own curses renderer.
+
+The current implementation exposes `erza.chat` as a Python adapter API for apps
+that already own their data layer. The host app provides callbacks for:
+
+- loading conversation summaries
+- loading messages for one conversation
+- sending a composed message
+- marking a conversation read
+- downloading or opening a file
+
+The runtime owns the UI contract:
+
+- conversation list screen
+- boxed message transcript
+- inline embed boxes
+- nested `<<<X Files>>>` file affordance
+- fixed-height file picker
+- persistent composer
+- Esc-to-nav and `i`-to-compose mode switching
+- `hjkl`, Ctrl-N/Ctrl-P, `g`/`gg`/`G`, and `?` controls
+- editor handoff through `$VISUAL`, `$EDITOR`, then `vim`
+
+This API is intentionally not Slack-specific. Slack, Telegram, Gmail-like
+threads, support inboxes, and internal message tools should all be able to map
+their domain objects into the same `ChatCallbacks` contract.
+
+Long-term direction:
+
+- keep the Python API stable enough for real apps to consume
+- add declarative chat components only after the callback/data model proves out
+- preserve the same runtime behavior when declarative chat syntax arrives
+
+See [`CHAT_SURFACES_SPEC.md`](CHAT_SURFACES_SPEC.md) for the exact adapter
+contract and Slack integration direction.
 
 ## Form Direction
 

@@ -24,6 +24,7 @@ manual.
 - a `.erza` authoring language
 - a curses runtime
 - a thin backend protocol for actions, forms, auth, and remote app loading
+- a reusable `erza.chat` runtime API for conversation-list and chat-style TUIs
 
 `erza` is not:
 
@@ -39,7 +40,7 @@ my_app/
   backend.py        # Python local prototype backend, optional today
 ```
 
-## If You Only Remember 12 Things
+## If You Only Remember 13 Things
 
 1. Build a single `index.erza`, not a folder of pages.
 2. Top-level `<Section>` blocks are tabs.
@@ -53,6 +54,7 @@ my_app/
 10. `<Link href="...">` is for navigation.
 11. Use `hjkl` as the primary interaction model. Arrow keys are secondary aliases.
 12. Default visual direction is terminal-native, keyboard-first, and low-chrome.
+13. For chat-style apps, use `erza.chat` before writing another custom curses loop.
 
 ## Mental Model
 
@@ -93,6 +95,8 @@ When authoring an app, follow these rules.
 - Keep backgrounds transparent or terminal-default.
 - Do not assume a custom font.
 - Keep the UI usable with `hjkl` alone.
+- For conversation/message/composer apps, prefer `erza.chat.ChatCallbacks` and
+  keep the app-specific API calls in the host app.
 - Use `<!-- ... -->` for source comments when you need to annotate a real `.erza` file.
 
 ## Action Contract
@@ -440,6 +444,56 @@ Use `<Splash>` for startup screens and `<SplashAnimation>` for ASCII logo motion
 </Splash>
 ```
 
+## Chat Runtime API
+
+Use `erza.chat` when the app is fundamentally a conversation list plus a
+message transcript and composer. This is the right layer for Slack DM/GDM views,
+Telegram-style chats, support inboxes, and similar tools.
+
+The app provides data and side-effect callbacks:
+
+```python
+from erza.chat import ChatCallbacks, ChatConversation, ChatMessage, run_chat_app
+
+
+callbacks = ChatCallbacks(
+    load_conversations=lambda: [
+        ChatConversation("D1", "maanas", "2026-04-27 10:00", kind="dm"),
+    ],
+    load_messages=lambda conversation: [
+        ChatMessage("D1:1", "Maanas", "2026-04-27 10:00", "hello"),
+    ],
+    send_message=lambda conversation, text: None,
+    mark_read=lambda conversation, messages: None,
+    open_file=lambda conversation, message, file: "/tmp/file.txt",
+)
+
+run_chat_app(callbacks, title="slack tui")
+```
+
+`erza.chat` owns:
+
+- conversation list rendering and navigation
+- boxed message rendering
+- inline embed boxes
+- `<<<X Files>>>` file buttons
+- fixed-height file modal
+- persistent composer behavior
+- Esc-to-nav and `i`-to-compose mode switching
+- Ctrl-N/Ctrl-P message movement
+- editor handoff through `$VISUAL`, `$EDITOR`, then `vim`
+
+The host app owns:
+
+- auth
+- API calls
+- message and conversation ordering
+- read-state mutation
+- file downloads
+- domain-specific errors
+
+Read `CHAT_SURFACES_SPEC.md` before adding or changing chat behavior.
+
 ## Template Model
 
 `.erza` files use HTML-like tags plus PHP-style template blocks.
@@ -502,6 +556,15 @@ Global movement:
 - `Ctrl+D` / `Ctrl+U`: half-page movement
 - `?`: shortcuts/help
 
+Chat runtime controls:
+
+- conversation list `j`/`k`, `l` to open, `r` refresh
+- composer Enter sends, Esc switches to message navigation
+- chat nav `j`/`k` moves lines
+- chat nav Ctrl-N/Ctrl-P moves messages
+- chat nav `g`/`gg`/`G` jumps first/latest message
+- chat nav `l` on `<<<X Files>>>` opens the file picker
+
 ## Commands
 
 Install:
@@ -551,6 +614,7 @@ Avoid these.
 - Do not default to mouse-first or arrow-only interaction.
 - Do not force backgrounds or fonts.
 - Do not model `erza` as a browser-first framework.
+- Do not fork chat UI behavior in each app when `erza.chat` can own it.
 
 ## Examples Worth Reading
 
@@ -558,6 +622,7 @@ Avoid these.
 - `app/examples/forms/`: local form flow and routes
 - `app/examples/animation/`: ASCII animation and splash direction
 - `app/examples/tasks/`: task-oriented app flow
+- `CHAT_SURFACES_SPEC.md`: reusable chat runtime and Slack adapter contract
 - `koinonia/index.erza`: a `268`-line social-media app example that shows how far a single `index.erza` file can go
 - `koinonia/`: larger social app using auth, tabs, modals, replies, profile editing, remote deploy, and Supabase-backed state
 
@@ -567,11 +632,13 @@ Avoid these.
 - `AGENTS.md`: repo guardrails for coding agents
 - `PRODUCT_SPEC.md`: current product direction
 - `FORMS_SPEC.md`: older form notes
+- `CHAT_SURFACES_SPEC.md`: chat runtime and Slack adapter direction
 - `app/main.py`: canonical CLI entrypoint
 - `app/install.sh`: install and upgrade path
 - `app/src/erza/template.py`: template engine
 - `app/src/erza/parser.py`: markup compiler
 - `app/src/erza/runtime.py`: curses runtime and renderer
+- `app/src/erza/chat.py`: reusable chat TUI runtime
 - `app/src/erza/backend.py`: backend bridge, routes, sessions
 - `app/src/erza/remote.py`: remote fetch, remote forms, remote actions, auth
 - `app/examples/`: runnable examples
@@ -616,6 +683,7 @@ What it already proves:
 - runtime-local UI actions and backend actions can coexist cleanly
 - remote apps can be opened directly by domain
 - splash screens and ASCII motion can be first-class
+- chat apps can use one shared conversation/message/composer runtime
 
 What is still fluid:
 

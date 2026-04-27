@@ -25,6 +25,8 @@ The project currently includes:
 - the Python template/parser/runtime prototype for local in-process apps
 - a language-agnostic remote protocol that backends like Node.js can implement
 - local and remote app support
+- a reusable Python chat TUI surface for conversation lists, boxed messages,
+  file modals, and persistent composers
 - example apps
 - `koinonia`, a larger social-app prototype built in `erza`
 
@@ -56,6 +58,8 @@ The current design direction is intentionally opinionated.
 - `ButtonRow` is the standard action surface inside pages and forms.
 - Direct-action tabs are allowed for flows like `Logout`.
 - Splash screens and splash animations are first-class.
+- Chat-style apps can use the `erza.chat` runtime API while declarative chat
+  syntax settles.
 
 In other words: `erza` apps are moving closer to a terminal-native React-like
 single-surface model than to a folder of loosely connected pages.
@@ -263,6 +267,40 @@ Common components:
 - `<Row gap="...">`
 - HTML comments `<!-- like this -->` are valid source comments and are ignored by the compiler/runtime.
 
+## Chat UI Runtime
+
+Apps that already own their data or API layer can use `erza.chat` directly as a
+UI/UX abstraction layer without rewriting their command surface as a `.erza`
+file first.
+
+```python
+from erza.chat import ChatCallbacks, ChatConversation, ChatMessage, run_chat_app
+
+
+callbacks = ChatCallbacks(
+    load_conversations=lambda: [
+        ChatConversation("D1", "maanas", "2026-04-27 10:00", kind="dm"),
+    ],
+    load_messages=lambda conversation: [
+        ChatMessage("D1:1", "Maanas", "2026-04-27 10:00", "hello"),
+    ],
+    send_message=lambda conversation, text: None,
+    mark_read=lambda conversation, messages: None,
+    open_file=lambda conversation, message, file: "/tmp/file.txt",
+)
+
+run_chat_app(callbacks, title="slack tui")
+```
+
+The chat runtime owns the terminal interaction: conversation list, boxed message
+transcript, Esc-to-nav composer behavior, Ctrl-N/Ctrl-P message movement,
+`g`/`gg`/`G` jumps, fixed-height file picker, shortcuts modal, and editor handoff
+through `$VISUAL`, `$EDITOR`, then `vim`. The app owns API calls, tokens,
+download paths, and message data.
+
+See [`CHAT_SURFACES_SPEC.md`](./CHAT_SURFACES_SPEC.md) for the detailed chat
+contract and Slack adapter direction.
+
 ## Runtime Controls
 
 Global movement:
@@ -280,6 +318,13 @@ Global movement:
 - `Ctrl+D` / `Ctrl+U`: half-page movement
 - `?`: shortcuts/help
 
+Chat surfaces add:
+
+- conversation list `j`/`k` and `l` to open
+- composer Enter to send and Esc to enter message navigation
+- chat nav Ctrl-N/Ctrl-P for message movement
+- chat nav `l` on `<<<X Files>>>` to open the fixed-height file picker
+
 ## Where to Go Next
 
 Humans should continue from:
@@ -296,11 +341,13 @@ Humans should continue from:
 - `AGENTS.md`: repo guardrails for coding agents
 - `PRODUCT_SPEC.md`: current product direction
 - `FORMS_SPEC.md`: older form-focused notes
+- `CHAT_SURFACES_SPEC.md`: chat runtime and Slack adapter direction
 - `app/main.py`: canonical CLI entrypoint
 - `app/install.sh`: installer and upgrade path
 - `app/src/erza/template.py`: template engine
 - `app/src/erza/parser.py`: markup-to-component compiler
 - `app/src/erza/runtime.py`: curses runtime and renderer
+- `app/src/erza/chat.py`: reusable conversation/chat TUI runtime
 - `app/src/erza/backend.py`: backend bridge and route/session primitives
 - `app/src/erza/remote.py`: remote fetch and remote app client
 - `app/examples/`: runnable examples
@@ -345,6 +392,7 @@ What the current repo already proves:
 - backend reads and writes can share the same runtime surface
 - remote apps can be opened directly by domain
 - animated splash screens and ASCII motion can be first-class terminal UI
+- chat-style apps can reuse the Erza conversation/message/composer runtime
 
 What is still fluid:
 

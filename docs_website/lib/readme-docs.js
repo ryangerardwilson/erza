@@ -62,6 +62,27 @@ const DOCS = {
       "/status": "/current-status"
     }
   },
+  chat: {
+    slug: "chat",
+    fileName: "CHAT_SURFACES_SPEC.md",
+    repoPath: "CHAT_SURFACES_SPEC.md",
+    filePath: resolveDocPath("CHAT_SURFACES_SPEC.md"),
+    route: "/chat",
+    mountPath: "/chat",
+    screenTitleFallback: "erza chat",
+    eyebrow: "Chat Runtime",
+    summary: "Reusable conversation-list, message transcript, composer, and file-picker runtime.",
+    pathAliases: {
+      "/": "/",
+      "/purpose": "/purpose",
+      "/product": "/product-rule",
+      "/api": "/current-api",
+      "/data": "/data-model",
+      "/interaction": "/interaction-model",
+      "/slack": "/slack-adapter-direction",
+      "/syntax": "/future-erza-syntax"
+    }
+  },
   example: {
     slug: "example",
     fileName: "EXAMPLE.md",
@@ -82,7 +103,7 @@ const DOCS = {
   }
 };
 
-const DOC_ORDER = ["readme", "skills", "example"];
+const DOC_ORDER = ["readme", "skills", "chat", "example"];
 
 function getDocConfig(slug = "readme") {
   return DOCS[slug] || DOCS.readme;
@@ -124,22 +145,26 @@ export function buildLlmsIndex(origin = "https://erza.ryangerardwilson.com") {
     "Primary HTML docs:",
     "- README: " + origin + "/",
     "- SKILLS: " + origin + "/skills",
+    "- CHAT_SURFACES_SPEC: " + origin + "/chat",
     "- EXAMPLE: " + origin + "/example",
     "",
     "Primary source files:",
     "- README.md: " + REPO_URL + "/blob/main/README.md",
     "- SKILLS.md: " + REPO_URL + "/blob/main/SKILLS.md",
+    "- CHAT_SURFACES_SPEC.md: " + REPO_URL + "/blob/main/CHAT_SURFACES_SPEC.md",
     "- koinonia/index.erza: " + REPO_URL + "/blob/main/koinonia/index.erza",
     "",
     "Project summary:",
     "- erza is a terminal-native UI language and runtime.",
     "- SKILLS.md is the main operating guide for AI agents.",
+    "- CHAT_SURFACES_SPEC.md defines the reusable chat TUI runtime contract.",
     "- The example page is the live koinonia/index.erza source with inline comments.",
     "",
     "If you are evaluating the project quickly, read in this order:",
     "1. " + origin + "/skills",
-    "2. " + origin + "/example",
-    "3. " + origin + "/"
+    "2. " + origin + "/chat",
+    "3. " + origin + "/example",
+    "4. " + origin + "/"
   ];
   return lines.join("\n");
 }
@@ -150,6 +175,10 @@ export function readCanonicalReadme() {
 
 export function readCanonicalSkills() {
   return readFileSync(DOCS.skills.filePath, "utf8");
+}
+
+export function readCanonicalChatSpec() {
+  return readFileSync(DOCS.chat.filePath, "utf8");
 }
 
 export function readCanonicalExample() {

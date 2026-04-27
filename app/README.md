@@ -15,3 +15,8 @@ python main.py run examples/docs
 ./install.sh -v
 ./install.sh -u
 ```
+
+Reusable Python UI surfaces:
+
+- `erza.chat`: conversation list, boxed transcript, composer, fixed file picker,
+  and editor handoff for Slack-like DM/GDM apps.
