@@ -293,10 +293,11 @@ run_chat_app(callbacks, title="slack tui")
 ```
 
 The chat runtime owns the terminal interaction: conversation list, boxed message
-transcript, Esc-to-nav composer behavior, Ctrl-N/Ctrl-P message movement,
-`g`/`gg`/`G` jumps, fixed-height file picker, shortcuts modal, and editor handoff
-through `$VISUAL`, `$EDITOR`, then `vim`. The app owns API calls, tokens,
-download paths, and message data.
+transcript, default normal mode, `i`-to-insert composition, Ctrl-N/Ctrl-P
+message movement, `g`/`gg`/`G` jumps, fixed-height file picker, shortcuts modal,
+and file opening. PDFs default to `zathura`, images default to `swayimg`, and
+unknown/text files fall back through `$VISUAL`, `$EDITOR`, then `vim`. The app
+owns API calls, tokens, download paths, and message data.
 
 See [`CHAT_SURFACES_SPEC.md`](./CHAT_SURFACES_SPEC.md) for the detailed chat
 contract and Slack adapter direction.
@@ -321,9 +322,11 @@ Global movement:
 Chat surfaces add:
 
 - conversation list `j`/`k` and `l` to open
-- composer Enter to send and Esc to enter message navigation
-- chat nav Ctrl-N/Ctrl-P for message movement
-- chat nav `l` on `<<<X Files>>>` to open the fixed-height file picker
+- normal mode by default in conversations
+- normal-mode `i` to enter insert mode
+- insert-mode Enter to send and Esc to return to normal mode
+- normal-mode Ctrl-N/Ctrl-P for message movement
+- normal-mode `l` on `<<<X Files>>>` to open the fixed-height file picker
 
 ## Where to Go Next
 

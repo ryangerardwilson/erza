@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from _test_bootstrap import ensure_test_paths
 
@@ -14,8 +15,13 @@ from erza.chat import (
     ChatMessage,
     ChatModalState,
     ChatRuntimeState,
+    LATEST_MESSAGE_CURSOR,
+    _draw_chat,
     _draw_file_modal,
+    _handle_chat_key,
+    _open_selected_conversation,
     _open_file_modal_for_selected_row,
+    _resolve_open_command,
     adjust_scroll,
     conversation_line,
     first_message_row_index,
@@ -166,6 +172,79 @@ class ChatRuntimeTests(unittest.TestCase):
 
         self.assertIs(selected_conversation(state), conversation)
         self.assertEqual(state.conversation_index, 0)
+
+    def test_opening_conversation_starts_in_normal_mode_at_latest_message(self) -> None:
+        conversation = ChatConversation(conversation_id="D1", label="Maanas")
+        messages = [
+            ChatMessage("1", "a", "one", "one"),
+            ChatMessage("2", "b", "two", "two"),
+        ]
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(lambda: [conversation], lambda _conversation: messages),
+            conversations=[conversation],
+        )
+
+        _open_selected_conversation(state)
+
+        self.assertFalse(state.input_active)
+        self.assertEqual(state.cursor_row, LATEST_MESSAGE_CURSOR)
+
+        added: list[tuple[int, int, str, int, int]] = []
+
+        class FakeWindow:
+            def getmaxyx(self) -> tuple[int, int]:
+                return (14, 80)
+
+            def addnstr(self, y: int, x: int, text: str, limit: int, attr: int = 0) -> None:
+                added.append((y, x, text[:limit], limit, attr))
+
+            def move(self, y: int, x: int) -> None:
+                pass
+
+        _draw_chat(FakeWindow(), state, 14, 80)  # type: ignore[arg-type]
+
+        self.assertEqual(state.cursor_row, last_message_row_index(state.rendered_rows))
+        self.assertTrue(any(text == "[normal]" for _, _, text, _, _ in added))
+
+    def test_insert_escape_returns_to_normal_mode_latest_message(self) -> None:
+        rows = render_message_rows(
+            [
+                ChatMessage("1", "a", "one", "one"),
+                ChatMessage("2", "b", "two", "two"),
+            ],
+            80,
+        )
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(lambda: [], lambda _conversation: []),
+            rendered_rows=rows,
+            input_active=False,
+            cursor_row=0,
+        )
+
+        _handle_chat_key(None, state, ord("i"))  # type: ignore[arg-type]
+        self.assertTrue(state.input_active)
+
+        _handle_chat_key(None, state, 27)  # type: ignore[arg-type]
+        self.assertFalse(state.input_active)
+        self.assertEqual(state.cursor_row, LATEST_MESSAGE_CURSOR)
+
+    def test_file_open_command_defaults_pdf_and_images_to_viewers(self) -> None:
+        def fake_which(command: str) -> str | None:
+            return f"/usr/bin/{command}" if command in {"zathura", "swayimg", "vim"} else None
+
+        with mock.patch("erza.chat.shutil.which", side_effect=fake_which):
+            pdf_command, pdf_wait = _resolve_open_command("/tmp/report.pdf")
+            image_command, image_wait = _resolve_open_command("/tmp/photo.png")
+            text_command, text_wait = _resolve_open_command("/tmp/note.txt")
+
+        self.assertEqual(pdf_command, ["zathura", "/tmp/report.pdf"])
+        self.assertFalse(pdf_wait)
+        self.assertEqual(image_command, ["swayimg", "/tmp/photo.png"])
+        self.assertFalse(image_wait)
+        self.assertEqual(text_command, ["vim", "/tmp/note.txt"])
+        self.assertTrue(text_wait)
 
 
 if __name__ == "__main__":

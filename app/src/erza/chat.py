@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 import curses
+import mimetypes
 import os
 import shlex
+import shutil
 import subprocess
 import textwrap
 from typing import Any
@@ -16,18 +18,19 @@ CTRL_U = 21
 CTRL_W = 23
 FILE_MODAL_HEIGHT = 7
 HELP_MODAL_MAX_WIDTH = 67
+LATEST_MESSAGE_CURSOR = -1
 
 CHAT_SHORTCUTS = [
     ("convos j / k", "Move down / up across conversations."),
     ("convos l", "Open the selected conversation."),
-    ("chat esc", "Leave composer and focus the latest message."),
-    ("chat i", "Return to the composer."),
-    ("chat j / k", "Move line by line in message navigation mode."),
-    ("chat ctrl+n / p", "Move next / previous message."),
-    ("chat g / gg / G", "Jump first / latest message."),
-    ("chat l", "Open files for the focused file button."),
+    ("normal i", "Enter insert mode."),
+    ("insert esc", "Return to normal mode and focus the latest message."),
+    ("normal j / k", "Move line by line."),
+    ("normal ctrl+n/p", "Move next / previous message."),
+    ("normal g / G", "Jump first / latest message."),
+    ("normal l", "Open files for the focused file button."),
     ("modal j / k", "Move inside the file picker."),
-    ("modal l", "Open the selected file in the editor."),
+    ("modal l", "Open the selected file."),
     ("h", "Back or close modal."),
     ("r", "Refresh."),
     ("?", "Toggle shortcuts."),
@@ -112,7 +115,7 @@ class ChatRuntimeState:
     message_view_height: int = 1
     rendered_rows: list[RenderedChatRow] = field(default_factory=list)
     cursor_row: int = 0
-    input_active: bool = True
+    input_active: bool = False
     stick_bottom: bool = True
     composer: str = ""
     modal: ChatModalState | None = None
@@ -200,9 +203,7 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
         if key == 27:
             state.input_active = False
             state.stick_bottom = False
-            latest = last_message_row_index(state.rendered_rows)
-            if latest is not None:
-                state.cursor_row = latest
+            focus_latest_message(state)
             return False
         if key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
             if state.composer.strip():
@@ -227,7 +228,7 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
         state.mode = "conversations"
         state.status = f"{len(state.conversations)} conversations"
         return False
-    if key in (ord("i"), curses.KEY_ENTER, ord("\n"), ord("\r")):
+    if key == ord("i"):
         state.input_active = True
         state.stick_bottom = True
         return False
@@ -247,8 +248,7 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
         move_message_row(state, -1)
         return False
     if key == ord("G"):
-        latest = last_message_row_index(state.rendered_rows)
-        state.cursor_row = latest if latest is not None else max(0, len(state.rendered_rows) - 1)
+        focus_latest_message(state)
         state.stick_bottom = False
         return False
     if key == ord("g"):
@@ -286,11 +286,12 @@ def _open_selected_conversation(state: ChatRuntimeState) -> None:
         state.status = "no conversations"
         return
     state.mode = "chat"
-    state.input_active = True
-    state.stick_bottom = True
+    state.input_active = False
+    state.stick_bottom = False
     state.message_scroll = 0
-    state.cursor_row = 0
+    state.cursor_row = LATEST_MESSAGE_CURSOR
     _refresh_messages(state)
+    focus_latest_message(state)
     if state.callbacks.mark_read is not None:
         state.callbacks.mark_read(conversation, state.messages)
     conversation.unread = False
@@ -334,6 +335,10 @@ def move_cursor_row(state: ChatRuntimeState, delta: int) -> None:
         return
     state.cursor_row = min(max(state.cursor_row + delta, 0), len(state.rendered_rows) - 1)
     state.stick_bottom = False
+
+
+def focus_latest_message(state: ChatRuntimeState) -> None:
+    state.cursor_row = LATEST_MESSAGE_CURSOR
 
 
 def message_start_row_indices(rows: list[RenderedChatRow]) -> list[int]:
@@ -460,7 +465,7 @@ def _open_selected_modal_file(stdscr: curses.window, state: ChatRuntimeState) ->
         return
     path = state.callbacks.open_file(conversation, message, file_item)
     if path:
-        _open_path_in_editor(stdscr, path)
+        _open_path(stdscr, path)
         state.status = f"opened {path}"
 
 
@@ -545,8 +550,13 @@ def _draw_chat(stdscr: curses.window, state: ChatRuntimeState, height: int, widt
         scroll = max_scroll
         state.cursor_row = max(0, len(rendered) - 1)
     elif not state.input_active:
-        state.cursor_row = max(0, min(state.cursor_row, max(0, len(rendered) - 1)))
-        scroll = adjust_scroll(state.cursor_row, state.message_scroll, message_height, len(rendered))
+        if state.cursor_row == LATEST_MESSAGE_CURSOR:
+            latest = last_message_row_index(rendered)
+            state.cursor_row = latest if latest is not None else max(0, len(rendered) - 1)
+            scroll = max_scroll
+        else:
+            state.cursor_row = max(0, min(state.cursor_row, max(0, len(rendered) - 1)))
+            scroll = adjust_scroll(state.cursor_row, state.message_scroll, message_height, len(rendered))
     else:
         scroll = max(0, min(state.message_scroll, max_scroll))
     state.message_scroll = scroll
@@ -568,7 +578,7 @@ def _draw_chat(stdscr: curses.window, state: ChatRuntimeState, height: int, widt
             safe_addstr(stdscr, 2 + row_offset, 0, ">")
         safe_addstr(stdscr, 2 + row_offset, 2, clip(row.text, width - 3))
 
-    prompt = f"> {state.composer}" if state.input_active else "[nav]"
+    prompt = f"> {state.composer}" if state.input_active else "[normal]"
     prompt_width = max(1, width - 1)
     visible_prompt = prompt[-prompt_width:]
     safe_addstr(stdscr, height - 1, 0, clip(visible_prompt, prompt_width))
@@ -747,7 +757,8 @@ def _setup_curses(stdscr: curses.window) -> None:
         pass
 
 
-def _open_path_in_editor(stdscr: curses.window, path: str) -> None:
+def _open_path(stdscr: curses.window, path: str) -> None:
+    command, wait = _resolve_open_command(path)
     try:
         curses.def_prog_mode()
     except curses.error:
@@ -757,7 +768,16 @@ def _open_path_in_editor(stdscr: curses.window, path: str) -> None:
     except curses.error:
         pass
     try:
-        subprocess.run([*_resolve_editor_command(), path], check=False)
+        if wait:
+            subprocess.run(command, check=False)
+        else:
+            subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+            )
     finally:
         try:
             curses.reset_prog_mode()
@@ -772,7 +792,44 @@ def _open_path_in_editor(stdscr: curses.window, path: str) -> None:
         stdscr.refresh()
 
 
+def _resolve_open_command(path: str) -> tuple[list[str], bool]:
+    mime_type, _encoding = mimetypes.guess_type(path)
+    if mime_type == "application/pdf":
+        command = _first_available_command(
+            os.environ.get("ERZA_PDF_VIEWER"),
+            "zathura",
+            "evince",
+            "xdg-open",
+        )
+        if command:
+            return _expand_open_command(command, path), False
+    if mime_type and mime_type.startswith("image/"):
+        command = _first_available_command(
+            os.environ.get("ERZA_IMAGE_VIEWER"),
+            "swayimg",
+            "imv",
+            "feh",
+            "xdg-open",
+        )
+        if command:
+            return _expand_open_command(command, path), False
+    return [*_resolve_editor_command(), path], True
+
+
+def _first_available_command(*commands: str | None) -> list[str] | None:
+    for raw_command in commands:
+        command = shlex.split(raw_command or "")
+        if command and shutil.which(command[0]):
+            return command
+    return None
+
+
+def _expand_open_command(command: list[str], path: str) -> list[str]:
+    if any("{file}" in token for token in command):
+        return [token.replace("{file}", path) for token in command]
+    return [*command, path]
+
+
 def _resolve_editor_command() -> list[str]:
     command = shlex.split(os.environ.get("VISUAL") or os.environ.get("EDITOR") or "vim")
     return command or ["vim"]
-

@@ -52,8 +52,8 @@ run_chat_app(callbacks, title="slack tui")
 ```
 
 The API is intentionally data-first. The app owns API calls, auth, downloads,
-and persistence. `erza` owns the terminal UI, navigation, modal behavior, and
-editor handoff.
+and persistence. `erza` owns the terminal UI, normal/insert mode behavior,
+navigation, modal behavior, and file opening.
 
 ## Data Model
 
@@ -124,12 +124,12 @@ Conversation list:
 
 Chat view:
 
-- default mode is composer mode
-- Enter sends through `send_message`
-- Esc leaves composer and focuses the latest message
-- `i` returns to composer mode
+- default mode is normal mode
+- `i` enters insert mode
+- insert-mode Enter sends through `send_message`
+- insert-mode Esc returns to normal mode and focuses the latest message
 - `h` returns to the conversation list
-- `j` / `k` move line by line in navigation mode
+- `j` / `k` move line by line in normal mode
 - Ctrl-N / Ctrl-P move message by message
 - `g` / `gg` jump to the first message
 - `G` jumps to the latest message
@@ -140,8 +140,14 @@ File picker:
 
 - fixed visible body height of seven rows where the terminal allows it
 - `j` / `k` move within the file list
-- `l` / Enter opens the selected file in `$VISUAL`, then `$EDITOR`, then `vim`
+- `l` / Enter opens the selected file
 - `h` / Esc closes the picker
+
+File opening defaults:
+
+- PDFs use `$ERZA_PDF_VIEWER` when set, then `zathura`, `evince`, then `xdg-open`
+- images use `$ERZA_IMAGE_VIEWER` when set, then `swayimg`, `imv`, `feh`, then `xdg-open`
+- other files use `$VISUAL`, then `$EDITOR`, then `vim`
 
 Global:
 
@@ -180,4 +186,3 @@ should preserve the same runtime semantics:
 
 Do not add this syntax until the Python API has proven the right data and
 navigation model.
-

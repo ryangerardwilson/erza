@@ -246,10 +246,11 @@ The runtime owns the UI contract:
 - inline embed boxes
 - nested `<<<X Files>>>` file affordance
 - fixed-height file picker
-- persistent composer
-- Esc-to-nav and `i`-to-compose mode switching
+- default normal mode
+- `i`-to-insert composition
+- insert-mode Esc back to normal mode
 - `hjkl`, Ctrl-N/Ctrl-P, `g`/`gg`/`G`, and `?` controls
-- editor handoff through `$VISUAL`, `$EDITOR`, then `vim`
+- PDF/image file opener defaults plus editor fallback
 
 This API is intentionally not Slack-specific. Slack, Telegram, Gmail-like
 threads, support inboxes, and internal message tools should all be able to map

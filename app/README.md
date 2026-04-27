@@ -19,4 +19,4 @@ python main.py run examples/docs
 Reusable Python UI surfaces:
 
 - `erza.chat`: conversation list, boxed transcript, composer, fixed file picker,
-  and editor handoff for Slack-like DM/GDM apps.
+  normal/insert mode, and file opening for Slack-like DM/GDM apps.

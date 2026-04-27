@@ -478,10 +478,10 @@ run_chat_app(callbacks, title="slack tui")
 - inline embed boxes
 - `<<<X Files>>>` file buttons
 - fixed-height file modal
-- persistent composer behavior
-- Esc-to-nav and `i`-to-compose mode switching
+- default normal mode and `i`-to-insert composition
+- insert-mode Esc back to normal mode
 - Ctrl-N/Ctrl-P message movement
-- editor handoff through `$VISUAL`, `$EDITOR`, then `vim`
+- file opening with PDF/image defaults and editor fallback
 
 The host app owns:
 
@@ -559,11 +559,13 @@ Global movement:
 Chat runtime controls:
 
 - conversation list `j`/`k`, `l` to open, `r` refresh
-- composer Enter sends, Esc switches to message navigation
-- chat nav `j`/`k` moves lines
-- chat nav Ctrl-N/Ctrl-P moves messages
-- chat nav `g`/`gg`/`G` jumps first/latest message
-- chat nav `l` on `<<<X Files>>>` opens the file picker
+- conversations open in normal mode
+- normal-mode `i` enters insert mode
+- insert-mode Enter sends, Esc returns to normal mode
+- normal-mode `j`/`k` moves lines
+- normal-mode Ctrl-N/Ctrl-P moves messages
+- normal-mode `g`/`gg`/`G` jumps first/latest message
+- normal-mode `l` on `<<<X Files>>>` opens the file picker
 
 ## Commands
 
