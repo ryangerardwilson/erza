@@ -15,14 +15,27 @@ from erza.chat import (
     ChatMessage,
     ChatModalState,
     ChatRuntimeState,
+    ALT_B,
+    ALT_F,
+    CTRL_A,
+    CTRL_B,
+    CTRL_D,
+    CTRL_E,
+    CTRL_F,
+    CTRL_H,
+    CTRL_K,
+    CTRL_U,
+    CTRL_W,
     LATEST_MESSAGE_CURSOR,
     _draw_chat,
     _draw_file_modal,
+    _draw_loading_frame,
     _handle_chat_key,
     _open_selected_conversation,
     _open_file_modal_for_selected_row,
     _resolve_open_command,
     adjust_scroll,
+    composer_prompt_view,
     conversation_line,
     first_message_row_index,
     last_message_row_index,
@@ -245,6 +258,94 @@ class ChatRuntimeTests(unittest.TestCase):
         self.assertFalse(image_wait)
         self.assertEqual(text_command, ["vim", "/tmp/note.txt"])
         self.assertTrue(text_wait)
+
+    def test_insert_mode_supports_emacs_style_composer_movement(self) -> None:
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(lambda: [], lambda _conversation: []),
+            input_active=True,
+            composer="hello brave world",
+            composer_cursor=len("hello brave world"),
+        )
+
+        _handle_chat_key(None, state, ALT_B)  # type: ignore[arg-type]
+        self.assertEqual(state.composer_cursor, len("hello brave "))
+
+        _handle_chat_key(None, state, CTRL_W)  # type: ignore[arg-type]
+        self.assertEqual(state.composer, "hello world")
+        self.assertEqual(state.composer_cursor, len("hello "))
+
+        _handle_chat_key(None, state, CTRL_A)  # type: ignore[arg-type]
+        _handle_chat_key(None, state, ord(">"))  # type: ignore[arg-type]
+        self.assertEqual(state.composer, ">hello world")
+        self.assertEqual(state.composer_cursor, 1)
+
+        _handle_chat_key(None, state, CTRL_E)  # type: ignore[arg-type]
+        _handle_chat_key(None, state, CTRL_H)  # type: ignore[arg-type]
+        self.assertEqual(state.composer, ">hello worl")
+        self.assertEqual(state.composer_cursor, len(">hello worl"))
+
+        _handle_chat_key(None, state, CTRL_A)  # type: ignore[arg-type]
+        _handle_chat_key(None, state, ALT_F)  # type: ignore[arg-type]
+        self.assertEqual(state.composer_cursor, len(">hello"))
+
+        _handle_chat_key(None, state, CTRL_K)  # type: ignore[arg-type]
+        self.assertEqual(state.composer, ">hello")
+
+        _handle_chat_key(None, state, CTRL_E)  # type: ignore[arg-type]
+        _handle_chat_key(None, state, CTRL_B)  # type: ignore[arg-type]
+        self.assertEqual(state.composer_cursor, len(">hell"))
+
+        _handle_chat_key(None, state, CTRL_F)  # type: ignore[arg-type]
+        self.assertEqual(state.composer_cursor, len(">hello"))
+
+        _handle_chat_key(None, state, CTRL_A)  # type: ignore[arg-type]
+        _handle_chat_key(None, state, CTRL_D)  # type: ignore[arg-type]
+        self.assertEqual(state.composer, "hello")
+        self.assertEqual(state.composer_cursor, 0)
+
+        _handle_chat_key(None, state, CTRL_U)  # type: ignore[arg-type]
+        self.assertEqual(state.composer, "")
+        self.assertEqual(state.composer_cursor, 0)
+
+    def test_composer_prompt_view_keeps_cursor_visible(self) -> None:
+        text, cursor_col = composer_prompt_view("abcdefghijklmnopqrstuvwxyz", 25, 12)
+
+        self.assertEqual(text, "> qrstuvwxyz")
+        self.assertEqual(cursor_col, 11)
+
+    def test_loading_frame_uses_erza_loading_overlay(self) -> None:
+        calls: list[tuple[str, int]] = []
+
+        class FakeWindow:
+            def erase(self) -> None:
+                pass
+
+            def refresh(self) -> None:
+                pass
+
+            def getmaxyx(self) -> tuple[int, int]:
+                return (14, 80)
+
+            def addnstr(self, y: int, x: int, text: str, limit: int, attr: int = 0) -> None:
+                pass
+
+            def move(self, y: int, x: int) -> None:
+                pass
+
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(lambda: [], lambda _conversation: []),
+            status="loading...",
+        )
+
+        def fake_overlay(_stdscr, *, message: str, frame_index: int) -> None:
+            calls.append((message, frame_index))
+
+        with mock.patch("erza.chat.draw_loading_overlay", side_effect=fake_overlay):
+            _draw_loading_frame(FakeWindow(), state, message="Loading messages", frame_index=4)  # type: ignore[arg-type]
+
+        self.assertEqual(calls, [("Loading messages", 4)])
 
 
 if __name__ == "__main__":

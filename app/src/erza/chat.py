@@ -8,23 +8,52 @@ import os
 import shlex
 import shutil
 import subprocess
+import threading
 import textwrap
+import time
 from typing import Any
+
+from erza.input_edit import (
+    ALT_B,
+    ALT_F,
+    CTRL_A,
+    CTRL_B,
+    CTRL_D,
+    CTRL_E,
+    CTRL_F,
+    CTRL_H,
+    CTRL_K,
+    CTRL_U,
+    CTRL_W,
+    INPUT_ESCAPE_SEQUENCE_TIMEOUT_MS,
+    apply_input_edit_key,
+    clamp_input_cursor,
+    decode_input_escape_key,
+    move_input_cursor_backward_word,
+    move_input_cursor_forward_word,
+    single_line_input_view,
+)
+from erza.runtime import draw_loading_overlay
 
 
 CTRL_N = 14
 CTRL_P = 16
-CTRL_U = 21
-CTRL_W = 23
 FILE_MODAL_HEIGHT = 7
 HELP_MODAL_MAX_WIDTH = 67
 LATEST_MESSAGE_CURSOR = -1
+CHAT_LOADING_DISPLAY_DELAY_SECONDS = 0.12
+CHAT_LOADING_FRAME_INTERVAL_MS = 90
 
 CHAT_SHORTCUTS = [
     ("convos j / k", "Move down / up across conversations."),
     ("convos l", "Open the selected conversation."),
     ("normal i", "Enter insert mode."),
     ("insert esc", "Return to normal mode and focus the latest message."),
+    ("insert ctrl+a/e", "Move to start / end of the composer."),
+    ("insert ctrl+b/f", "Move backward / forward by character."),
+    ("insert alt+b/f", "Move backward / forward by word."),
+    ("insert ctrl+w/h", "Delete previous word / character."),
+    ("insert ctrl+d/k/u", "Delete next char / to end / full line."),
     ("normal j / k", "Move line by line."),
     ("normal ctrl+n/p", "Move next / previous message."),
     ("normal g / G", "Jump first / latest message."),
@@ -118,6 +147,7 @@ class ChatRuntimeState:
     input_active: bool = False
     stick_bottom: bool = True
     composer: str = ""
+    composer_cursor: int = 0
     modal: ChatModalState | None = None
     show_help: bool = False
     status: str = "loading..."
@@ -130,12 +160,19 @@ def run_chat_app(callbacks: ChatCallbacks, *, title: str = "erza chat") -> None:
 def _run_chat_app(stdscr: curses.window, callbacks: ChatCallbacks, title: str) -> None:
     _setup_curses(stdscr)
     state = ChatRuntimeState(title=title, callbacks=callbacks)
-    _refresh_conversations(state)
+    _refresh_conversations(state, stdscr)
     while True:
         _draw(stdscr, state)
         key = stdscr.getch()
+        key = _decode_insert_key(stdscr, state, key)
         if _handle_key(stdscr, state, key):
             return
+
+
+def _decode_insert_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -> int:
+    if key != 27 or state.mode != "chat" or not state.input_active:
+        return key
+    return decode_input_escape_key(stdscr, key, timeout_ms=INPUT_ESCAPE_SEQUENCE_TIMEOUT_MS)
 
 
 def _handle_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -> bool:
@@ -173,11 +210,10 @@ def _handle_modal_key(stdscr: curses.window, state: ChatRuntimeState, key: int) 
 
 
 def _handle_conversations_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -> bool:
-    del stdscr
     if key in (ord("q"), 27):
         return True
     if key == ord("r"):
-        _refresh_conversations(state)
+        _refresh_conversations(state, stdscr)
         return False
     if key == ord("g"):
         state.conversation_index = 0
@@ -192,13 +228,12 @@ def _handle_conversations_key(stdscr: curses.window, state: ChatRuntimeState, ke
         state.conversation_index = max(0, state.conversation_index - 1)
         return False
     if key in (ord("l"), curses.KEY_ENTER, ord("\n"), ord("\r")):
-        _open_selected_conversation(state)
+        _open_selected_conversation(state, stdscr)
         return False
     return False
 
 
 def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -> bool:
-    del stdscr
     if state.input_active:
         if key == 27:
             state.input_active = False
@@ -207,19 +242,12 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
             return False
         if key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
             if state.composer.strip():
-                _send_composer(state)
+                _send_composer(state, stdscr)
             return False
-        if key in (curses.KEY_BACKSPACE, 127, 8):
-            state.composer = state.composer[:-1]
-            return False
-        if key == CTRL_U:
-            state.composer = ""
-            return False
-        if key == CTRL_W:
-            state.composer = delete_previous_word(state.composer)
-            return False
-        if 32 <= key <= 126:
-            state.composer += chr(key)
+        result = apply_input_edit_key(state.composer, state.composer_cursor, key)
+        if result.handled:
+            state.composer = result.value
+            state.composer_cursor = result.cursor
         return False
 
     if key == ord("q"):
@@ -233,7 +261,7 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
         state.stick_bottom = True
         return False
     if key == ord("r"):
-        _refresh_messages(state)
+        _refresh_messages(state, stdscr)
         return False
     if key in (ord("j"), curses.KEY_DOWN):
         move_cursor_row(state, 1)
@@ -262,25 +290,39 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
     return False
 
 
-def _refresh_conversations(state: ChatRuntimeState) -> None:
+def _refresh_conversations(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
     state.status = "loading..."
-    state.conversations = list(state.callbacks.load_conversations())
+    state.conversations = list(
+        _run_with_loading(
+            stdscr,
+            state,
+            lambda: list(state.callbacks.load_conversations()),
+            message="Loading conversations",
+        )
+    )
     state.conversation_index = min(state.conversation_index, max(0, len(state.conversations) - 1))
     state.status = f"{len(state.conversations)} conversations"
 
 
-def _refresh_messages(state: ChatRuntimeState) -> None:
+def _refresh_messages(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
     conversation = selected_conversation(state)
     if conversation is None:
         state.messages = []
         state.status = "no conversation"
         return
     state.status = "loading..."
-    state.messages = list(state.callbacks.load_messages(conversation))
+    state.messages = list(
+        _run_with_loading(
+            stdscr,
+            state,
+            lambda: list(state.callbacks.load_messages(conversation)),
+            message="Loading messages",
+        )
+    )
     state.status = f"{len(state.messages)} messages"
 
 
-def _open_selected_conversation(state: ChatRuntimeState) -> None:
+def _open_selected_conversation(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
     conversation = selected_conversation(state)
     if conversation is None:
         state.status = "no conversations"
@@ -290,14 +332,19 @@ def _open_selected_conversation(state: ChatRuntimeState) -> None:
     state.stick_bottom = False
     state.message_scroll = 0
     state.cursor_row = LATEST_MESSAGE_CURSOR
-    _refresh_messages(state)
+    _refresh_messages(state, stdscr)
     focus_latest_message(state)
     if state.callbacks.mark_read is not None:
-        state.callbacks.mark_read(conversation, state.messages)
+        _run_with_loading(
+            stdscr,
+            state,
+            lambda: state.callbacks.mark_read(conversation, state.messages),
+            message="Marking read",
+        )
     conversation.unread = False
 
 
-def _send_composer(state: ChatRuntimeState) -> None:
+def _send_composer(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
     conversation = selected_conversation(state)
     if conversation is None:
         state.status = "no conversation"
@@ -309,11 +356,109 @@ def _send_composer(state: ChatRuntimeState) -> None:
     if not text:
         return
     state.status = "sending..."
-    state.callbacks.send_message(conversation, text)
+    _run_with_loading(
+        stdscr,
+        state,
+        lambda: state.callbacks.send_message(conversation, text),
+        message="Sending message",
+    )
     state.composer = ""
-    _refresh_messages(state)
+    state.composer_cursor = 0
+    _refresh_messages(state, stdscr)
     state.stick_bottom = True
     state.status = "sent"
+
+
+def _run_with_loading(
+    stdscr: curses.window | None,
+    state: ChatRuntimeState,
+    operation: Callable[[], Any],
+    *,
+    message: str,
+) -> Any:
+    if stdscr is None:
+        return operation()
+
+    outcome: dict[str, Any] = {}
+    finished = threading.Event()
+
+    def worker() -> None:
+        try:
+            outcome["result"] = operation()
+        except BaseException as exc:  # noqa: BLE001
+            outcome["error"] = exc
+        finally:
+            finished.set()
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
+    if not finished.wait(CHAT_LOADING_DISPLAY_DELAY_SECONDS):
+        frame_index = 0
+        _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
+        while not finished.wait(CHAT_LOADING_FRAME_INTERVAL_MS / 1000):
+            frame_index += 1
+            _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
+
+    thread.join()
+    error = outcome.get("error")
+    if isinstance(error, BaseException):
+        raise error
+    return outcome.get("result")
+
+
+def _draw_loading_frame(
+    stdscr: curses.window,
+    state: ChatRuntimeState,
+    *,
+    message: str,
+    frame_index: int,
+) -> None:
+    _draw(stdscr, state)
+    draw_loading_overlay(stdscr, message=message, frame_index=frame_index)
+
+
+def clamp_composer_cursor(state: ChatRuntimeState) -> int:
+    state.composer_cursor = clamp_input_cursor(state.composer, state.composer_cursor)
+    return state.composer_cursor
+
+
+def insert_composer_text(state: ChatRuntimeState, value: str) -> None:
+    for character in value:
+        result = apply_input_edit_key(state.composer, state.composer_cursor, ord(character))
+        if result.handled:
+            state.composer = result.value
+            state.composer_cursor = result.cursor
+
+
+def delete_composer_backward(state: ChatRuntimeState) -> None:
+    result = apply_input_edit_key(state.composer, state.composer_cursor, CTRL_H)
+    state.composer = result.value
+    state.composer_cursor = result.cursor
+
+
+def delete_composer_forward(state: ChatRuntimeState) -> None:
+    result = apply_input_edit_key(state.composer, state.composer_cursor, CTRL_D)
+    state.composer = result.value
+    state.composer_cursor = result.cursor
+
+
+def delete_composer_previous_word(state: ChatRuntimeState) -> None:
+    result = apply_input_edit_key(state.composer, state.composer_cursor, CTRL_W)
+    state.composer = result.value
+    state.composer_cursor = result.cursor
+
+
+def move_cursor_backward_word(value: str, cursor: int) -> int:
+    return move_input_cursor_backward_word(value, cursor)
+
+
+def move_cursor_forward_word(value: str, cursor: int) -> int:
+    return move_input_cursor_forward_word(value, cursor)
+
+
+def composer_prompt_view(composer: str, cursor: int, width: int) -> tuple[str, int]:
+    return single_line_input_view(composer, cursor, width, prompt="> ")
 
 
 def selected_conversation(state: ChatRuntimeState) -> ChatConversation | None:
@@ -463,7 +608,12 @@ def _open_selected_modal_file(stdscr: curses.window, state: ChatRuntimeState) ->
     if state.callbacks.open_file is None:
         state.status = "file open unavailable"
         return
-    path = state.callbacks.open_file(conversation, message, file_item)
+    path = _run_with_loading(
+        stdscr,
+        state,
+        lambda: state.callbacks.open_file(conversation, message, file_item),
+        message="Opening file",
+    )
     if path:
         _open_path(stdscr, path)
         state.status = f"opened {path}"
@@ -578,12 +728,14 @@ def _draw_chat(stdscr: curses.window, state: ChatRuntimeState, height: int, widt
             safe_addstr(stdscr, 2 + row_offset, 0, ">")
         safe_addstr(stdscr, 2 + row_offset, 2, clip(row.text, width - 3))
 
-    prompt = f"> {state.composer}" if state.input_active else "[normal]"
     prompt_width = max(1, width - 1)
-    visible_prompt = prompt[-prompt_width:]
+    if state.input_active:
+        visible_prompt, cursor_col = composer_prompt_view(state.composer, state.composer_cursor, prompt_width)
+    else:
+        visible_prompt, cursor_col = "[normal]", 0
     safe_addstr(stdscr, height - 1, 0, clip(visible_prompt, prompt_width))
     if state.input_active:
-        safe_move(stdscr, height - 1, min(len(visible_prompt), prompt_width - 1))
+        safe_move(stdscr, height - 1, cursor_col)
 
 
 def _draw_file_modal(stdscr: curses.window, state: ChatRuntimeState) -> None:

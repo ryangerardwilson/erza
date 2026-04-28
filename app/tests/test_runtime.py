@@ -17,7 +17,13 @@ from erza.runtime import (
     ALT_B,
     ALT_F,
     CTRL_A,
+    CTRL_B,
+    CTRL_D,
     CTRL_E,
+    CTRL_F,
+    CTRL_H,
+    CTRL_K,
+    CTRL_U,
     CTRL_W,
     EditState,
     INTERACTIVE_MODAL_INNER_WIDTH,
@@ -1239,6 +1245,49 @@ class RuntimeTests(unittest.TestCase):
 
         session._handle_edit_key(CTRL_E)
         self.assertEqual(session.edit_state.cursor_index, len("demo user test"))
+
+    def test_edit_mode_uses_shared_emacs_input_controls(self) -> None:
+        screen = Screen(
+            title="Sign In",
+            children=[
+                Section(
+                    title="Account",
+                    children=[Form(action="/auth/login", children=[Input(name="email", value="alpha beta")])],
+                )
+            ],
+        )
+        session = _RuntimeSession(StaticScreenApp(screen))
+        session.edit_state = EditState(
+            form_key="form:0",
+            input_name="email",
+            cursor_index=len("alpha beta"),
+            original_value="alpha beta",
+        )
+        session.form_values = {"form:0": {"email": "alpha beta"}}
+
+        session._handle_edit_key(CTRL_B)
+        self.assertEqual(session.edit_state.cursor_index, len("alpha bet"))
+
+        session._handle_edit_key(CTRL_F)
+        self.assertEqual(session.edit_state.cursor_index, len("alpha beta"))
+
+        session._handle_edit_key(CTRL_H)
+        self.assertEqual(session.form_values["form:0"]["email"], "alpha bet")
+        self.assertEqual(session.edit_state.cursor_index, len("alpha bet"))
+
+        session._handle_edit_key(CTRL_A)
+        session._handle_edit_key(CTRL_D)
+        self.assertEqual(session.form_values["form:0"]["email"], "lpha bet")
+        self.assertEqual(session.edit_state.cursor_index, 0)
+
+        session._handle_edit_key(CTRL_F)
+        session._handle_edit_key(CTRL_K)
+        self.assertEqual(session.form_values["form:0"]["email"], "l")
+        self.assertEqual(session.edit_state.cursor_index, 1)
+
+        session._handle_edit_key(CTRL_U)
+        self.assertEqual(session.form_values["form:0"]["email"], "")
+        self.assertEqual(session.edit_state.cursor_index, 0)
 
     def test_escape_prefixed_alt_sequences_decode_in_edit_mode(self) -> None:
         self.assertEqual(_decode_edit_key(_FakeWindow([ord("b")]), 27), ALT_B)

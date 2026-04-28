@@ -13,6 +13,22 @@ import textwrap
 import time
 
 from erza.backend import BackendBridge, bind_request_context
+from erza.input_edit import (
+    ALT_B,
+    ALT_F,
+    CTRL_A,
+    CTRL_B,
+    CTRL_D,
+    CTRL_E,
+    CTRL_F,
+    CTRL_H,
+    CTRL_K,
+    CTRL_U,
+    CTRL_W,
+    INPUT_ESCAPE_SEQUENCE_TIMEOUT_MS,
+    apply_input_edit_key,
+    decode_input_escape_key,
+)
 from erza.local_server import LocalFormServer, LocalServerError, SubmitResult
 from erza.model import AsciiAnimation, AsciiArt, Button, ButtonRow, Column, Component, Form, Header, Input, Link, Modal, Row, Screen, Section, Splash, SplashAnimation, SubmitButton, Text
 from erza.parser import compile_markup, validate_screen_structure
@@ -21,14 +37,6 @@ from erza.source import SourceResolutionError, resolve_local_source_path, resolv
 from erza.template import render_template
 
 
-CTRL_D = 4
-CTRL_E = 5
-CTRL_U = 21
-CTRL_A = 1
-CTRL_W = 23
-ALT_B = -1001
-ALT_F = -1002
-EDIT_ESCAPE_SEQUENCE_TIMEOUT_MS = 25
 DISPLAY_WIDTH = 79
 TOP_LEVEL_SECTION_INNER_WIDTH = DISPLAY_WIDTH - 6
 NESTED_SECTION_INNER_WIDTH = TOP_LEVEL_SECTION_INNER_WIDTH - 4
@@ -58,8 +66,10 @@ HELP_SHORTCUTS = [
     ("Section Enter", "Edit the current input or open the current link/action."),
     ("Edit type", "Insert text into the current input."),
     ("Edit Ctrl+A / Ctrl+E", "Move to the start or end of the field."),
-    ("Edit Ctrl+W", "Delete the previous word."),
+    ("Edit Ctrl+B / Ctrl+F", "Move backward or forward by character."),
     ("Edit Alt+B / Alt+F", "Move backward or forward by word."),
+    ("Edit Ctrl+W / Ctrl+H", "Delete the previous word or character."),
+    ("Edit Ctrl+D / Ctrl+K / Ctrl+U", "Delete the next character, to end, or the full line."),
     ("Edit Enter", "Commit the current input edit."),
     ("Edit Esc", "Cancel the current input edit."),
     ("Esc", "Leave section mode and return to the header."),
@@ -371,34 +381,7 @@ def next_section_index(plan: RenderPlan, current_index: int, delta: int) -> int:
 
 
 def _decode_edit_key(stdscr: curses.window, key: int) -> int:
-    if key != 27:
-        return key
-
-    stdscr.timeout(EDIT_ESCAPE_SEQUENCE_TIMEOUT_MS)
-    next_key = stdscr.getch()
-    if next_key in {ord("b"), ord("B")}:
-        return ALT_B
-    if next_key in {ord("f"), ord("F")}:
-        return ALT_F
-    return key
-
-
-def _move_cursor_backward_word(value: str, cursor: int) -> int:
-    cursor = min(max(cursor, 0), len(value))
-    while cursor > 0 and value[cursor - 1].isspace():
-        cursor -= 1
-    while cursor > 0 and not value[cursor - 1].isspace():
-        cursor -= 1
-    return cursor
-
-
-def _move_cursor_forward_word(value: str, cursor: int) -> int:
-    cursor = min(max(cursor, 0), len(value))
-    while cursor < len(value) and value[cursor].isspace():
-        cursor += 1
-    while cursor < len(value) and not value[cursor].isspace():
-        cursor += 1
-    return cursor
+    return decode_input_escape_key(stdscr, key, timeout_ms=INPUT_ESCAPE_SEQUENCE_TIMEOUT_MS)
 
 
 def next_section_line_index(section: SectionTarget, current_index: int, delta: int) -> int:
@@ -1843,31 +1826,11 @@ class _RuntimeSession:
                 self.section_action_index = 0
             self.status = ""
             return
-        if key == CTRL_W:
-            new_cursor = _move_cursor_backward_word(value, cursor)
-            value = value[:new_cursor] + value[cursor:]
-            cursor = new_cursor
-        elif key == ALT_B:
-            cursor = _move_cursor_backward_word(value, cursor)
-        elif key == ALT_F:
-            cursor = _move_cursor_forward_word(value, cursor)
-        elif key in {curses.KEY_BACKSPACE, 127, 8}:
-            if cursor > 0:
-                value = value[: cursor - 1] + value[cursor:]
-                cursor -= 1
-        elif key in {curses.KEY_LEFT}:
-            cursor = max(cursor - 1, 0)
-        elif key in {curses.KEY_RIGHT}:
-            cursor = min(cursor + 1, len(value))
-        elif key in {CTRL_A, curses.KEY_HOME}:
-            cursor = 0
-        elif key in {CTRL_E, curses.KEY_END}:
-            cursor = len(value)
-        elif 32 <= key <= 126:
-            value = value[:cursor] + chr(key) + value[cursor:]
-            cursor += 1
-        else:
+        result = apply_input_edit_key(value, cursor, key)
+        if not result.handled:
             return
+        value = result.value
+        cursor = result.cursor
 
         self.form_values[self.edit_state.form_key][self.edit_state.input_name] = value
         self.edit_state.cursor_index = cursor

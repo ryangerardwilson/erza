@@ -20,3 +20,5 @@ Reusable Python UI surfaces:
 
 - `erza.chat`: conversation list, boxed transcript, composer, fixed file picker,
   normal/insert mode, and file opening for Slack-like DM/GDM apps.
+- `erza.input_edit`: shared single-line input editing for Erza form fields and
+  chat composers.

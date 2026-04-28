@@ -52,8 +52,8 @@ run_chat_app(callbacks, title="slack tui")
 ```
 
 The API is intentionally data-first. The app owns API calls, auth, downloads,
-and persistence. `erza` owns the terminal UI, normal/insert mode behavior,
-navigation, modal behavior, and file opening.
+and persistence. `erza` owns the terminal UI, loading overlay, normal/insert
+mode behavior, navigation, modal behavior, and file opening.
 
 ## Data Model
 
@@ -128,6 +128,12 @@ Chat view:
 - `i` enters insert mode
 - insert-mode Enter sends through `send_message`
 - insert-mode Esc returns to normal mode and focuses the latest message
+- insert mode uses Erza's shared input editor
+- Ctrl-A / Ctrl-E move to composer start / end
+- Ctrl-B / Ctrl-F move backward / forward by character
+- Alt-B / Alt-F move backward / forward by word
+- Ctrl-W / Ctrl-H delete the previous word / character
+- Ctrl-D / Ctrl-K / Ctrl-U delete next character / through end / full composer
 - `h` returns to the conversation list
 - `j` / `k` move line by line in normal mode
 - Ctrl-N / Ctrl-P move message by message
@@ -153,6 +159,11 @@ Global:
 
 - `?` toggles shortcuts
 - `q` quits
+
+Loading:
+
+- long-running conversation, message, send, mark-read, and file-open callbacks
+  use the same Erza matrix loading overlay as the main runtime
 
 ## Slack Adapter Direction
 

@@ -417,6 +417,8 @@ Current form behavior:
 
 - opening a form modal auto-focuses the first input
 - `Enter` commits the current input and moves into the next input when possible
+- form inputs use the shared Erza input editor
+- Ctrl-A/Ctrl-E, Ctrl-B/Ctrl-F, Alt-B/Alt-F, Ctrl-W/Ctrl-H, and Ctrl-D/Ctrl-K/Ctrl-U work consistently in text inputs
 - submit buttons live in a `ButtonRow`
 - multi-submit forms are supported with multiple `<Submit>` buttons
 - `ascii-art` inputs enforce a frontend width limit of `72` columns
@@ -480,7 +482,9 @@ run_chat_app(callbacks, title="slack tui")
 - fixed-height file modal
 - default normal mode and `i`-to-insert composition
 - insert-mode Esc back to normal mode
+- shared Erza input editing for the composer
 - Ctrl-N/Ctrl-P message movement
+- Erza matrix loading overlay for slow chat callbacks
 - file opening with PDF/image defaults and editor fallback
 
 The host app owns:
@@ -562,6 +566,11 @@ Chat runtime controls:
 - conversations open in normal mode
 - normal-mode `i` enters insert mode
 - insert-mode Enter sends, Esc returns to normal mode
+- insert-mode Ctrl-A/Ctrl-E moves start/end
+- insert-mode Ctrl-B/Ctrl-F moves by character
+- insert-mode Alt-B/Alt-F moves by word
+- insert-mode Ctrl-W/Ctrl-H deletes previous word/character
+- insert-mode Ctrl-D/Ctrl-K/Ctrl-U deletes next char/to end/full line
 - normal-mode `j`/`k` moves lines
 - normal-mode Ctrl-N/Ctrl-P moves messages
 - normal-mode `g`/`gg`/`G` jumps first/latest message

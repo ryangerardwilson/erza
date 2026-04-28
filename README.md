@@ -295,9 +295,10 @@ run_chat_app(callbacks, title="slack tui")
 The chat runtime owns the terminal interaction: conversation list, boxed message
 transcript, default normal mode, `i`-to-insert composition, Ctrl-N/Ctrl-P
 message movement, `g`/`gg`/`G` jumps, fixed-height file picker, shortcuts modal,
-and file opening. PDFs default to `zathura`, images default to `swayimg`, and
-unknown/text files fall back through `$VISUAL`, `$EDITOR`, then `vim`. The app
-owns API calls, tokens, download paths, and message data.
+the Erza matrix loading overlay for slow callbacks, and file opening. PDFs
+default to `zathura`, images default to `swayimg`, and unknown/text files fall
+back through `$VISUAL`, `$EDITOR`, then `vim`. The app owns API calls, tokens,
+download paths, and message data.
 
 See [`CHAT_SURFACES_SPEC.md`](./CHAT_SURFACES_SPEC.md) for the detailed chat
 contract and Slack adapter direction.
@@ -319,12 +320,21 @@ Global movement:
 - `Ctrl+D` / `Ctrl+U`: half-page movement
 - `?`: shortcuts/help
 
+Text inputs and chat composers share the Erza input editor:
+
+- `Ctrl+A` / `Ctrl+E`: start / end of the input
+- `Ctrl+B` / `Ctrl+F`: backward / forward one character
+- `Alt+B` / `Alt+F`: backward / forward one word
+- `Ctrl+W` / `Ctrl+H`: delete previous word / character
+- `Ctrl+D` / `Ctrl+K` / `Ctrl+U`: delete next character / to end / full input
+
 Chat surfaces add:
 
 - conversation list `j`/`k` and `l` to open
 - normal mode by default in conversations
 - normal-mode `i` to enter insert mode
 - insert-mode Enter to send and Esc to return to normal mode
+- insert mode uses the same Erza input editor as form fields
 - normal-mode Ctrl-N/Ctrl-P for message movement
 - normal-mode `l` on `<<<X Files>>>` to open the fixed-height file picker
 

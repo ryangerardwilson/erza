@@ -130,6 +130,7 @@ The runtime owns:
 - line traversal inside a section in section mode
 - page history
 - input handling
+- shared Emacs-style single-line input editing for forms and chat composers
 - repainting
 - animation playback
 - event dispatch
@@ -246,9 +247,11 @@ The runtime owns the UI contract:
 - inline embed boxes
 - nested `<<<X Files>>>` file affordance
 - fixed-height file picker
+- Erza matrix loading overlay around slow callbacks
 - default normal mode
 - `i`-to-insert composition
 - insert-mode Esc back to normal mode
+- shared Erza input editing inside the composer
 - `hjkl`, Ctrl-N/Ctrl-P, `g`/`gg`/`G`, and `?` controls
 - PDF/image file opener defaults plus editor fallback
 
