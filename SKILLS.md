@@ -467,6 +467,7 @@ callbacks = ChatCallbacks(
     ],
     send_message=lambda conversation, text: None,
     mark_read=lambda conversation, messages: None,
+    mark_all_read=lambda conversations: None,
     open_file=lambda conversation, message, file: "/tmp/file.txt",
 )
 
@@ -574,6 +575,7 @@ Chat runtime controls:
 - normal-mode `j`/`k` moves lines
 - normal-mode Ctrl-N/Ctrl-P moves messages
 - normal-mode `g`/`gg`/`G` jumps first/latest message
+- normal-mode `,mra` marks all loaded conversations read when provided
 - normal-mode `l` on `<<<X Files>>>` opens the file picker
 
 ## Commands

@@ -139,6 +139,7 @@ Chat view:
 - Ctrl-N / Ctrl-P move message by message
 - `g` / `gg` jump to the first message
 - `G` jumps to the latest message
+- `,mra` marks all loaded conversations read when `mark_all_read` is provided
 - `l` on `<<<X Files>>>` opens the file picker
 - `r` refreshes the selected conversation
 
@@ -173,6 +174,7 @@ For Slack, the adapter should map existing Slack data functions into
 - `load_conversations`: latest 100 DM/GDM-derived conversation summaries
 - `load_messages`: latest 100 messages for the selected DM/GDM
 - `mark_read`: Slack `conversations.mark`
+- `mark_all_read`: Slack `conversations.mark` over the loaded DM/GDM list
 - `send_message`: Slack `chat.postMessage`
 - `open_file`: download the file through Slack, then return the local path
 

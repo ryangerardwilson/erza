@@ -220,6 +220,24 @@ class ChatRuntimeTests(unittest.TestCase):
         self.assertEqual(state.cursor_row, last_message_row_index(state.rendered_rows))
         self.assertTrue(any(text == "[normal]" for _, _, text, _, _ in added))
 
+    def test_opening_conversation_keeps_unread_when_mark_read_fails(self) -> None:
+        conversation = ChatConversation(conversation_id="G1", label="Group", kind="group_dm", unread=True)
+        messages = [ChatMessage("1", "a", "one", "one")]
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(
+                lambda: [conversation],
+                lambda _conversation: messages,
+                mark_read=lambda _conversation, _messages: "missing_scope:add mpim:write to user token",
+            ),
+            conversations=[conversation],
+        )
+
+        _open_selected_conversation(state)
+
+        self.assertTrue(conversation.unread)
+        self.assertIn("mark_read:missing_scope:add mpim:write", state.status)
+
     def test_insert_escape_returns_to_normal_mode_latest_message(self) -> None:
         rows = render_message_rows(
             [
@@ -242,6 +260,38 @@ class ChatRuntimeTests(unittest.TestCase):
         _handle_chat_key(None, state, 27)  # type: ignore[arg-type]
         self.assertFalse(state.input_active)
         self.assertEqual(state.cursor_row, LATEST_MESSAGE_CURSOR)
+
+    def test_leader_mra_marks_all_conversations_read(self) -> None:
+        conversations = [
+            ChatConversation(conversation_id="D1", label="Maanas", unread=True),
+            ChatConversation(conversation_id="G1", label="Group", kind="group_dm", unread=True),
+        ]
+        seen: list[list[ChatConversation]] = []
+
+        def mark_all_read(items: list[ChatConversation]) -> int:
+            seen.append(items)
+            return len(items)
+
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(
+                lambda: conversations,
+                lambda _conversation: [],
+                mark_all_read=mark_all_read,
+            ),
+            conversations=conversations,
+            messages=[ChatMessage("1", "a", "one", "one", unread=True)],
+        )
+
+        _handle_chat_key(None, state, ord(","))  # type: ignore[arg-type]
+        _handle_chat_key(None, state, ord("m"))  # type: ignore[arg-type]
+        _handle_chat_key(None, state, ord("r"))  # type: ignore[arg-type]
+        _handle_chat_key(None, state, ord("a"))  # type: ignore[arg-type]
+
+        self.assertEqual(seen, [conversations])
+        self.assertFalse(any(conversation.unread for conversation in conversations))
+        self.assertFalse(any(message.unread for message in state.messages))
+        self.assertEqual(state.status, "marked_read=2")
 
     def test_file_open_command_defaults_pdf_and_images_to_viewers(self) -> None:
         def fake_which(command: str) -> str | None:
@@ -316,6 +366,7 @@ class ChatRuntimeTests(unittest.TestCase):
 
     def test_loading_frame_uses_erza_loading_overlay(self) -> None:
         calls: list[tuple[str, int]] = []
+        rendered_text: list[str] = []
 
         class FakeWindow:
             def erase(self) -> None:
@@ -328,7 +379,7 @@ class ChatRuntimeTests(unittest.TestCase):
                 return (14, 80)
 
             def addnstr(self, y: int, x: int, text: str, limit: int, attr: int = 0) -> None:
-                pass
+                rendered_text.append(str(text[:limit]))
 
             def move(self, y: int, x: int) -> None:
                 pass
@@ -346,6 +397,10 @@ class ChatRuntimeTests(unittest.TestCase):
             _draw_loading_frame(FakeWindow(), state, message="Loading messages", frame_index=4)  # type: ignore[arg-type]
 
         self.assertEqual(calls, [("Loading messages", 4)])
+        self.assertNotIn("No messages.", rendered_text)
+        self.assertFalse(any("0 messages" in text for text in rendered_text))
+        self.assertFalse(any("loading..." in text.lower() for text in rendered_text))
+        self.assertEqual(state.loading_message, "")
 
 
 if __name__ == "__main__":

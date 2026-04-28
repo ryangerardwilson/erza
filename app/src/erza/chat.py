@@ -58,6 +58,7 @@ CHAT_SHORTCUTS = [
     ("normal ctrl+n/p", "Move next / previous message."),
     ("normal g / G", "Jump first / latest message."),
     ("normal l", "Open files for the focused file button."),
+    ("normal ,mra", "Mark all conversations read."),
     ("modal j / k", "Move inside the file picker."),
     ("modal l", "Open the selected file."),
     ("h", "Back or close modal."),
@@ -112,6 +113,7 @@ class ChatCallbacks:
     send_message: Callable[[ChatConversation, str], Any] | None = None
     mark_read: Callable[[ChatConversation, list[ChatMessage]], Any] | None = None
     open_file: Callable[[ChatConversation, ChatMessage, ChatFile], str | None] | None = None
+    mark_all_read: Callable[[list[ChatConversation]], Any] | None = None
 
 
 @dataclass(slots=True)
@@ -150,7 +152,9 @@ class ChatRuntimeState:
     composer_cursor: int = 0
     modal: ChatModalState | None = None
     show_help: bool = False
-    status: str = "loading..."
+    status: str = ""
+    loading_message: str = ""
+    leader_buffer: str = ""
 
 
 def run_chat_app(callbacks: ChatCallbacks, *, title: str = "erza chat") -> None:
@@ -250,6 +254,8 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
             state.composer_cursor = result.cursor
         return False
 
+    if _handle_leader_key(stdscr, state, key):
+        return False
     if key == ord("q"):
         return True
     if key == ord("h"):
@@ -290,8 +296,57 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
     return False
 
 
+def _handle_leader_key(stdscr: curses.window | None, state: ChatRuntimeState, key: int) -> bool:
+    if key == 27:
+        state.leader_buffer = ""
+        return False
+    if not state.leader_buffer:
+        if key == ord(","):
+            state.leader_buffer = ","
+            state.status = ","
+            return True
+        return False
+    if not 32 <= key <= 126:
+        state.leader_buffer = ""
+        return True
+    sequence = state.leader_buffer + chr(key)
+    if not ",mra".startswith(sequence):
+        state.leader_buffer = ""
+        state.status = ""
+        return True
+    state.leader_buffer = sequence
+    state.status = sequence
+    if sequence == ",mra":
+        state.leader_buffer = ""
+        _mark_all_read(state, stdscr)
+    return True
+
+
+def _mark_all_read(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
+    if state.callbacks.mark_all_read is None:
+        state.status = "mark all read unavailable"
+        return
+    result = _run_with_loading(
+        stdscr,
+        state,
+        lambda: state.callbacks.mark_all_read(state.conversations),
+        message="Marking all read",
+    )
+    if result is False or isinstance(result, str):
+        detail = result if isinstance(result, str) and result else "failed"
+        state.status = f"mark_all_read:{detail}"
+        return
+    for conversation in state.conversations:
+        conversation.unread = False
+    for message in state.messages:
+        message.unread = False
+    if isinstance(result, int):
+        state.status = f"marked_read={result}"
+    else:
+        state.status = "marked read"
+
+
 def _refresh_conversations(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
-    state.status = "loading..."
     state.conversations = list(
         _run_with_loading(
             stdscr,
@@ -310,7 +365,6 @@ def _refresh_messages(state: ChatRuntimeState, stdscr: curses.window | None = No
         state.messages = []
         state.status = "no conversation"
         return
-    state.status = "loading..."
     state.messages = list(
         _run_with_loading(
             stdscr,
@@ -334,14 +388,19 @@ def _open_selected_conversation(state: ChatRuntimeState, stdscr: curses.window |
     state.cursor_row = LATEST_MESSAGE_CURSOR
     _refresh_messages(state, stdscr)
     focus_latest_message(state)
+    mark_read_result: Any = None
     if state.callbacks.mark_read is not None:
-        _run_with_loading(
+        mark_read_result = _run_with_loading(
             stdscr,
             state,
             lambda: state.callbacks.mark_read(conversation, state.messages),
             message="Marking read",
         )
-    conversation.unread = False
+    if mark_read_result is False or isinstance(mark_read_result, str):
+        detail = mark_read_result if isinstance(mark_read_result, str) and mark_read_result else "failed"
+        state.status = f"{len(state.messages)} messages  mark_read:{detail}"
+    else:
+        conversation.unread = False
 
 
 def _send_composer(state: ChatRuntimeState, stdscr: curses.window | None = None) -> None:
@@ -355,7 +414,6 @@ def _send_composer(state: ChatRuntimeState, stdscr: curses.window | None = None)
     text = state.composer.strip()
     if not text:
         return
-    state.status = "sending..."
     _run_with_loading(
         stdscr,
         state,
@@ -414,8 +472,13 @@ def _draw_loading_frame(
     message: str,
     frame_index: int,
 ) -> None:
-    _draw(stdscr, state)
-    draw_loading_overlay(stdscr, message=message, frame_index=frame_index)
+    previous_message = state.loading_message
+    state.loading_message = message
+    try:
+        _draw(stdscr, state)
+        draw_loading_overlay(stdscr, message=message, frame_index=frame_index)
+    finally:
+        state.loading_message = previous_message
 
 
 def clamp_composer_cursor(state: ChatRuntimeState) -> int:
@@ -631,6 +694,10 @@ def conversation_line(conversation: ChatConversation, width: int) -> str:
     return clip(f"{unread} {kind:<3} {conversation.label}  {conversation.date}", width)
 
 
+def header_text(*parts: str) -> str:
+    return "  ".join(str(part).strip() for part in parts if str(part).strip())
+
+
 def transcript_status(messages: list[ChatMessage], rendered_line_count: int, view_height: int, scroll: int) -> str:
     message_count = len(messages)
     if not message_count:
@@ -670,7 +737,8 @@ def _draw(stdscr: curses.window, state: ChatRuntimeState) -> None:
 
 
 def _draw_conversations(stdscr: curses.window, state: ChatRuntimeState, height: int, width: int) -> None:
-    safe_addstr(stdscr, 0, 0, clip(f"{state.title}  conversations  {state.status}", width - 1))
+    status = "" if state.loading_message else state.status
+    safe_addstr(stdscr, 0, 0, clip(header_text(state.title, "conversations", status), width - 1))
     safe_addstr(stdscr, 1, 0, "-" * max(0, width - 1))
     visible_rows = max(1, height - 2)
     state.conversation_scroll = adjust_scroll(
@@ -691,7 +759,7 @@ def _draw_conversations(stdscr: curses.window, state: ChatRuntimeState, height: 
 def _draw_chat(stdscr: curses.window, state: ChatRuntimeState, height: int, width: int) -> None:
     conversation = selected_conversation(state)
     label = conversation.label if conversation is not None else "-"
-    rendered = render_message_rows(state.messages, width - 3)
+    rendered = [] if state.loading_message and not state.messages else render_message_rows(state.messages, width - 3)
     message_height = max(1, height - 4)
     state.message_view_height = message_height
     state.rendered_rows = rendered
@@ -715,7 +783,15 @@ def _draw_chat(stdscr: curses.window, state: ChatRuntimeState, height: int, widt
         stdscr,
         0,
         0,
-        clip(f"{state.title}  {label}  {transcript_status(state.messages, len(rendered), message_height, scroll)}  {state.status}", width - 1),
+        clip(
+            header_text(
+                state.title,
+                label,
+                "" if state.loading_message else transcript_status(state.messages, len(rendered), message_height, scroll),
+                "" if state.loading_message else state.status,
+            ),
+            width - 1,
+        ),
     )
     safe_addstr(stdscr, 1, 0, "-" * max(0, width - 1))
     safe_addstr(stdscr, height - 2, 0, "-" * max(0, width - 1))
