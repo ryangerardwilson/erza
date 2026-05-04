@@ -1,4 +1,5 @@
 import "./globals.css";
+import "@ryangerardwilson/docs-shell/styles.css";
 
 export const metadata = {
   title: "erza docs",

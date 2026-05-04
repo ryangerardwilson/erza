@@ -1,87 +1,42 @@
-import Link from "next/link";
+import { DocsShell as SharedDocsShell } from "@ryangerardwilson/docs-shell";
 
-import CopyDocsButton from "@/app/components/copy-docs-button";
 import { getDocPageData, getDocsTabs } from "@/lib/readme-docs";
 
-const REPO_URL = "https://github.com/ryangerardwilson/erza";
-const AUTHOR_URL = "https://ryangerardwilson.com/";
+const utilityLinks = [
+  {
+    href: "https://ryangerardwilson.com/",
+    label: "About the Author",
+    kind: "button",
+    newTab: true
+  },
+  {
+    href: "https://github.com/ryangerardwilson/erza",
+    label: "GitHub",
+    kind: "icon",
+    icon: "github",
+    newTab: true
+  }
+];
 
-function GitHubMark() {
-  return (
-    <svg className="docs-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
-      />
-    </svg>
-  );
+function docPayload() {
+  return getDocsTabs().map((tab) => {
+    const page = getDocPageData(tab.slug);
+    return {
+      ...tab,
+      title: tab.label,
+      commandLabel: page.fileName,
+      content: page.content
+    };
+  });
 }
 
 export default function DocsShell({ activeSlug = "readme" }) {
-  const { content, fileName, href } = getDocPageData(activeSlug);
-  const tabs = getDocsTabs();
-  const normalizedContent = content.replace(/\r\n?/g, "\n").replace(/\n$/, "");
-
   return (
-    <main className="docs-scene">
-      <section className="docs-shell">
-        <div className="docs-topbar">
-          <nav className="docs-tabs" aria-label="Documentation files">
-            {tabs.map((tab) => {
-              const isActive = tab.slug === activeSlug;
-              return (
-                <Link
-                  key={tab.slug}
-                  href={tab.href}
-                  className={isActive ? "docs-tab docs-tab-active" : "docs-tab"}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <span className="docs-tab-label">{tab.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-
-          <section className="docs-utility" aria-label="Quick links">
-            <a
-              className="docs-utility-link"
-              href={AUTHOR_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="About the Author"
-              title="About the Author"
-            >
-              About the Author
-            </a>
-            <a
-              className="docs-utility-link docs-utility-icon"
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="GitHub"
-              title="GitHub"
-            >
-              <GitHubMark />
-            </a>
-          </section>
-        </div>
-
-        <section className="docs-panel" aria-label={`${fileName} source`}>
-          <h1 className="sr-only">{fileName}</h1>
-          <div className="docs-panel-meta">
-            <span className="docs-panel-command">cat {fileName}</span>
-            <div className="docs-panel-actions">
-              <span className="docs-panel-route">{href}</span>
-              <CopyDocsButton content={normalizedContent} />
-            </div>
-          </div>
-          <div className="docs-code-scroll">
-            <pre className="docs-code-block">
-              <code>{normalizedContent}</code>
-            </pre>
-          </div>
-        </section>
-      </section>
-    </main>
+    <SharedDocsShell
+      initialSlug={activeSlug}
+      docs={docPayload()}
+      utilityLinks={utilityLinks}
+      titleSuffix="erza docs"
+    />
   );
 }
