@@ -7,7 +7,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@ryangerardwilson/docs-shell": "git+ssh://git@github.com/ryangerardwilson/ryangerardwilson.com.git#027d49def2db10e21f8a4b0ca54eb4eca3dcf80e",
+    "@ryangerardwilson/docs-shell": "git+ssh://git@github.com/ryangerardwilson/ryangerardwilson.com.git#9c8815addcc70d41814cfdcd65cc3ba5d49a8904",
     "next": "^16.2.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
