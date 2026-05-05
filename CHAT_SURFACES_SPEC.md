@@ -165,8 +165,6 @@ Loading:
 
 - conversation, message, send, mark-read, and file-open callbacks
   use the same Erza matrix loading overlay as the main runtime
-- switching back from an open conversation to the conversation list also uses
-  the loading overlay so screen transitions have visible feedback
 
 ## Slack Adapter Direction
 

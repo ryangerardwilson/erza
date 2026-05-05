@@ -42,7 +42,6 @@ FILE_MODAL_HEIGHT = 7
 HELP_MODAL_MAX_WIDTH = 67
 LATEST_MESSAGE_CURSOR = -1
 CHAT_LOADING_FRAME_INTERVAL_MS = 90
-CHAT_LOADING_MIN_VISIBLE_SECONDS = 0.24
 
 CHAT_SHORTCUTS = [
     ("convos j / k", "Move down / up across conversations."),
@@ -263,7 +262,6 @@ def _handle_chat_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -
     if key == ord("h"):
         state.mode = "conversations"
         state.status = f"{len(state.conversations)} conversations"
-        _show_loading_transition(stdscr, state, message="Loading conversations")
         return False
     if key == ord("i"):
         state.input_active = True
@@ -455,35 +453,19 @@ def _run_with_loading(
     thread.start()
 
     frame_index = 0
-    minimum_visible_until = time.monotonic() + CHAT_LOADING_MIN_VISIBLE_SECONDS
-    _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
-    while True:
-        now = time.monotonic()
-        if finished.is_set() and now >= minimum_visible_until:
-            break
-        if finished.is_set():
-            wait_seconds = min(CHAT_LOADING_FRAME_INTERVAL_MS / 1000, max(0.0, minimum_visible_until - now))
-        else:
-            wait_seconds = CHAT_LOADING_FRAME_INTERVAL_MS / 1000
-        if wait_seconds > 0:
-            finished.wait(wait_seconds)
+
+    if not finished.is_set():
+        _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
+    while not finished.wait(CHAT_LOADING_FRAME_INTERVAL_MS / 1000):
         frame_index += 1
         _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
 
     thread.join()
     error = outcome.get("error")
+    _draw(stdscr, state)
     if isinstance(error, BaseException):
         raise error
     return outcome.get("result")
-
-
-def _show_loading_transition(
-    stdscr: curses.window | None,
-    state: ChatRuntimeState,
-    *,
-    message: str,
-) -> None:
-    _run_with_loading(stdscr, state, lambda: None, message=message)
 
 
 def _draw_loading_frame(

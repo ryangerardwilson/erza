@@ -485,7 +485,7 @@ run_chat_app(callbacks, title="slack tui")
 - insert-mode Esc back to normal mode
 - shared Erza input editing for the composer
 - Ctrl-N/Ctrl-P message movement
-- Erza matrix loading overlay for chat callbacks and screen transitions
+- Erza matrix loading overlay for active chat callbacks
 - file opening with PDF/image defaults and editor fallback
 
 The host app owns:
