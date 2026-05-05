@@ -575,7 +575,7 @@ Chat runtime controls:
 - normal-mode `j`/`k` moves lines
 - normal-mode Ctrl-N/Ctrl-P moves messages
 - normal-mode `g`/`gg`/`G` jumps first/latest message
-- normal-mode `,mra` marks all loaded conversations read when provided
+- normal-mode `,mra` marks all loaded conversations read from the conversation list or an open conversation when provided
 - normal-mode `l` on `<<<X Files>>>` opens the file picker
 
 ## Commands

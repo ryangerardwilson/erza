@@ -191,6 +191,8 @@ def _handle_key(stdscr: curses.window, state: ChatRuntimeState, key: int) -> boo
     if state.modal is not None:
         return _handle_modal_key(stdscr, state, key)
     if state.mode == "conversations":
+        if _handle_leader_key(stdscr, state, key):
+            return False
         return _handle_conversations_key(stdscr, state, key)
     return _handle_chat_key(stdscr, state, key)
 
@@ -451,9 +453,9 @@ def _run_with_loading(
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
 
+    frame_index = 0
+    _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
     if not finished.wait(CHAT_LOADING_DISPLAY_DELAY_SECONDS):
-        frame_index = 0
-        _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)
         while not finished.wait(CHAT_LOADING_FRAME_INTERVAL_MS / 1000):
             frame_index += 1
             _draw_loading_frame(stdscr, state, message=message, frame_index=frame_index)

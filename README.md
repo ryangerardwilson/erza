@@ -295,7 +295,8 @@ run_chat_app(callbacks, title="slack tui")
 
 The chat runtime owns the terminal interaction: conversation list, boxed message
 transcript, default normal mode, `i`-to-insert composition, Ctrl-N/Ctrl-P
-message movement, `g`/`gg`/`G` jumps, `,mra` mark-all-read, fixed-height file picker, shortcuts modal,
+message movement, `g`/`gg`/`G` jumps, `,mra` mark-all-read from the
+conversation list or an open conversation, fixed-height file picker, shortcuts modal,
 the Erza matrix loading overlay for slow callbacks, and file opening. PDFs
 default to `zathura`, images default to `swayimg`, and unknown/text files fall
 back through `$VISUAL`, `$EDITOR`, then `vim`. The app owns API calls, tokens,
@@ -337,7 +338,7 @@ Chat surfaces add:
 - insert-mode Enter to send and Esc to return to normal mode
 - insert mode uses the same Erza input editor as form fields
 - normal-mode Ctrl-N/Ctrl-P for message movement
-- normal-mode `,mra` to mark all loaded conversations read when the app provides that callback
+- normal-mode `,mra` to mark all loaded conversations read from the conversation list or an open conversation when the app provides that callback
 - normal-mode `l` on `<<<X Files>>>` to open the fixed-height file picker
 
 ## Where to Go Next

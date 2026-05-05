@@ -1,0 +1,4 @@
+docs_website/.next
+docs_website/node_modules
+.next
+node_modules

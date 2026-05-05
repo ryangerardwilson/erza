@@ -10,3 +10,16 @@ body {
   background: var(--bg);
   color: var(--text);
 }
+
+.rgw-docs {
+  --docs-panel: rgba(0, 0, 0, 0.72);
+  --docs-wallpaper-opacity: 0.58;
+}
+
+.rgw-docs::before {
+  filter: contrast(1.08);
+}
+
+.rgw-docs::after {
+  background: rgba(0, 0, 0, 0.42);
+}

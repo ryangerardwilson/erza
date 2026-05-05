@@ -31,9 +31,11 @@ from erza.chat import (
     _draw_file_modal,
     _draw_loading_frame,
     _handle_chat_key,
+    _handle_key,
     _open_selected_conversation,
     _open_file_modal_for_selected_row,
     _resolve_open_command,
+    _run_with_loading,
     adjust_scroll,
     composer_prompt_view,
     conversation_line,
@@ -293,6 +295,37 @@ class ChatRuntimeTests(unittest.TestCase):
         self.assertFalse(any(message.unread for message in state.messages))
         self.assertEqual(state.status, "marked_read=2")
 
+    def test_leader_mra_works_from_conversation_list(self) -> None:
+        conversations = [
+            ChatConversation(conversation_id="D1", label="Maanas", unread=True),
+            ChatConversation(conversation_id="G1", label="Group", kind="group_dm", unread=True),
+        ]
+        seen: list[list[ChatConversation]] = []
+
+        def mark_all_read(items: list[ChatConversation]) -> int:
+            seen.append(items)
+            return len(items)
+
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(
+                lambda: conversations,
+                lambda _conversation: [],
+                mark_all_read=mark_all_read,
+            ),
+            conversations=conversations,
+            mode="conversations",
+        )
+
+        _handle_key(None, state, ord(","))  # type: ignore[arg-type]
+        _handle_key(None, state, ord("m"))  # type: ignore[arg-type]
+        _handle_key(None, state, ord("r"))  # type: ignore[arg-type]
+        _handle_key(None, state, ord("a"))  # type: ignore[arg-type]
+
+        self.assertEqual(seen, [conversations])
+        self.assertFalse(any(conversation.unread for conversation in conversations))
+        self.assertEqual(state.status, "marked_read=2")
+
     def test_file_open_command_defaults_pdf_and_images_to_viewers(self) -> None:
         def fake_which(command: str) -> str | None:
             return f"/usr/bin/{command}" if command in {"zathura", "swayimg", "vim"} else None
@@ -401,6 +434,45 @@ class ChatRuntimeTests(unittest.TestCase):
         self.assertFalse(any("0 messages" in text for text in rendered_text))
         self.assertFalse(any("loading..." in text.lower() for text in rendered_text))
         self.assertEqual(state.loading_message, "")
+
+    def test_run_with_loading_draws_initial_chat_loading_frame(self) -> None:
+        calls: list[tuple[str, int]] = []
+
+        class FakeWindow:
+            def erase(self) -> None:
+                pass
+
+            def refresh(self) -> None:
+                pass
+
+            def getmaxyx(self) -> tuple[int, int]:
+                return (14, 80)
+
+            def addnstr(self, y: int, x: int, text: str, limit: int, attr: int = 0) -> None:
+                pass
+
+            def move(self, y: int, x: int) -> None:
+                pass
+
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(lambda: [], lambda _conversation: []),
+        )
+
+        def fake_overlay(_stdscr, *, message: str, frame_index: int) -> None:
+            calls.append((message, frame_index))
+
+        with mock.patch("erza.chat.draw_loading_overlay", side_effect=fake_overlay):
+            result = _run_with_loading(
+                FakeWindow(),  # type: ignore[arg-type]
+                state,
+                lambda: "ok",
+                message="Loading messages",
+            )
+
+        self.assertEqual(result, "ok")
+        self.assertTrue(calls)
+        self.assertEqual(calls[0], ("Loading messages", 0))
 
 
 if __name__ == "__main__":

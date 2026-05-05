@@ -139,7 +139,7 @@ Chat view:
 - Ctrl-N / Ctrl-P move message by message
 - `g` / `gg` jump to the first message
 - `G` jumps to the latest message
-- `,mra` marks all loaded conversations read when `mark_all_read` is provided
+- `,mra` marks all loaded conversations read from the conversation list or an open conversation when `mark_all_read` is provided
 - `l` on `<<<X Files>>>` opens the file picker
 - `r` refreshes the selected conversation
 
