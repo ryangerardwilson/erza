@@ -1,4 +1,4 @@
-import { buildLlmsIndex } from "@/lib/readme-docs";
+import { buildLlmsIndex } from "@/lib/llms-index";
 
 export const dynamic = "force-static";
 
