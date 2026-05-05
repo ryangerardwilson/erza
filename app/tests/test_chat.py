@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import unittest
 from unittest import mock
 
@@ -462,17 +463,61 @@ class ChatRuntimeTests(unittest.TestCase):
         def fake_overlay(_stdscr, *, message: str, frame_index: int) -> None:
             calls.append((message, frame_index))
 
-        with mock.patch("erza.chat.draw_loading_overlay", side_effect=fake_overlay):
-            result = _run_with_loading(
-                FakeWindow(),  # type: ignore[arg-type]
-                state,
-                lambda: "ok",
-                message="Loading messages",
-            )
+        with mock.patch("erza.chat.CHAT_LOADING_MIN_VISIBLE_SECONDS", 0.12):
+            with mock.patch("erza.chat.CHAT_LOADING_FRAME_INTERVAL_MS", 40):
+                with mock.patch("erza.chat.draw_loading_overlay", side_effect=fake_overlay):
+                    start = time.monotonic()
+                    result = _run_with_loading(
+                        FakeWindow(),  # type: ignore[arg-type]
+                        state,
+                        lambda: "ok",
+                        message="Loading messages",
+                    )
+                    elapsed = time.monotonic() - start
 
         self.assertEqual(result, "ok")
-        self.assertTrue(calls)
+        self.assertGreaterEqual(elapsed, 0.1)
+        self.assertGreaterEqual(len(calls), 3)
         self.assertEqual(calls[0], ("Loading messages", 0))
+
+    def test_back_to_conversation_list_draws_transition_loading(self) -> None:
+        calls: list[tuple[str, int]] = []
+
+        class FakeWindow:
+            def erase(self) -> None:
+                pass
+
+            def refresh(self) -> None:
+                pass
+
+            def getmaxyx(self) -> tuple[int, int]:
+                return (14, 80)
+
+            def addnstr(self, y: int, x: int, text: str, limit: int, attr: int = 0) -> None:
+                pass
+
+            def move(self, y: int, x: int) -> None:
+                pass
+
+        state = ChatRuntimeState(
+            title="test",
+            callbacks=ChatCallbacks(lambda: [], lambda _conversation: []),
+            conversations=[ChatConversation("D1", "Maanas")],
+            mode="chat",
+        )
+
+        def fake_overlay(_stdscr, *, message: str, frame_index: int) -> None:
+            calls.append((message, frame_index))
+
+        with mock.patch("erza.chat.CHAT_LOADING_MIN_VISIBLE_SECONDS", 0.08):
+            with mock.patch("erza.chat.CHAT_LOADING_FRAME_INTERVAL_MS", 40):
+                with mock.patch("erza.chat.draw_loading_overlay", side_effect=fake_overlay):
+                    _handle_chat_key(FakeWindow(), state, ord("h"))  # type: ignore[arg-type]
+
+        self.assertEqual(state.mode, "conversations")
+        self.assertEqual(state.status, "1 conversations")
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertEqual(calls[0], ("Loading conversations", 0))
 
 
 if __name__ == "__main__":
